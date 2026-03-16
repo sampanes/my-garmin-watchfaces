@@ -6,6 +6,10 @@ Setting up Garmin development can feel like a "death by a thousand tools" proces
 
 ---
 
+> Before coding, review the [Web-Verified Research Brief](WEB_RESEARCH_BRIEF_FORERUNNER265_VIVOACTIVE6.md) to lock down device/API facts and AMOLED constraints from Garmin docs.
+
+> Before implementation, fill the [CIQ Product Requirements Template](CIQ_PRODUCT_REQUIREMENTS_TEMPLATE.md) and review the [Pre-Build Discovery Findings + Idea Backlog](PREBUILD_DISCOVERY_AND_IDEA_BACKLOG.md).
+
 ## 1. The Pre-Requisites (The "Don't Skip" Part)
 Before you even touch Garmin's tools, you need two things:
 1. **Java 11 or Higher**: Garmin's compiler and simulator run on Java. 

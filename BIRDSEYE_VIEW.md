@@ -19,10 +19,12 @@ This document serves as the master roadmap for documenting the Garmin Connect IQ
 | **Display Type** | AMOLED | AMOLED |
 | **Resolution** | 416 x 416 px | 390 x 390 px |
 | **Input** | 5 Buttons + Touch | 2 Buttons + Touch |
-| **Memory (Heap)** | ~128 KB (Est.) | ~64-128 KB (Est.) |
-| **Always-On Support** | Yes (Requires Burn-in Protection) | Yes (Requires Burn-in Protection) |
+| **API Level (CIQ compatible devices)** | 5.2 | 5.2 |
+| **Always-On Support** | Yes (Requires burn-in/luminance protection) | Yes (Requires burn-in/luminance protection) |
 
 ---
+
+> Note: Resolution/API values above are web-verified from Garmin's Compatible Devices list. Heap size is not published there, so treat memory as a measurement task, not an estimate.
 
 ## 3. Core Technical Stack
 - **Language**: Monkey C (Object-oriented, reference-counted, bytecode-compiled).
