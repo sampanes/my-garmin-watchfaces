@@ -39,6 +39,9 @@ Welcome to the **Linked Knowledge Tree** for Garmin development. This map connec
 
 ## 🚀 Getting Started
 - **Newcomer?** Start with the [Workflow & Sideloading Guide](workflow/BUILD_AND_SIDELOAD.md).
+- **Pre-coding facts?** Read the [Web-Verified Research Brief](workflow/WEB_RESEARCH_BRIEF_FORERUNNER265_VIVOACTIVE6.md).
+- **Planning next?** Use the [Pre-Build Discovery Findings + Idea Backlog](workflow/PREBUILD_DISCOVERY_AND_IDEA_BACKLOG.md).
+- **Spec before build?** Fill the [CIQ Product Requirements Template](workflow/CIQ_PRODUCT_REQUIREMENTS_TEMPLATE.md).
 - **High-Level Overview?** See the [Bird's Eye View](BIRDSEYE_VIEW.md).
 
 ---
