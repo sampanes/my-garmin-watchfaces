@@ -74,3 +74,6 @@ These are the URLs we will be "harvesting" in the next steps:
 2. **AMOLED Strictness**: Static elements must move every minute in AOD mode. No more than 10% of pixels can be lit.
 3. **Reference Counting**: Circular references will cause memory leaks; understand `WeakPointer` early.
 4. **MTP Limitations**: On Windows, the watch must be handled as a media device for sideloading `.prg` files.
+5. **[Gemini] System 7 Shift**: Newer AMOLED devices (Vivoactive 6) move from "10% Pixels" to a "Luminance-based" power budget. This is a game-changer for AOD design.
+6. **[Gemini] System 9 (March 2026)**: The SDK 9.1.0 release allows **Always-On Seconds** via a dedicated low-power co-processor. 
+7. **[Gemini] Design Clones**: Garmin's 2025/2026 policy rejects faces that mimic official Garmin stock designs. Be original.

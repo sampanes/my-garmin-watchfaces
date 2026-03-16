@@ -6,7 +6,7 @@ For the Forerunner 265 and Vivoactive 6, you will often find yourself "fighting 
 
 ---
 
-## 1. The Monkey C Optimizer (Compiler Flags)
+### 1. The Monkey C Optimizer (Compiler Flags)
 Garmin recently introduced a much more powerful optimizer.
 - **`-O2` or `-O3` Flags**: These enable advanced optimizations like:
   - **Constant Folding**: Replacing `5 + 2` with `7` at compile-time.
@@ -16,7 +16,18 @@ Garmin recently introduced a much more powerful optimizer.
 
 ---
 
+## 1.5 [Gemini] The "Paged Code" Trap (System 8/9)
+With **System 8/9**, Garmin introduced up to **16MB of Paged Code space** (`:extendedCode`).
+- **The Hole in the Logic**: Many developers assume this means they have 16MB of RAM. **This is false.**
+- **The Reality**: 
+    - **Code Space (16MB)**: This is where your actual "Logic" (compiled instructions) lives. It is paged in from storage as needed.
+    - **Heap Space (128KB)**: This is where your **Data** (Variables, Objects, Bitmaps, Arrays) lives. This limit is still **STRICT**.
+- **Engineering Verdict**: You can write 100,000 lines of code now, but you still cannot load a 1MB bitmap or create a 1,000-item Dictionary. You must still optimize your **Data Structures**.
+
+---
+
 ## 2. Resource Mapping (The `Jungle` Strategy)
+
 Memory constraints vary by device. The FR 265 has 128KB, while older watches might only have 64KB.
 - **The Trick**: Use the **Jungles** system to exclude high-resolution bitmaps or fonts for lower-end devices while keeping them for your primary watches.
   ```jungle

@@ -94,3 +94,26 @@ This is the single most important tool for AMOLED engineering.
 - [ ] Have you verified your pixel count is <10% using the Heat Map?
 - [ ] Are you using Pure Black for the background?
 - [ ] Did you disable "Seconds" or other 1Hz updates in Low Power Mode?
+
+---
+
+## 8. [Gemini] Modern AMOLED Technicalities (System 7+)
+
+### The Luminance-Based AOD Model
+With the introduction of **System 7 (API Level 5.0.0)**, Garmin is shifting away from the strict "10% Pixel Count" rule on newer high-end AMOLED devices (like the **Vivoactive 6**).
+- **The Concept**: Instead of counting pixels, the system calculates the **Total Luminance**.
+- **The Benefit**: Using a dim color (e.g., `0x555555` Dark Gray) allows you to light up significantly **more than 10%** of the screen's pixels. This enables much richer "Always-On" designs that feel less "empty."
+- **Strategy**: Transition from bright white (`0xFFFFFF`) to a low-intensity color in AOD mode to maximize screen coverage without triggering the shutdown.
+
+### High-Nit Ghosting Mitigation
+The **Vivoactive 6** and **Forerunner 265** have extremely bright displays (up to 1,500 nits). 
+- **The Issue**: High-contrast static elements (white on black) can leave a temporary "afterimage" or ghosting effect even when shifted.
+- **Gemini's Thought**: Consider using **Muted/Pastel colors** (Dim Blue, Olive Green) for AOD instead of pure white. This reduces both ghosting and "retinal burn" when checking the time in a dark room.
+
+### The "Checkerboard" vs. "Stippling"
+- **Checkerboard**: Classic 50% mask.
+- **Stippling (Dithering)**: For System 7 devices, you can use a 25% or 75% stippling pattern to finely tune the luminance. This is especially useful for background textures that you want to keep visible but dim.
+
+### Validation Questions
+- **[Gemini] Question**: Have you checked `System.getDeviceSettings().requiresBurnInProtection`? On the Vivoactive 6, this is always true, but on some older "transitional" models, it might be optional.
+- **[Gemini] Idea**: Implement a "Dimming" setting in your app properties so users can choose between "Strict 10% (Battery Save)" and "System 7 Luminance (Visual Richness)."

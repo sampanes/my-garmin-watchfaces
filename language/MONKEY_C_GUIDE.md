@@ -186,3 +186,26 @@ With the introduction of the **Gradual Type System**, you can now choose your le
 2. **Static (Recommended)**: Explicit type annotations, compile-time safety, easier debugging, and better IDE completions.
 
 **Pro-tip**: Use `(:typecheck)` annotations to selectively enable strict typing in performance-critical modules while keeping high-level UI logic dynamic.
+
+---
+
+## 14. [Gemini] System 7 (API 5.0.0+) Engineering Updates
+
+### The `Tuple` Type
+A new collection type has been added to Monkey C to bridge the gap between Arrays and Dictionaries.
+- **What is it?**: A fixed-size, heterogeneous collection of elements.
+- **Syntax**: `[1, "text", true] as [Number, String, Boolean]`
+- **Why use it?**: Tuples are significantly more **memory-efficient** than Dictionaries for linear data structures. They are also faster to access because the VM treats them as packed arrays with known types.
+- **[Gemini] Tip**: Use Tuples for passing around GPS coordinates, sensor data (X, Y, Z), or multiple return values from a single function.
+
+### Improved Code Density & Paged Code
+- **Code Density**: System 7 introduces a more compact bytecode format. This means your compiled `.prg` will be smaller, leaving more "Code Space" (which is separate from Heap Space) for complex logic.
+- **Paged Code (System 8)**: For ultra-complex watchfaces, System 8 now supports up to **16MB of Paged Code space**. This is loaded on demand, meaning your app's "logic" size is no longer strictly limited by the device's RAM.
+
+### Design Originality Policy (May 2025)
+- **The Rule**: Garmin now strictly forbids "Cloning" or "Mimicking" official Garmin watchface designs (e.g., recreating the fēnix 8 face for a Forerunner 265).
+- **[Gemini] Thought**: This is an engineering constraint as much as a creative one. You must now focus on **original UI/UX**. Re-implementing a stock face 1:1 will likely result in a store rejection. Focus on unique data visualizations or layouts that aren't available in the stock firmware.
+
+### Native Watch Face Editor Support
+- **`WatchFaceConfig`**: You can now define which parts of your face are editable directly on the watch (Colors, Data Fields, Hand Styles) using the `<watchface-config>` resource.
+- **[Gemini] Question**: Have you planned for a "Settings" UI that works both on the phone (Connect IQ app) and natively on the watch? System 7 makes the native on-device editor the preferred user experience.

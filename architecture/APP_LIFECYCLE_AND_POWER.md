@@ -51,7 +51,18 @@ AMOLED displays require extra care to prevent hardware damage (burn-in).
 
 ---
 
-## 4. Implementation Checklist
+## 4. [Gemini] Modern AOD Evolution: Legacy vs. System 9
+
+| Feature | Legacy AOD (Pre-2026) | System 9 AOD 2.0 (March 2026+) |
+| :--- | :--- | :--- |
+| **Seconds/HR** | **Disabled**. 1Hz updates usually kill the battery or trip the 30ms watchdog. | **Enabled**. Supports continuous 1Hz updates in dimmed mode. |
+| **Co-Processor** | None. Main CPU wakes up for every 1Hz update. | **Dedicated Low-Power Co-Processor** handles the AOD draw. |
+| **Implementation** | Hide seconds in `onEnterSleep()`. | Use `WatchUi.WatchFace.setAodUpdate()` to define the refresh region. |
+| **Watchdog** | 30ms Average limit (Strict). | Hardware-managed (More flexible but requires efficient code). |
+
+---
+
+## 5. Implementation Checklist
 | Method | Frequency | Primary Responsibility |
 | :--- | :--- | :--- |
 | `onLayout(dc)` | Once | Load resources, set up layouts. |

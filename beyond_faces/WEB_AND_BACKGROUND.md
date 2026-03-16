@@ -67,3 +67,36 @@ This is the single biggest hurdle in Garmin development.
 3. **30-Second Timeout**: If your background process takes more than 30 seconds to finish (including web request lag), the OS will kill it.
 4. **Phone Connection**: Web requests fail if the watch isn't connected to the phone via Bluetooth. Always check `System.getDeviceSettings().phoneConnected`.
 5. **Battery Saver**: Background tasks are often disabled when the watch is in Battery Saver mode.
+
+---
+
+## 5. [Gemini] Modern Data & Monetization (System 7+)
+
+### The Complications API (`Toybox.Complications`)
+System 7 introduces a standardized way for watchfaces to receive data from other apps or the system (Weather, Steps, Solar Intensity, etc.).
+- **The Old Way**: You manually queried `Toybox.SensorHistory` or `Toybox.Weather`.
+- **The New Way**: You "subscribe" to a specific complication ID.
+- **[Gemini] Advantage**: This is much more battery-efficient because the system handles the data updates and only pushes them to your watchface when necessary.
+- **Implementation**:
+```monkeyc
+using Toybox.Complications;
+
+function subscribeToSteps() {
+    var stepComplicationId = new Complications.Id(Complications.COMPLICATION_TYPE_STEPS);
+    Complications.registerComplicationChangeCallback(method(:onComplicationUpdate), [stepComplicationId]);
+}
+
+function onComplicationUpdate(complicationId) {
+    var data = Complications.getComplication(complicationId);
+    System.println("Steps: " + data.value);
+}
+```
+
+### Native Store Payments
+Historically, Garmin developers had to use 3rd-party services (like KiezelPay) to charge for their work, requiring a clunky "Unlock Code" UI.
+- **Native Payments**: Garmin now supports official monetization through the Connect IQ Store.
+- **[Gemini] Thought**: This reduces your code overhead significantly. You no longer need complex background tasks to verify licenses via 3rd-party APIs. The system handles the "Entitlement" check for you.
+- **API**: Check `Toybox.Application.getAppEntitlements()` to see if the user has a valid license.
+
+### [Gemini] Engineering Question:
+With the **Vivoactive 6** being a more "lifestyle" oriented device, have you considered using the **Complications API** to allow users to swap out data fields (e.g., swapping "Steps" for "Hydration")? This aligns with the new **Native Watch Face Editor** mentioned in the language guide.

@@ -119,36 +119,32 @@ Experienced developers often find the official documentation a bit sparse on com
 
 ---
 
-## 🛠️ Post-Session Engineering Summary (v1.1)
+## 🛠️ Post-Session Engineering Summary (v1.2)
 
-We have completed a comprehensive deep-dive documentation project for the **Forerunner 265** and **Vivoactive 6**. The following core pillars are now established in the local knowledge base:
+We have completed a comprehensive deep-dive documentation project for the **Forerunner 265** and **Vivoactive 6**. The following core pillars are now established in the local knowledge base, including the latest **System 7 (API 5.0.0+)** updates:
 
 ### 1. The Language (Monkey C)
 - **Paradigm**: Object-oriented, bytecode-compiled for a specialized VM.
-- **Typing**: Gradual Type System (Connect IQ 4.0+). Use `as` for strictness.
-- **Memory**: Automatic Reference Counting (ARC). **Warning**: Circular references cause leaks; use `WeakReference` to break cycles.
+- **Typing**: Gradual Type System. Use `as` for strictness.
+- **System 7 Updates**: New `Tuple` type for memory-efficient data structures. Paged code support (System 8) up to 16MB.
 
 ### 2. AMOLED Hardware Constraints
-- **10% Pixel Rule**: No more than 10% of pixels lit in Low Power (AOD) mode.
-- **3-Minute Rule**: No single pixel can be "on" for >3 mins. Implementation: **Pixel Shifting** and **Checkerboard Masking**.
-- **Power Budget**: `onPartialUpdate` (1Hz) must stay under **30ms average** per minute or the system kills the process.
+- **10% Pixel Rule**: Traditional rule for burn-in protection.
+- **Luminance Model (System 7)**: Newer devices (Vivoactive 6) use total brightness instead of pixel count. Allows more pixels if they are dimmed.
+- **Heat Map Validation**: Mandatory simulator tool to prevent firmware "killing" your watchface.
 
 ### 3. Graphics & Performance
-- **The DC**: Coordinate system is (0,0) top-left. For round screens, use Trig for Polar-to-Cartesian mapping.
-- **Caching**: Use `BufferedBitmap` to pre-render complex static layers. Palettes (1-bit or 4-bit) save massive heap space.
-- **Hacks**: Use "Fonts-as-Sprites" (BMFont) for high-performance animation with alpha transparency. Access local variables over class members for 8x speed boost.
+- **The DC**: (0,0) top-left. Polar-to-Cartesian for round screens.
+- **Complications API**: System 7 standardized data subscriptions (Weather, Steps) for battery efficiency.
+- **Native Editor**: Users can customize settings directly on the watch via `<watchface-config>`.
 
 ### 4. Memory Management
-- **Heap Limits**: Target devices are ~128KB. Avoid `Dictionaries` (high overhead); prefer `Parallel Arrays`.
-- **Optimization**: Enable `-O2` compiler flags. Use the "Prettier Monkey C" extension for aggressive minification.
+- **Heap Limits**: ~128KB. Use `Parallel Arrays` or `Tuples` over `Dictionaries`.
+- **Background Tasks**: Still limited to a **32KB wall**. Use annotations strictly.
 
-### 5. Deployment Workflow
-- **Requirements**: Java 11+, VS Code + Monkey C Extension, Developer Key (`.der`).
-- **Sideload**: Copy `.prg` from `bin/` to `GARMIN/Apps/` via USB (MTP mode).
-
-### 6. Advanced Integration
-- **Sensors**: Access raw HR, GPS, and Accel via `Toybox.Sensor` and `Toybox.Position`.
-- **Communications**: `makeWebRequest` for JSON. **Note**: Background processes (Service Delegates) have a tiny **32KB heap**.
-- **Connectivity**: Full BLE Central/Peripheral support via `BluetoothLowEnergy` GATT profiles.
+### 5. Deployment & Monetization
+- **Sideload**: `.prg` to `GARMIN/Apps/` via MTP.
+- **Native Payments**: Official store monetization now supported; no more 3rd-party unlock code hacks.
+- **Policy**: Original designs only (2025 Store Policy).
 
 **Full documentation is available via the [[MASTER_MAP.md]] Knowledge Tree.**

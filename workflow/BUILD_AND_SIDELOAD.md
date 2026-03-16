@@ -12,8 +12,8 @@ Setting up Garmin development can feel like a "death by a thousand tools" proces
 
 ## 1. The Pre-Requisites (The "Don't Skip" Part)
 Before you even touch Garmin's tools, you need two things:
-1. **Java 11 or Higher**: Garmin's compiler and simulator run on Java. 
-   - *Recommendation*: Download "Amazon Corretto 11" or "Adoptium OpenJDK 11".
+1. **Java 8 (JRE 1.8)**: While newer versions (11+) *might* work, **Java 8** is the "Gold Standard" for stability with the Monkey C compiler and simulator.
+   - *Recommendation*: Download the standard Oracle JRE 1.8 or OpenJDK 8.
 2. **VS Code**: Your primary code editor.
 
 ---
@@ -59,15 +59,14 @@ The simulator is great, but AMOLED screens are hard to judge until they are on y
 3. VS Code will create a `bin/` folder in your project. Inside is your file: `YourApp.prg`.
 
 ### Step B: Connect the Watch
-1. Plug the watch into your PC via USB.
-2. **Windows**: The watch should appear as a drive (e.g., `G:\`).
-   - *Note*: On some newer watches, you may need to go to watch settings -> System -> USB Mode -> Set to "MTP" or "Mass Storage."
-3. **The Folder**: Open the `GARMIN/Apps/` folder on the watch drive.
+1. Plug the watch into your USB port.
+2. **Windows 10/11**: The watch uses **MTP (Media Transfer Protocol)**. It appears in File Explorer under "This PC," but does NOT get a drive letter.
+3. **macOS**: Modern Garmins (FR265/VA6) **will not mount** as a drive on Mac. You **MUST** use a tool like **Android File Transfer** or **OpenMTP** to see the watch's file system.
 
 ### Step C: Copy and Run
-1. Drag your `YourApp.prg` file into the `GARMIN/Apps/` folder.
-2. Safely eject the watch.
-3. The watch face will appear in your "Watch Face" selection menu automatically.
+1. Navigate to the `GARMIN/Apps/` folder on the watch.
+2. **Copy** your `YourApp.prg` file into that folder.
+3. Safely disconnect. The watch face will appear in your "Watch Face" selection menu immediately.
 
 ---
 
