@@ -14,9 +14,11 @@ Planned grayscale assets:
 
 Current status:
 
-- rendering pipeline has pivoted to a cached buffered-bitmap scene
-- assets are not wired yet
-- current scene uses procedural alpha-based placeholder marks
+- rendering pipeline uses a cached buffered-bitmap scene
+- procedural stamps (WashStamp, BrushStamp) are implemented and in use
+- scene uses alpha-based accumulation for tonal mass
+- mist is rendered as graduated atmospheric layers
+- structural anchors use dry-brush accents for edge sharpening
 
 Recommended reference folder:
 

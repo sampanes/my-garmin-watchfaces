@@ -333,6 +333,24 @@ The danger is obvious: if implemented as too many per-pixel operations, it becom
 - keep each descent sparse
 - combine with mist erasure and maybe one soft wash stamp behind it
 
+## 2026-03-24 Research Update: The Stamp-Based Pivot
+
+Following a deep dive into Monkey C Graphics capabilities (API 4.0.0+), we are pivoting from pure geometry/point-based rendering to a **Procedural Stamp-Based Engine**.
+
+### New Technical Strategy
+
+1.  **Procedural Stamps:** Instead of drawing `drawPoint` or `fillCircle` directly into the main scene, we will pre-render a small set of "brush tips" into `BufferedBitmap` objects during initialization.
+    - `WashStamp`: A feathered, low-alpha circle with organic jitter.
+    - `BrushStamp`: A textured, higher-contrast fragment for structural edges.
+2.  **Graduated Mist:** Mist will be rendered as a series of overlapping, low-alpha rectangles or stamps to create a "dissolving" effect at the base of mountains, rather than solid bands.
+3.  **Alpha Accumulation:** By drawing these stamps repeatedly with low alpha (e.g., 5-10%), we can build "tonal mass" that looks like pigment accumulating on paper.
+4.  **Anti-Aliasing:** We will explicitly enable `setAntiAlias(true)` to ensure smooth edges on AMOLED displays.
+
+### Why This Wins
+- **Aesthetics:** It solves the "cut-paper" problem by introducing soft edges and internal tonal variation.
+- **Performance:** Drawing a bitmap is faster than many individual `drawPoint` calls once the stamp is cached.
+- **Flexibility:** Stamps can be scaled or rotated slightly to avoid repetitive patterns.
+
 ## Best Recommendation Right Now
 
 The buffered-bitmap pivot has already happened, and that part was correct.
