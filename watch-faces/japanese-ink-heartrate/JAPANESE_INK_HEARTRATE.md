@@ -2,13 +2,23 @@
 _A product vision + iterative build plan for a Garmin Connect IQ watch face_
 _Target audience: coding LLM / coding agent / Codex-style implementation assistant_
 
+Engineering reality check: see [FEASIBILITY_ASSESSMENT.md](FEASIBILITY_ASSESSMENT.md) for the current Garmin-specific feasibility read, scope trims, and recommended implementation constraints.
+
+Shared technical references:
+- [Master Map](../../common/MASTER_MAP.md)
+- [Bird's Eye View](../../common/BIRDSEYE_VIEW.md)
+- [Build and Sideload](../../common/workflow/BUILD_AND_SIDELOAD.md)
+- [App Lifecycle and Power](../../common/architecture/APP_LIFECYCLE_AND_POWER.md)
+- [Forerunner 265 Spec](../../common/architecture/SPEC_FORERUNNER_265.md)
+- [Vivoactive 6 Spec](../../common/architecture/SPEC_VIVOACTIVE_6.md)
+
 ## Project Summary
 
-Build a Garmin watch face that feels like a living ink painting rather than a gadget dashboard.
+Build a Garmin watch face that feels like a subtly evolving ink painting rather than a gadget dashboard.
 
 The watch face should present a bold, readable digital clock in the foreground, while the background behaves like a minimalist Japanese ink landscape whose mountain contours are influenced by recent heart rate data. Over time, the face should become expressive without becoming noisy: subtle mist, sparse tree marks, and a sun or moon that moves according to real local time.
 
-This should begin as a small, testable watch face that runs at all on the user's real device, then gradually evolve into something beautiful and alive.
+This should begin as a small, testable watch face that runs at all on the user's real device, then gradually evolve into something beautiful and quietly responsive.
 
 The artistic target is not photorealism and not AI-image generation. It is restrained, procedural, elegant, memory-conscious visual design: a face that looks expensive and intentional because a few carefully chosen drawing rules create a lot of mood.
 
@@ -29,7 +39,7 @@ The final watch face should evoke the feeling of:
 The data should feel transformed into art, not displayed as a chart.
 
 The watch face should not scream “fitness dashboard.”
-It should feel like “a living Japanese ink painting that happens to be a clock.”
+It should feel like “a subtly evolving Japanese ink painting that happens to be a clock.”
 
 ---
 
@@ -298,6 +308,36 @@ The plan should expect these and absorb them.
 ---
 
 # Iterative Plan
+
+## Step 0: Prove the toolchain and device loop
+Goal: prove that this repository can produce a watch face binary that installs and renders on the actual Forerunner 265.
+
+### Deliverable
+A minimal digital watch face project in this repo that:
+- builds from the local SDK/toolchain without manual guesswork
+- targets the Forerunner 265 explicitly
+- installs on the real watch
+- renders the current time correctly
+- uses no HR logic, no scene generation, and no artistic extras yet
+
+### Success criteria
+- repository contains the actual project skeleton, not just concept docs
+- `manifest.xml`, `.jungle`, source layout, and resources are all understood and valid
+- simulator launch works
+- real-device sideload works
+- a photo or direct user confirmation from the watch establishes that it rendered successfully
+
+### Failure conditions
+If any of these happen, Step 0 is not done:
+- build only works in simulator but not on device
+- watch installs but shows an IQ error
+- time renders incorrectly
+- project structure is still ambiguous enough that the next edit would be guesswork
+
+### Why this is Step 0 instead of Phase 0
+This is narrower than a normal first milestone. Its only job is to remove uncertainty around SDK setup, project structure, and on-device deployment.
+
+---
 
 ## Phase 0: Project sanity / hello world
 Goal: compile, install, and display a basic watch face on the user's Forerunner 265.

@@ -40,22 +40,26 @@ This document serves as the master roadmap for documenting the Garmin Connect IQ
 ## 4. Documentation Roadmap (The "Spin-off" Plan)
 We will systematically fetch and decompose the following resources into specific sub-folders and documents:
 
-### Folder: `/language`
+### Folder: `/common/language`
 - [x] `MONKEY_C_GUIDE.md`: Syntax, Types, Objects, and Annotations.
 - [ ] `MEMORY_MANAGEMENT.md`: Reference counting, weak pointers, and heap optimization.
 
-### Folder: `/architecture`
+### Folder: `/common/architecture`
 - [x] `APP_LIFECYCLE_AND_POWER.md`: `WatchUi.WatchFace` states, AMOLED constraints, and 30ms budget.
 - [ ] `AMOLED_BURN_IN.md`: Pixel-shifting, 10% brightness rules, and recovery techniques.
 
-### Folder: `/graphics`
+### Folder: `/common/graphics`
 - [x] `DC_PART1_PRIMITIVES.md`: Coordinates, Colors, Lines, and Shapes.
 - [x] `DC_PART2_TYPOGRAPHY.md`: Fonts, Justification, and Radial Text.
 - [x] `DC_PART3_RESOURCES_AND_PERFORMANCE.md`: Bitmaps, Buffers, and XML Layouts.
 
-### Folder: `/workflow`
+### Folder: `/common/workflow`
 - [ ] `BUILD_AND_SIDELOAD.md`: `.prg` generation and manual device deployment.
 - [ ] `DEBUGGING_TOOLS.md`: Using the Simulator, ERA (Error Reporting), and console logging.
+
+### Folder: `/watch-faces`
+- [x] `japanese-ink-heartrate/JAPANESE_INK_HEARTRATE.md`: product vision and staged build plan.
+- [x] `japanese-ink-heartrate/FEASIBILITY_ASSESSMENT.md`: feasibility assessment and scope constraints.
 
 ---
 

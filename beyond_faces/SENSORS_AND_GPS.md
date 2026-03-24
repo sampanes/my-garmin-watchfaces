@@ -1,4 +1,4 @@
-[Home](../MASTER_MAP.md) | [Overview](../BIRDSEYE_VIEW.md)
+[Home](../common/MASTER_MAP.md) | [Overview](../common/BIRDSEYE_VIEW.md)
 
 # Beyond Faces: Sensors & GPS
 
