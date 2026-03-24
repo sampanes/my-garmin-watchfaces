@@ -5,6 +5,7 @@
         type="watchface"
         name="@Strings.AppName"
         entry="JapaneseInkHeartrateApp"
+        launcherIcon="@Drawables.LauncherIcon"
         minApiLevel="5.2.0">
         <iq:products>
             <iq:product id="fr265"/>
