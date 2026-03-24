@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
     <iq:application
-        id="com.john.watchfaces.japaneseinkheartrate"
+        id="6a9cf638-2f1c-4a2e-8aa5-6a3517bc54a4"
         type="watchface"
         name="@Strings.AppName"
         entry="JapaneseInkHeartrateApp"

@@ -1,0 +1,4 @@
+project.manifest = watch-faces/japanese-ink-heartrate/manifest.xml
+project.typecheck = informative
+base.sourcePath = watch-faces/japanese-ink-heartrate/source
+base.resourcePath = watch-faces/japanese-ink-heartrate/resources
