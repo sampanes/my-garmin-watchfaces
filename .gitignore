@@ -1,3 +1,5 @@
 ROOT_*
 .vscode/
 bin/
+watch-faces/japanese-ink-heartrate/art/references/
+watch-faces/japanese-ink-heartrate/art/checkpoints/
