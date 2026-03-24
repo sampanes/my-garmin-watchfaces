@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <iq:application
+        id="com.john.watchfaces.japaneseinkheartrate"
+        type="watchface"
+        name="@Strings.AppName"
+        entry="JapaneseInkHeartrateApp"
+        minApiLevel="5.2.0">
+        <iq:products>
+            <iq:product id="fr265"/>
+        </iq:products>
+        <iq:permissions/>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+        <iq:barrels/>
+    </iq:application>
+</iq:manifest>
