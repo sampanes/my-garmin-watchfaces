@@ -62,6 +62,7 @@ It should feel like “a subtly evolving Japanese ink painting that happens to b
 - plenty of negative space
 - subtle asymmetry is welcome
 - procedural but hand-touched in feeling
+- vertical ink structure is preferred over one dominant ridge silhouette
 
 ### Palette direction
 - warm washi / mulberry-paper background
@@ -124,7 +125,7 @@ When there are tradeoffs:
 ## Design Principles for the Coding Agent
 
 ### 1. Favor procedural drawing over static imagery
-Use draw calls, contours, simple repeated marks, and layered shapes rather than large background assets whenever practical.
+Use draw calls, buffered composition, and small reusable marks rather than large background assets whenever practical.
 
 ### 2. Keep memory use low
 Prefer:
@@ -149,6 +150,7 @@ Examples of useful high-level rules:
 - heart rate influences the mountain silhouette, not every part of the design
 - mist appears mainly in valleys and overlaps ridges softly
 - trees are sparse accents, not dense detail
+- mountain structure should emerge from a few vertical ink spines, not one hard-edged cutout band
 
 ### 4. Separate the artistic system from the device/data system
 Try to keep these concerns conceptually distinct:
@@ -258,6 +260,11 @@ Mist is one of the easiest ways to make the face feel painterly.
 - helps mountain layers feel atmospheric
 - gives the face more beauty without much geometric complexity
 
+### Important refinement
+Mist should often behave like concealment or erasure.
+
+If it reads as a decorative stripe, the rendering has gone in the wrong direction.
+
 ---
 
 ## Tree Concept
@@ -272,6 +279,8 @@ Trees should be tiny, sparse, and stylized.
 
 ### Rule
 If the trees begin to look like a clip-art forest, the design has gone too far.
+
+For now, trees remain subordinate to solving mountain rendering itself.
 
 ---
 
@@ -403,23 +412,26 @@ Possible issues to solve:
 ---
 
 ## Phase 2: First mountain silhouette
-Goal: render a procedural mountain ridge from fake or sample data.
+Goal: render a procedural mountain form from fake or sample data.
 
 ### Deliverable
-A ridge shape that:
+A mountain system that:
 - is generated from an array of values
-- visually reads as a mountain silhouette
+- uses a small number of vertical ink spines or anchors
+- visually reads as mountain structure rather than a chart
 - can be drawn consistently on-device
 - sits behind the time
 
 ### Notes
 Use mock data first if needed.
 Do not wait on real heart-rate integration.
+Avoid reverting to one dark filled polygon if it starts looking cleaner in code but worse in art.
 
 ### Success criteria
-- ridge shape looks like landscape, not graph
+- mountain structure looks like landscape, not graph
 - composition still feels clean
-- code path for data-to-shape exists
+- code path for data-to-structure exists
+- the result does not read as cut paper or rows of dots
 
 ### If blocked
 Possible issues to solve:
@@ -603,7 +615,7 @@ The watch face feels like the original dream.
 
 ---
 
-# Non-Goals for Early Iterations
+## Non-Goals for Early Iterations
 
 Do not front-load these unless they are easy:
 - perfect cross-device support
@@ -613,6 +625,12 @@ Do not front-load these unless they are easy:
 - exact sunrise/sunset astronomy
 - polished app-store packaging
 - hyper-optimized code before visuals are proven
+
+What is acceptable to front-load:
+
+- rendering experiments that significantly improve the artistic primitive
+- buffered-bitmap architecture in active mode
+- tiny reusable grayscale stamp assets if they materially improve the scene
 
 ---
 

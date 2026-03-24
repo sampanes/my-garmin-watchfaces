@@ -55,6 +55,25 @@ Those should be treated as rendering tendencies:
 - vary ridge edges slightly
 - let lower mountain areas dissolve into mist or paper tone
 
+### 5. Prefer vertical ink structure over horizontal silhouette logic
+
+This is the biggest rendering-direction update so far.
+
+The mountain should not primarily be built as:
+
+- one horizontal ridge polygon
+- one filled dark mass
+- one row of repeated wash dots
+
+The mountain should primarily be built as:
+
+- a small number of vertical ink spines
+- darkest near the crest or top
+- increasingly broken and faint downward
+- partially erased by mist at the base
+
+This better matches the project references and reduces the "cut paper" problem.
+
 ## Good Ideas To Delay
 
 These are not bad. They are just not first-order priorities.
@@ -110,11 +129,35 @@ Everything else should earn its place.
 ## Current Recommended Priority Order
 
 1. Make the time feel premium and intentional.
-2. Make the ridge shape feel expensive and natural.
-3. Make mist and depth subtle but unmistakable.
+2. Make the mountain read as ink structure, not a horizontal graphic shape.
+3. Make mist function like erasure and depth, not decoration.
 4. Add a single vermillion accent carefully.
 5. Introduce mock-data-driven terrain variation.
 6. Add status motifs only after the above work.
+
+## Prototype Lessons To Keep
+
+These are now explicit project rules.
+
+### 1. Hard-edged ridge bands fail aesthetically
+
+They read as layered construction paper, not ink wash.
+
+### 2. Repeated circles and ellipses also fail if the pattern is obvious
+
+Even with alpha and buffered rendering, regular repeated marks read as dots on a line, not paint.
+
+### 3. Buffered rendering was still the correct technical pivot
+
+The artistic result was not good enough yet, but cached off-screen rendering remains the correct place to keep experimenting in active mode.
+
+### 4. Mist should conceal and dissolve
+
+If mist reads as a stripe or banner, it is wrong.
+
+### 5. Dark accents must be sparse
+
+The references work because the darkest marks are selective and structural, not spread evenly across the whole form.
 
 ## Custom Digit Assets
 

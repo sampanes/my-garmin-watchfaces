@@ -11,6 +11,39 @@ It combines:
 - what Garmin Connect IQ can realistically support
 - which implementation paths seem most promising for this project
 
+## Prototype Postmortem
+
+The first few visual experiments were useful failures.
+
+### Failure 1: ridge polygon / cut-paper mountain
+
+The earliest versions treated the mountain as a small number of clean layered shapes.
+
+That produced:
+
+- hard silhouette edges
+- flat value bands
+- mist that read as design strips instead of atmosphere
+- a construction-paper / poster-cutout look
+
+### Failure 2: circles and ellipses as fake wash
+
+The next experiments introduced alpha and buffered rendering, which was the right architectural move, but the visual primitive was still wrong.
+
+Those versions produced:
+
+- rows of translucent dots
+- rows of translucent ellipses
+- repeated stamp spacing the eye could immediately detect
+- "MS Paint with shape tools" instead of ink wash
+
+### What was still valuable
+
+Even though the output was not good enough, two things were learned:
+
+- alpha accumulation is necessary
+- cached off-screen rendering is still the right architectural foundation for active mode
+
 ## The Core Diagnosis
 
 The current face still reads as vector composition, not ink wash.
@@ -34,6 +67,30 @@ Traditional ink wash and successful digital watercolor/ink stylization rely much
 That suggests the next leap should not be "add more objects."
 
 It should be "change the rendering grammar."
+
+## The New Core Primitive
+
+The most important visual insight so far is that the mountain should not be conceived primarily as a horizontal silhouette.
+
+The better primitive is:
+
+- a vertical ink spine or pillar
+- darkest near the crest or top
+- broken and dissolving as it descends
+- partially erased by mist toward the base
+
+This matches the shared references much better than either:
+
+- one filled mountain polygon
+- many repeated circular wash marks
+
+So the new question is not:
+
+- how do we draw a mountain shape
+
+It is:
+
+- how do we place a handful of vertical ink spines and let faint wash and mist connect or erase them
 
 ## What The Research Suggests
 
@@ -87,7 +144,7 @@ We should attempt a stylized approximation using:
 
 ## Three Serious Paths Forward
 
-## Path A: Multi-Pass Wash Painting
+## Path A: Vertical Spine Wash Renderer
 
 This is the safest path and my current top recommendation.
 
@@ -97,33 +154,35 @@ Stop drawing "the mountain" as a single filled polygon.
 
 Instead:
 
-1. Generate a soft ridge spine.
-2. Paint several semi-transparent wash passes around it.
-3. Add a few darker accent strokes only near chosen crest segments.
-4. Let the base dissolve into paper using lighter overlapping passes.
+1. Generate 3 to 8 vertical spine anchors.
+2. Paint narrow dark crest columns near the top of each spine.
+3. Expand each column downward into lighter, wider, broken wash passes.
+4. Use mist and paper tone to erase or dissolve the lower body.
+5. Connect only some adjacent spines with faint lateral washes.
 
 ### Why it may work
 
 This directly attacks the current failure mode.
 
-Instead of one stable mass, the mountain becomes accumulated tone.
+Instead of one stable mass, the mountain becomes a small family of vertical ink accumulations.
 
 ### Garmin fit
 
 Good.
 
-This can be done with repeated filled polygons and a few lightly varied offsets, even without fancy shaders.
+This can be done with repeated translucent fills in a buffered bitmap, even without fancy shaders.
 
 ### Risk
 
-If overdone, it can become muddy rather than painterly.
+If overdone, it can become muddy or stripe-like rather than painterly.
 
 ### What would make it work
 
-- 4 to 7 passes maximum
+- 3 to 8 main spines
 - limited palette
-- much lighter distant ridge
-- only sparse dark accents
+- strong top-to-bottom fade
+- only selective lateral linking
+- mist acting as erasure, not decoration
 
 ## Path B: Stamp-Based Brush Engine
 
@@ -136,7 +195,7 @@ Build a tiny library of hand-authored stamp textures:
 - soft wash blot
 - dry brush fragment
 - feathered mist strip
-- broken ridge accent
+- vertical ink falloff stroke
 
 Then compose the landscape from repeated stamped placements rather than from pure geometric shapes.
 
@@ -207,7 +266,7 @@ The official Graphics docs expose buffered bitmaps and alpha blending, but memor
 
 ## Best Recommendation Right Now
 
-I would not jump straight to the buffered-bitmap path.
+The buffered-bitmap pivot has already happened, and that part was correct.
 
 The best next experiment is:
 
@@ -215,8 +274,9 @@ The best next experiment is:
 
 Combine Path A and a tiny part of Path B:
 
-- use multi-pass wash rendering for the mountain body
-- introduce 1 or 2 tiny feathered stamp textures for mist and dark accent breakup
+- use vertical ink spines as the primary mountain structure
+- render them into the cached buffered bitmap with top-heavy fade
+- introduce 1 or 2 tiny feathered stamp textures for mist erasure and dark accent breakup
 
 That offers the best tradeoff between:
 
@@ -226,24 +286,24 @@ That offers the best tradeoff between:
 
 ## Concretely, What I Would Change Next
 
-### 1. Replace "one ridge polygon" with a wash stack
+### 1. Replace the ridge band with spine anchors
 
-One generated ridge spine should drive:
+One scene should contain a small set of vertical spine anchors. Each anchor should drive:
 
-- a pale underwash
-- a mid-tone body pass
-- a sparse dark edge pass
-- a very low-opacity foot fade
+- a dark top accent
+- a widening descending fade
+- local breakup so the body is not one clean stripe
+- a weak lower dissolve rather than a hard base
 
 ### 2. Add one reusable feathered mist stamp
 
-Instead of drawing mist as rectangles, draw a feathered horizontal wash stamp multiple times with varied widths and x positions.
+Use it as subtraction by overlap and concealment, not as a decorative stripe.
 
 ### 3. Add one reusable dry-brush accent stamp
 
-Use it only on selected crest sections.
+Use it only near the tops and outer edges of selected spines.
 
-This gives the ridge some "bone" without outlining the whole shape.
+This gives the structure some "bone" without outlining the whole mountain.
 
 ### 4. Reduce time contrast slightly only after the background becomes more atmospheric
 
@@ -267,12 +327,12 @@ The richer wash system should mostly belong to active mode.
 
 ## Suggested Next Build Sequence
 
-1. Implement a real wash-stack mountain renderer.
-2. Add one feathered mist stamp.
+1. Implement a vertical-spine mountain renderer in the buffered bitmap.
+2. Add one feathered mist stamp used as erasure.
 3. Add one dry-brush accent stamp.
 4. Test in simulator.
 5. Test on watch.
-6. Only then decide whether the project needs buffered-bitmap rendering.
+6. Only then decide whether the project needs real image assets beyond tiny stamps.
 
 ## Sources
 
