@@ -12,6 +12,7 @@ Shared technical references:
 - [Forerunner 265 Spec](../../common/architecture/SPEC_FORERUNNER_265.md)
 - [Vivoactive 6 Spec](../../common/architecture/SPEC_VIVOACTIVE_6.md)
 - [Design Decisions](DESIGN_DECISIONS.md)
+- [Research Directions](RESEARCH_DIRECTIONS.md)
 
 ## Project Summary
 
