@@ -1,6 +1,6 @@
 # Asset Plan
 
-This folder is reserved for future painterly assets once the buffered-bitmap scene pipeline is stable.
+This folder is reserved for painterly assets now that the bitmap-fidelity path is proving workable.
 
 Planned grayscale assets:
 
@@ -19,6 +19,7 @@ Current status:
 - scene uses alpha-based accumulation for tonal mass
 - mist is rendered as graduated atmospheric layers
 - structural anchors use dry-brush accents for edge sharpening
+- first imported PNG asset test revealed a resource-fidelity problem: source alpha softness did not survive on-screen as expected
 
 Recommended reference folder:
 
@@ -56,3 +57,54 @@ If the project goes asset-driven, keep the asset family extremely small and gene
 - one or two structural dark accents
 
 The goal is a coherent grammar, not a collage.
+
+Technical caution:
+
+- authored PNG quality is not the only variable
+- Garmin bitmap-resource rendering may quantize or dither alpha in ways that materially change the artwork
+- asset production should continue, but bitmap import/render fidelity must be validated in parallel
+
+Current fidelity test configuration:
+
+- default bitmap import
+- tuned bitmap import using:
+  - `dithering="none"`
+  - `automaticPalette="false"`
+  - `packingFormat="png"`
+  - `compress="false"`
+
+Current conclusion from the fidelity harness:
+
+- default import is not acceptable for this art direction
+- tuned import is the only fair basis for evaluating grayscale alpha assets in this project
+- `vertical_fade_descent.png` under tuned import is the first asset that has looked genuinely promising on-screen
+
+## Confirmed Result From `codexrevamp2`
+
+Checkpoint:
+
+- `watch-faces/japanese-ink-heartrate/art/checkpoints/2026-03-24_codexrevamp2.png`
+
+Result summary:
+
+- `VerticalFadeDescentTuned` is the first asset in this project that has looked genuinely good on-screen
+- `VerticalFadeDescentSimpleTuned` is acceptable, but weaker
+- both default imports remain unacceptable
+
+Asset-production rule from this point forward:
+
+- all serious asset evaluation should use tuned bitmap import settings
+- default-import output should be treated only as a warning case, not as an artistic reference
+
+Default tuned settings:
+
+- `dithering="none"`
+- `automaticPalette="false"`
+- `packingFormat="png"`
+- `compress="false"`
+
+Interpretation:
+
+- the authored asset style is not being invalidated by the watch
+- the Garmin default import path was invalidating it
+- this means asset work is now worth real effort, provided the import settings stay disciplined

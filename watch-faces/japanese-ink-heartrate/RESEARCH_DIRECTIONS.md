@@ -1,6 +1,6 @@
 # Japanese Ink Heartrate Research Directions
 
-Last updated: 2026-03-23
+Last updated: 2026-03-24
 
 This note records the more serious research pass on how to move the watch face from "stacked cut paper" toward something that reads as painterly, atmospheric, and intentional.
 
@@ -60,6 +60,65 @@ Even though the output was not good enough, two things were learned:
 - alpha accumulation is necessary
 - cached off-screen rendering is still the right architectural foundation for active mode
 - full-screen dense procedural point fields are probably not the right production path on this device
+
+### Failure 4: first imported bitmap assets lost fidelity
+
+The first two authored PNG assets survived on disk correctly but did not survive visually once drawn through the Garmin resource path.
+
+What was observed:
+
+- source PNGs contained real varying alpha
+- imported resources looked materially more binary / dithered / quantized on screen
+- the rendered look no longer matched the authored softness
+
+This means the first asset test did not actually test only the art.
+
+It also tested:
+
+- Garmin resource packing
+- resource color depth / palette conversion
+- bitmap alpha behavior at draw time
+
+### Resolution: tuned bitmap import restored credibility to the asset path
+
+After introducing an explicit bitmap-fidelity harness, the same asset imported with tuned resource settings looked materially better than the default import.
+
+The key tested settings were:
+
+- `dithering="none"`
+- `automaticPalette="false"`
+- `packingFormat="png"`
+- `compress="false"`
+
+Outcome:
+
+- default imports remained visibly poor
+- the tuned main asset looked genuinely promising
+- the tuned simple asset was acceptable, though weaker than the tuned main asset
+
+This is the first evidence that the asset idea itself is not the problem.
+
+The main problem was import fidelity.
+
+### 2026-03-24 checkpoint result: `codexrevamp2`
+
+The tuned-import comparison has now produced a result strong enough to change project direction with confidence.
+
+Checkpoint:
+
+- `art/checkpoints/2026-03-24_codexrevamp2.png`
+
+Observed result:
+
+- default imports still looked clearly bad
+- the tuned main asset looked genuinely good
+- the tuned simple asset looked acceptable but not as strong
+
+Research implication:
+
+- authored grayscale-alpha assets can survive the Garmin pipeline well enough for this project
+- bitmap import settings are not an implementation detail; they are part of the visual system
+- future research and testing should treat tuned import as the default baseline, not as an optional optimization
 
 ## The Core Diagnosis
 
@@ -240,12 +299,20 @@ This path is much more viable than a large painted bitmap background because the
 
 - too many stamps can look like clip art or visual noise
 - asset workflow gets more involved
+- resource fidelity may not match the original authored PNG if the bitmap path quantizes or dithers alpha aggressively
 
 ### What would make it work
 
 - 3 to 5 stamps total
 - used asymmetrically
 - randomization in placement, opacity, and slight scale
+- a verified import/render path that preserves enough softness to justify authored assets
+
+Current status:
+
+- this path is now materially de-risked by the tuned-import result
+- the main remaining question is not whether assets can survive import
+- the main remaining question is how small and coherent the asset family can stay while still producing convincing landscapes
 
 ## Path C: Hybrid Buffered-Bitmap Wash Layer
 
@@ -443,6 +510,18 @@ My current recommendation is:
 - move toward an asset-driven hybrid for the body/wash
 - keep procedural logic for placement, variation, timing, and HR influence
 - keep the procedural vertical-fade-line idea as the main remaining non-asset experiment worth trying
+
+Important qualification:
+
+- resource fidelity is now partially understood
+- default bitmap import should not be trusted for this project
+- tuned bitmap import makes the asset-driven path materially more credible
+- the first untuned asset screenshots should not be treated as a fair evaluation of the authored art
+
+Stronger version after `codexrevamp2`:
+
+- tuned bitmap import is no longer just "more credible"
+- it is the first path that has produced a visually trustworthy asset result in this project
 
 ## Sources
 

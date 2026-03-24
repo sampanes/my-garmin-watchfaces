@@ -1,6 +1,7 @@
 using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.System;
+using Toybox.WatchUi;
 
 class JapaneseInkHeartrateScene {
 
@@ -125,19 +126,44 @@ class JapaneseInkHeartrateScene {
 
         drawPaperBackground(dc, width, height);
         drawSunWash(dc, width, height, minuteKey);
+        drawSoftMist(dc, width / 2, (height * 48) / 100, 210, 48, minuteKey + 11);
+        drawBitmapFidelityComparison(dc, width, height);
+        drawSoftMist(dc, width / 2, (height * 79) / 100, 240, 56, minuteKey + 19);
+    }
 
-        // Distant Ridge (Lighter, softer)
-        drawDistantDescents(dc, width, height, minuteKey + 7);
-        drawSoftMist(dc, width / 2, (height * 48) / 100, 200, 45, minuteKey + 11);
+    function drawBitmapFidelityComparison(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
+        var mainDefault = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentDefault);
+        var mainTuned = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentTuned);
+        var simpleDefault = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentSimpleDefault);
+        var simpleTuned = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentSimpleTuned);
 
-        // Foreground Ridge (Darker, more structural)
-        drawForegroundDescents(dc, width, height, minuteKey + 17);
-        
-        // Add a lone pine tree for focal point
-        drawLonePine(dc, (width * 78) / 100, (height * 72) / 100, 45, minuteKey + 31);
-        
-        drawSoftMist(dc, width / 3, (height * 73) / 100, 160, 60, minuteKey + 19);
-        drawSoftMist(dc, (width * 2) / 3, (height * 80) / 100, 180, 50, minuteKey + 23);
+        var leftX = (width / 4) - 16;
+        var rightX = ((width * 3) / 4) - 16;
+        var topY = (height * 42) / 100 - 64;
+        var bottomY = (height * 66) / 100 - 64;
+
+        if (mainDefault != null) {
+            dc.drawBitmap(leftX, topY, mainDefault);
+        }
+
+        if (mainTuned != null) {
+            dc.drawBitmap(rightX, topY, mainTuned);
+        }
+
+        if (simpleDefault != null) {
+            dc.drawBitmap(leftX, bottomY, simpleDefault);
+        }
+
+        if (simpleTuned != null) {
+            dc.drawBitmap(rightX, bottomY, simpleTuned);
+        }
+
+        dc.setStroke(0x8A2D241F);
+        dc.drawLine(leftX - 8, topY + 58, leftX + 34, topY + 51);
+        dc.drawLine(rightX - 8, topY + 58, rightX + 34, topY + 51);
+        dc.drawLine(leftX - 8, bottomY + 58, leftX + 34, bottomY + 51);
+        dc.drawLine(rightX - 8, bottomY + 58, rightX + 34, bottomY + 51);
+        dc.drawLine((width / 2), topY - 8, (width / 2), bottomY + 92);
     }
 
     function drawPaperBackground(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {

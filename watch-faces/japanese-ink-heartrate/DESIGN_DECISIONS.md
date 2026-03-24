@@ -1,6 +1,6 @@
 # Japanese Ink Heartrate Design Decisions
 
-Last updated: 2026-03-23
+Last updated: 2026-03-24
 
 This note consolidates the strongest ideas from the private concept exploration into the public project docs, while keeping scope aligned with the current feasibility and build stages.
 
@@ -179,6 +179,27 @@ It should mean:
 - all assets sharing one visual language
 
 If the asset family is disciplined, the result can still look unified rather than assembled.
+
+### 7a. Bitmap import settings are part of the visual language
+
+This is now a design rule, not just a build detail.
+
+For grayscale-alpha painterly assets in this project:
+
+- default Garmin bitmap import is not visually trustworthy
+- tuned import settings preserve the intended softness much better
+
+Working baseline:
+
+- `dithering="none"`
+- `automaticPalette="false"`
+- `packingFormat="png"`
+- `compress="false"`
+
+Implication:
+
+- asset reviews should only be taken seriously when they are rendered through the tuned import path
+- otherwise the project risks rejecting good art because of bad import behavior
 
 ### 8. Procedural vertical fade descents remain worth testing
 

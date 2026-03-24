@@ -1,3 +1,7 @@
 <drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
+    <bitmap id="VerticalFadeDescentDefault" filename="vertical_fade_descent.png" />
+    <bitmap id="VerticalFadeDescentTuned" filename="vertical_fade_descent.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="VerticalFadeDescentSimpleDefault" filename="vertical_fade_descent_simple.png" />
+    <bitmap id="VerticalFadeDescentSimpleTuned" filename="vertical_fade_descent_simple.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>
