@@ -37,12 +37,29 @@ Those versions produced:
 - repeated stamp spacing the eye could immediately detect
 - "MS Paint with shape tools" instead of ink wash
 
+### Failure 3: point-field raster body
+
+The next experiment moved the mountain body to `drawPoint()` accumulation inside a cached `BufferedBitmap`.
+
+That produced two useful findings:
+
+- the visible-primitive problem was reduced
+- but the renderer became too slow and tripped the watch-face watchdog when the point field was dense enough to matter
+
+When reduced enough to survive, the result became:
+
+- faint scratches
+- dust-like speckling
+- not enough tonal mass
+- not enough believable mist/body relationship
+
 ### What was still valuable
 
 Even though the output was not good enough, two things were learned:
 
 - alpha accumulation is necessary
 - cached off-screen rendering is still the right architectural foundation for active mode
+- full-screen dense procedural point fields are probably not the right production path on this device
 
 ## The Core Diagnosis
 
@@ -91,6 +108,10 @@ So the new question is not:
 It is:
 
 - how do we place a handful of vertical ink spines and let faint wash and mist connect or erase them
+
+Another related framing now worth tracking:
+
+- how do we create structural dark anchors near the crest and let the body below be implied by selective fade, wash, and erasure
 
 ## What The Research Suggests
 
@@ -264,6 +285,54 @@ The official Graphics docs expose buffered bitmaps and alpha blending, but memor
 - active mode only
 - a separate simplified AOD rendering path
 
+## Path D: Procedural Vertical Fade Lines
+
+This is a new avenue worth testing because it is closer to the reference mountain logic than either ridge polygons or dot clouds.
+
+### Idea
+
+Instead of drawing mountains as filled bodies, render many narrow vertical descents from a sparse crest.
+
+Each descent would:
+
+- start with a darker top pixel or short cap
+- continue downward with probabilistic dropout
+- drift slightly left/right
+- fade toward near-nothing as it approaches the lower body
+
+Placed repeatedly from left to right, these could create:
+
+- structural cliff faces
+- hanging ink descents
+- implied body without obvious shapes
+
+### Why it may work
+
+This matches the reference images better than:
+
+- repeated ellipses
+- repeated rectangles
+- broad point-cloud fill
+
+It is also one of the few procedural approaches that naturally creates:
+
+- verticality
+- erosion
+- disappearance
+
+### Garmin fit
+
+Potentially reasonable if the number of descents is kept small and each descent is short and sparse.
+
+The danger is obvious: if implemented as too many per-pixel operations, it becomes another watchdog problem.
+
+### What would make it work
+
+- derive a small number of crest anchors first
+- emit only a few descents per anchor
+- keep each descent sparse
+- combine with mist erasure and maybe one soft wash stamp behind it
+
 ## Best Recommendation Right Now
 
 The buffered-bitmap pivot has already happened, and that part was correct.
@@ -272,11 +341,13 @@ The best next experiment is:
 
 ### Recommended experiment
 
-Combine Path A and a tiny part of Path B:
+At this point, I no longer recommend a purely procedural full-scene solution as the most likely winner.
 
-- use vertical ink spines as the primary mountain structure
-- render them into the cached buffered bitmap with top-heavy fade
-- introduce 1 or 2 tiny feathered stamp textures for mist erasure and dark accent breakup
+The best candidates now are:
+
+- a hybrid asset-driven system
+- a limited procedural vertical-fade-line system
+- or a hybrid of those two
 
 That offers the best tradeoff between:
 
@@ -286,12 +357,12 @@ That offers the best tradeoff between:
 
 ## Concretely, What I Would Change Next
 
-### 1. Replace the ridge band with spine anchors
+### 1. Treat structural anchors and body wash separately
 
-One scene should contain a small set of vertical spine anchors. Each anchor should drive:
+A scene should contain a small set of structural anchors. Each anchor should drive:
 
 - a dark top accent
-- a widening descending fade
+- a limited number of descending fades or descents
 - local breakup so the body is not one clean stripe
 - a weak lower dissolve rather than a hard base
 
@@ -304,6 +375,17 @@ Use it as subtraction by overlap and concealment, not as a decorative stripe.
 Use it only near the tops and outer edges of selected spines.
 
 This gives the structure some "bone" without outlining the whole mountain.
+
+### 4. If keeping a procedural path alive, make it narrow and specific
+
+The best surviving procedural experiment is likely:
+
+- sparse vertical fade descents from crest anchors
+
+not:
+
+- full-body point fill
+- broad geometric wash construction
 
 ### 4. Reduce time contrast slightly only after the background becomes more atmospheric
 
@@ -327,12 +409,22 @@ The richer wash system should mostly belong to active mode.
 
 ## Suggested Next Build Sequence
 
-1. Implement a vertical-spine mountain renderer in the buffered bitmap.
-2. Add one feathered mist stamp used as erasure.
-3. Add one dry-brush accent stamp.
-4. Test in simulator.
-5. Test on watch.
-6. Only then decide whether the project needs real image assets beyond tiny stamps.
+1. Decide whether the next build is:
+   - asset-driven hybrid first, or
+   - procedural vertical-fade descents first
+2. Keep the current watchdog lesson in scope and avoid dense full-field raster loops.
+3. Add one feathered mist stamp used as erasure.
+4. Add one structural crest or dry-brush stamp.
+5. Test in simulator.
+6. Test on watch.
+
+## Current Recommendation
+
+My current recommendation is:
+
+- move toward an asset-driven hybrid for the body/wash
+- keep procedural logic for placement, variation, timing, and HR influence
+- keep the procedural vertical-fade-line idea as the main remaining non-asset experiment worth trying
 
 ## Sources
 

@@ -29,7 +29,10 @@ class JapaneseInkHeartrateScene {
             renderBufferedScene(minuteKey);
         }
 
-        dc.drawBitmap(0, 0, mBuffer);
+        var buffer = mBuffer;
+        if (buffer != null) {
+            dc.drawBitmap(0, 0, buffer);
+        }
     }
 
     function getMinuteKey() as Lang.Number {
@@ -73,296 +76,317 @@ class JapaneseInkHeartrateScene {
         drawPaperBackground(dc, width, height);
         drawSunWash(dc, width, height, minuteKey);
 
-        var distantSpines = makeSpines(
+        var distantMasses = makeMasses(
             width,
-            (height * 3) / 5,
-            [0.28, 0.48, 0.62, 0.44, 0.58],
-            minuteKey + 9,
-            54,
-            86,
-            12,
-            18
-        );
-        var foregroundSpines = makeSpines(
-            width,
-            (height * 69) / 100,
-            [0.74, 0.52, 0.88, 0.60, 0.78],
-            minuteKey + 27,
-            92,
-            148,
-            14,
+            (height * 57) / 100,
+            [0.32, 0.58],
+            minuteKey + 7,
+            42,
+            82,
             24
         );
+        var foregroundMasses = makeMasses(
+            width,
+            (height * 69) / 100,
+            [0.78, 0.56],
+            minuteKey + 23,
+            76,
+            146,
+            28
+        );
 
-        drawSpineFamily(dc, distantSpines, 0x3A9F9389, 0x229E9186, 0x188D7D71, 0x2A65594F, false, minuteKey + 4);
-        drawMistErase(dc, width, height, (height * 53) / 100, 0x20F7F0E7, 0x18F1E8DB, minuteKey + 2);
+        drawRasterMountains(dc, distantMasses, minuteKey + 31, false);
+        drawMistPass(dc, width, height, (height * 56) / 100, minuteKey + 37);
 
-        drawSpineFamily(dc, foregroundSpines, 0x5E6F645C, 0x3872665D, 0x22685A51, 0x8E241D19, true, minuteKey + 12);
-        drawFootMist(dc, width, height, (height * 69) / 100, minuteKey + 15);
-        drawDryBrushAccents(dc, foregroundSpines, minuteKey + 18);
-        drawVeilMist(dc, width, height, minuteKey + 21);
+        drawRasterMountains(dc, foregroundMasses, minuteKey + 43, true);
+        drawMistErase(dc, width, height, (height * 69) / 100, minuteKey + 53);
+        drawAtmosphericVeil(dc, width, height, minuteKey + 59);
     }
 
     function drawPaperBackground(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
         dc.setColor(Graphics.COLOR_WHITE, 0xEFE5D6);
         dc.clear();
 
-        fillRectAlpha(dc, 0x0CCFC0A9, 0, 0, width, height / 3);
-        fillRectAlpha(dc, 0x10F9F2E8, 0, height / 2, width, height / 3);
-        fillRectAlpha(dc, 0x0AD8C6B0, 0, (height * 3) / 4, width, height / 6);
+        fillRectAlpha(dc, 0x0AD4C5AE, 0, 0, width, height / 3);
+        fillRectAlpha(dc, 0x0EF9F2E8, 0, height / 2, width, height / 3);
+        fillRectAlpha(dc, 0x08D7C7B2, 0, (height * 4) / 5, width, height / 8);
     }
 
     function drawSunWash(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, minuteKey as Lang.Number) as Void {
         var progress = minuteKey.toFloat() / 1440.0;
-        var sunX = 52 + ((width - 100) * progress).toNumber();
+        var sunX = 50 + ((width - 96) * progress).toNumber();
         var arc = progress - 0.5;
-        var sunY = 56 + ((arc * arc) * 82).toNumber();
+        var sunY = 54 + ((arc * arc) * 82).toNumber();
 
-        fillCircleAlpha(dc, 0x12FFF8F0, sunX - 3, sunY + 2, 15);
-        fillCircleAlpha(dc, 0x20E7D8C5, sunX, sunY, 10);
-        fillCircleAlpha(dc, 0x36D3B598, sunX + 1, sunY, 6);
-        strokeCircleAlpha(dc, 0x34BA9C82, sunX + 1, sunY, 9);
+        fillCircleAlpha(dc, 0x10FFF9EF, sunX - 2, sunY + 1, 14);
+        fillCircleAlpha(dc, 0x18E3D3BF, sunX, sunY, 10);
+        strokeCircleAlpha(dc, 0x26C1A489, sunX + 1, sunY, 8);
     }
 
-    function makeSpines(
+    function makeMasses(
         width as Lang.Number,
         baseY as Lang.Number,
         samples as Lang.Array,
         seed as Lang.Number,
         minRise as Lang.Number,
         maxRise as Lang.Number,
-        minWidth as Lang.Number,
-        maxWidth as Lang.Number
+        baseSpread as Lang.Number
     ) as Lang.Array {
-        var spines = [];
-        var sampleCount = samples.size();
-        var step = width / (sampleCount + 1);
+        var masses = [];
+        var step = width / (samples.size() + 1);
         var i = 0;
 
-        while (i < sampleCount) {
+        while (i < samples.size()) {
             var value = samples[i];
-            var x = ((i + 1) * step) + getJitter(seed + (i * 3), 18);
+            var centerX = ((i + 1) * step) + getJitter(seed + (i * 3), 14);
             var rise = minRise + ((maxRise - minRise) * value).toNumber();
-            var topY = baseY - rise + getJitter(seed + (i * 5), 10);
-            var fade = rise + 54 + getJitter(seed + (i * 7), 14);
-            var bodyWidth = minWidth + ((maxWidth - minWidth) * value).toNumber() + getJitter(seed + (i * 11), 4);
-
-            if (bodyWidth < 10) {
-                bodyWidth = 10;
-            }
-
-            if (fade < 48) {
-                fade = 48;
-            }
-
-            spines.add([x, topY, fade, bodyWidth, value]);
+            var crestY = baseY - rise + getJitter(seed + (i * 5), 10);
+            var bodyHeight = 72 + ((52 * value).toNumber()) + getJitter(seed + (i * 7), 10);
+            var spread = baseSpread + ((18 * value).toNumber()) + getJitter(seed + (i * 11), 6);
+            masses.add([centerX, crestY, bodyHeight, spread, value]);
             i += 1;
         }
 
-        return spines;
+        return masses;
     }
 
-    function drawSpineFamily(
-        dc as Graphics.Dc,
-        spines as Lang.Array,
-        washColor as Lang.Number,
-        midColor as Lang.Number,
-        footColor as Lang.Number,
-        accentColor as Lang.Number,
-        drawConnectors as Lang.Boolean,
-        seed as Lang.Number
-    ) as Void {
+    function drawRasterMountains(dc as Graphics.Dc, masses as Lang.Array, seed as Lang.Number, isForeground as Lang.Boolean) as Void {
         var i = 0;
-
-        while (i < spines.size()) {
-            drawSingleSpine(dc, spines[i], washColor, midColor, footColor, accentColor, seed + (i * 13));
+        while (i < masses.size()) {
+            drawMassRaster(dc, masses[i], seed + (i * 97), isForeground, i);
             i += 1;
         }
 
-        if (!drawConnectors) {
+        if (!isForeground) {
             return;
         }
 
         i = 0;
-        while (i < spines.size() - 1) {
-            if (((seed + i) % 3) != 1) {
-                connectSpines(dc, spines[i], spines[i + 1], 0x185C534C, 0x10F5EEE5, seed + (i * 17));
-            }
-            i += 1;
-        }
-    }
-
-    function drawSingleSpine(
-        dc as Graphics.Dc,
-        spine as Lang.Array,
-        washColor as Lang.Number,
-        midColor as Lang.Number,
-        footColor as Lang.Number,
-        accentColor as Lang.Number,
-        seed as Lang.Number
-    ) as Void {
-        var x = spine[0];
-        var topY = spine[1];
-        var fade = spine[2];
-        var bodyWidth = spine[3];
-
-        var bodyHeight = fade / 2;
-        var middleY = topY + bodyHeight / 2;
-        var lowerY = topY + bodyHeight + 10;
-
-        fillEllipseAlpha(dc, washColor, x - bodyWidth / 2, topY - 2, bodyWidth, bodyHeight);
-        fillEllipseAlpha(dc, midColor, x - ((bodyWidth * 4) / 10), middleY - 4, (bodyWidth * 4) / 5, bodyHeight + 18);
-        fillEllipseAlpha(dc, footColor, x - ((bodyWidth * 7) / 10), lowerY, (bodyWidth * 7) / 5, fade);
-
-        var sideWisp = bodyWidth + 18 + getJitter(seed + 3, 8);
-        fillEllipseAlpha(dc, 0x12F7EFE5, x - sideWisp / 2, topY + bodyHeight / 2, sideWisp, 26 + getJitter(seed + 5, 6));
-        fillEllipseAlpha(dc, 0x16EFE5D7, x - (bodyWidth / 2) - 10 + getJitter(seed + 7, 6), topY + bodyHeight + 18, bodyWidth + 20, 30);
-
-        var capWidth = (bodyWidth * 3) / 5;
-        fillEllipseAlpha(dc, accentColor, x - capWidth / 2, topY - 3, capWidth, 10);
-        fillEllipseAlpha(dc, 0x72322924, x - bodyWidth / 5, topY + 5, bodyWidth / 3 + 4, 16);
-
-        drawSpineTail(dc, x, topY + 8, fade, bodyWidth, seed + 11);
-    }
-
-    function drawSpineTail(
-        dc as Graphics.Dc,
-        centerX as Lang.Number,
-        startY as Lang.Number,
-        fade as Lang.Number,
-        bodyWidth as Lang.Number,
-        seed as Lang.Number
-    ) as Void {
-        var segments = 5;
-        var i = 0;
-
-        while (i < segments) {
-            var progress = i.toFloat() / segments.toFloat();
-            var segY = startY + (progress * fade).toNumber();
-            var segWidth = bodyWidth - ((bodyWidth * i) / 8) + getJitter(seed + i, 6);
-            var segHeight = 18 + ((fade / 7) - (i * 2));
-            var drift = getJitter(seed + (i * 2), 8);
-            var color = pickTailColor(i);
-
-            if (segWidth < 10) {
-                segWidth = 10;
-            }
-
-            if (segHeight < 10) {
-                segHeight = 10;
-            }
-
-            fillEllipseAlpha(dc, color, centerX + drift - segWidth / 2, segY, segWidth, segHeight);
-            i += 1;
-        }
-    }
-
-    function pickTailColor(index as Lang.Number) as Lang.Number {
-        var colors = [0x26463E39, 0x1E5D534C, 0x18685E56, 0x12A39589, 0x0EF7EFE6];
-        return colors[index % colors.size()];
-    }
-
-    function connectSpines(
-        dc as Graphics.Dc,
-        leftSpine as Lang.Array,
-        rightSpine as Lang.Array,
-        color as Lang.Number,
-        liftColor as Lang.Number,
-        seed as Lang.Number
-    ) as Void {
-        var leftX = leftSpine[0];
-        var rightX = rightSpine[0];
-        var leftY = leftSpine[1] + 12 + getJitter(seed, 4);
-        var rightY = rightSpine[1] + 16 + getJitter(seed + 2, 4);
-        var midX = (leftX + rightX) / 2;
-        var topY = ((leftY + rightY) / 2) + getJitter(seed + 4, 8);
-        var depth = 16 + getJitter(seed + 6, 6);
-
-        dc.setFill(color);
-        dc.fillPolygon([
-            [leftX, leftY],
-            [midX, topY],
-            [rightX, rightY],
-            [rightX, rightY + depth],
-            [midX, topY + depth + 6],
-            [leftX, leftY + depth]
-        ]);
-
-        fillEllipseAlpha(dc, liftColor, midX - 20, topY + 8, 40, depth + 12);
-    }
-
-    function drawMistErase(
-        dc as Graphics.Dc,
-        width as Lang.Number,
-        height as Lang.Number,
-        horizonY as Lang.Number,
-        brightColor as Lang.Number,
-        warmColor as Lang.Number,
-        seed as Lang.Number
-    ) as Void {
-        var bands = [
-            [width / 7, horizonY + 6, 88],
-            [width / 3, horizonY + 14, 102],
-            [(width * 5) / 8, horizonY + 4, 116],
-            [width - 72, horizonY + 12, 90]
-        ];
-        var i = 0;
-
-        while (i < bands.size()) {
-            var band = bands[i];
-            var drift = getJitter(seed + (i * 3), 12);
-            drawMistStamp(dc, band[0] + drift, band[1], band[2], brightColor, warmColor, seed + (i * 5));
-            i += 1;
-        }
-    }
-
-    function drawFootMist(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, baseY as Lang.Number, seed as Lang.Number) as Void {
-        fillRectAlpha(dc, 0x10F6EFE6, 0, baseY + 40, width, height - (baseY + 40));
-
-        drawMistStamp(dc, width / 5, baseY + 22, 76, 0x22FBF7F1, 0x14F0E7DA, seed + 1);
-        drawMistStamp(dc, width / 2, baseY + 30, 96, 0x1EFBF6EE, 0x16EFE4D6, seed + 3);
-        drawMistStamp(dc, (width * 4) / 5, baseY + 20, 82, 0x20FBF7F0, 0x14F3E9DD, seed + 5);
-    }
-
-    function drawVeilMist(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
-        drawMistStamp(dc, width / 2 - 28, (height * 57) / 100, 74, 0x18FBF7F0, 0x12EFE7DB, seed + 1);
-        drawMistStamp(dc, width / 2 + 36, (height * 61) / 100, 62, 0x16FFF9F1, 0x10EFE6D8, seed + 3);
-    }
-
-    function drawMistStamp(
-        dc as Graphics.Dc,
-        centerX as Lang.Number,
-        centerY as Lang.Number,
-        radius as Lang.Number,
-        brightColor as Lang.Number,
-        warmColor as Lang.Number,
-        seed as Lang.Number
-    ) as Void {
-        var skew = getJitter(seed, 10);
-        fillEllipseAlpha(dc, brightColor, centerX - radius, centerY - 7, radius * 2, 15);
-        fillEllipseAlpha(dc, warmColor, centerX - (radius * 3) / 4 + skew, centerY - 1, (radius * 3) / 2, 18);
-        fillEllipseAlpha(dc, 0x10FFFFFF, centerX - radius / 3, centerY + 4, (radius * 2) / 3, 10);
-    }
-
-    function drawDryBrushAccents(dc as Graphics.Dc, spines as Lang.Array, seed as Lang.Number) as Void {
-        var i = 0;
-
-        while (i < spines.size()) {
+        while (i < masses.size() - 1) {
             if (((seed + i) % 2) == 0) {
-                var spine = spines[i];
-                var startX = spine[0] - (spine[3] / 4);
-                var startY = spine[1] + 4;
-                var endX = startX + 18 + getJitter(seed + i, 10);
-                var endY = startY + 6 + getJitter(seed + i + 2, 8);
-
-                strokeLineAlpha(dc, 0x88302822, startX, startY, endX, endY);
-                strokeLineAlpha(dc, 0x54251D18, startX + 3, startY + 3, endX + 7, endY + 5);
+                drawMassBridge(dc, masses[i], masses[i + 1], seed + (i * 41));
             }
             i += 1;
         }
+    }
+
+    function drawMassRaster(dc as Graphics.Dc, mass as Lang.Array, seed as Lang.Number, isForeground as Lang.Boolean, index as Lang.Number) as Void {
+        var centerX = mass[0];
+        var crestY = mass[1];
+        var bodyHeight = mass[2];
+        var spread = mass[3];
+
+        drawCrestCap(dc, centerX, crestY, spread, seed, isForeground);
+
+        var y = 0;
+        while (y < bodyHeight) {
+            var progress = y.toFloat() / bodyHeight.toFloat();
+            var halfWidth = ((spread * 4) / 10) + ((spread * y) / (bodyHeight + 8));
+            var localCenter = centerX + getJitter(seed + y, 5);
+            var leftBound = localCenter - halfWidth;
+            var rightBound = localCenter + halfWidth;
+            var rowY = crestY + y;
+            var x = leftBound;
+            var rowSeed = seed + (y * 17);
+            var density = pickDensity(progress, isForeground);
+
+            while (x <= rightBound) {
+                if (shouldInk(rowSeed + x, density)) {
+                    drawInkPoint(dc, x, rowY + getJitter(rowSeed + x + 5, 2), pickWashColor(progress, isForeground));
+
+                    if (shouldInk(rowSeed + x + 9, density + 4)) {
+                        drawInkPoint(dc, x + 2, rowY + 1, pickLiftColor(progress));
+                    }
+                }
+                x += 4;
+            }
+
+            if ((y % 16) == 0) {
+                drawScratchDescents(dc, localCenter, rowY, spread, seed + (y * 13), isForeground);
+            }
+
+            y += 4;
+        }
+
+        if (isForeground && (index % 2) == 0) {
+            drawBrokenFlank(dc, centerX - (spread / 3), crestY + 14, bodyHeight / 2, seed + 401);
+        }
+    }
+
+    function drawCrestCap(dc as Graphics.Dc, centerX as Lang.Number, crestY as Lang.Number, spread as Lang.Number, seed as Lang.Number, isForeground as Lang.Boolean) as Void {
+        var leftX = centerX - (spread / 2) + getJitter(seed, 6);
+        var midX = centerX + getJitter(seed + 2, 4);
+        var rightX = centerX + (spread / 2) + getJitter(seed + 4, 6);
+        var color = 0x6E2A221D;
+
+        if (isForeground) {
+            color = 0x9A231C18;
+        }
+
+        strokeLineAlpha(dc, color, leftX, crestY + 2, midX, crestY - 2);
+        strokeLineAlpha(dc, color, midX, crestY - 2, rightX, crestY + 4);
+
+        if ((seed % 2) == 0) {
+            strokeLineAlpha(dc, 0x582D241E, midX - 5, crestY + 4, midX + 12 + getJitter(seed + 6, 5), crestY + 8);
+        }
+    }
+
+    function drawScratchDescents(dc as Graphics.Dc, centerX as Lang.Number, startY as Lang.Number, spread as Lang.Number, seed as Lang.Number, isForeground as Lang.Boolean) as Void {
+        var scratchCount = 1;
+        var i = 0;
+
+        while (i < scratchCount) {
+            var startX = centerX + getJitter(seed + i, spread / 3);
+            var endX = startX + getJitter(seed + i + 5, 7);
+            var endY = startY + 18 + getJitter(seed + i + 9, 10);
+            var color = 0x30322923;
+
+            if (isForeground) {
+                color = 0x44312621;
+            }
+
+            strokeLineAlpha(dc, color, startX, startY, endX, endY);
+            i += 1;
+        }
+    }
+
+    function drawBrokenFlank(dc as Graphics.Dc, centerX as Lang.Number, startY as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
+        var i = 0;
+        while (i < 3) {
+            var x = centerX + getJitter(seed + i, 6);
+            var y1 = startY + (i * (height / 6));
+            var y2 = y1 + 16 + getJitter(seed + i + 8, 8);
+            strokeLineAlpha(dc, 0x42312822, x, y1, x + getJitter(seed + i + 11, 5), y2);
+            i += 1;
+        }
+    }
+
+    function drawMassBridge(dc as Graphics.Dc, leftMass as Lang.Array, rightMass as Lang.Array, seed as Lang.Number) as Void {
+        var leftX = leftMass[0];
+        var rightX = rightMass[0];
+        var leftY = leftMass[1] + 18 + getJitter(seed, 4);
+        var rightY = rightMass[1] + 20 + getJitter(seed + 2, 4);
+        var steps = 10;
+        var i = 0;
+
+        while (i <= steps) {
+            var t = i.toFloat() / steps.toFloat();
+            var x = leftX + ((rightX - leftX) * t).toNumber();
+            var y = leftY + ((rightY - leftY) * t).toNumber() + getJitter(seed + i, 3);
+
+            if (shouldInk(seed + i + x, 9)) {
+                drawInkPoint(dc, x, y, 0x16594F48);
+            }
+            i += 1;
+        }
+    }
+
+    function drawMistPass(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, yBase as Lang.Number, seed as Lang.Number) as Void {
+        drawMistRibbon(dc, width / 5, yBase + 6, 92, 16, seed + 1);
+        drawMistRibbon(dc, width / 2, yBase + 16, 112, 20, seed + 3);
+        drawMistRibbon(dc, (width * 4) / 5, yBase + 10, 86, 16, seed + 5);
+    }
+
+    function drawMistErase(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, yBase as Lang.Number, seed as Lang.Number) as Void {
+        fillRectAlpha(dc, 0x08FBF7EF, 0, yBase + 34, width, height - (yBase + 34));
+        drawMistRibbon(dc, width / 4, yBase + 26, 110, 20, seed + 1);
+        drawMistRibbon(dc, (width * 5) / 8, yBase + 34, 132, 24, seed + 3);
+        drawMistRibbon(dc, width - 74, yBase + 22, 86, 18, seed + 5);
+    }
+
+    function drawAtmosphericVeil(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
+        drawMistRibbon(dc, width / 2 - 22, (height * 58) / 100, 70, 14, seed + 1);
+        drawMistRibbon(dc, width / 2 + 32, (height * 62) / 100, 60, 12, seed + 3);
+    }
+
+    function drawMistRibbon(dc as Graphics.Dc, centerX as Lang.Number, centerY as Lang.Number, ribbonWidth as Lang.Number, ribbonHeight as Lang.Number, seed as Lang.Number) as Void {
+        var i = 0;
+        while (i < 2) {
+            var localWidth = ribbonWidth - (i * 12);
+            var localHeight = ribbonHeight - (i * 2);
+            var driftX = getJitter(seed + i, 12);
+            var driftY = getJitter(seed + i + 5, 4);
+            var leftX = centerX + driftX - (localWidth / 2);
+            var rightX = centerX + driftX + (localWidth / 2);
+            var topY = centerY + driftY;
+            var bottomY = topY + localHeight;
+
+            fillMistBand(dc, 0x0EFBF6EF, leftX, rightX, topY, bottomY, seed + (i * 19));
+            i += 1;
+        }
+
+        fillMistBand(dc, 0x0EF1E8DB, centerX - (ribbonWidth / 3), centerX + (ribbonWidth / 3), centerY + 4, centerY + ribbonHeight, seed + 91);
+    }
+
+    function fillMistBand(dc as Graphics.Dc, color as Lang.Number, leftX as Lang.Number, rightX as Lang.Number, topY as Lang.Number, bottomY as Lang.Number, seed as Lang.Number) as Void {
+        var y = topY;
+        while (y <= bottomY) {
+            var inset = ((y - topY) % 3) * 2;
+            var x = leftX + inset + getJitter(seed + y, 4);
+
+            while (x <= rightX - inset) {
+                if (shouldInk(seed + x + y, 8)) {
+                    drawInkPoint(dc, x, y, color);
+                }
+                x += 4;
+            }
+            y += 4;
+        }
+    }
+
+    function drawInkPoint(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number, color as Lang.Number) as Void {
+        dc.setStroke(color);
+        dc.drawPoint(x, y);
+    }
+
+    function pickDensity(progress as Lang.Float, isForeground as Lang.Boolean) as Lang.Number {
+        if (progress < 0.12) {
+            return isForeground ? 1 : 1;
+        } else if (progress < 0.30) {
+            return isForeground ? 1 : 2;
+        } else if (progress < 0.58) {
+            return isForeground ? 2 : 3;
+        } else if (progress < 0.80) {
+            return isForeground ? 3 : 4;
+        }
+
+        return isForeground ? 4 : 5;
+    }
+
+    function pickWashColor(progress as Lang.Float, isForeground as Lang.Boolean) as Lang.Number {
+        if (progress < 0.14) {
+            return isForeground ? 0x3A2C241F : 0x2A4A433D;
+        } else if (progress < 0.34) {
+            return isForeground ? 0x2A4A4039 : 0x1E75695F;
+        } else if (progress < 0.60) {
+            return isForeground ? 0x1E675D55 : 0x186F645A;
+        } else if (progress < 0.84) {
+            return isForeground ? 0x166C6158 : 0x106F655D;
+        }
+
+        return isForeground ? 0x0CF0E6D9 : 0x0AF5ECE0;
+    }
+
+    function pickLiftColor(progress as Lang.Float) as Lang.Number {
+        if (progress < 0.45) {
+            return 0x10F2E8DD;
+        } else if (progress < 0.75) {
+            return 0x0CF5ECE1;
+        }
+
+        return 0x08FBF5ED;
+    }
+
+    function shouldInk(seed as Lang.Number, density as Lang.Number) as Lang.Boolean {
+        var value = (seed * 31) % 17;
+        return value < density;
     }
 
     function fillRectAlpha(dc as Graphics.Dc, color as Lang.Number, x as Lang.Number, y as Lang.Number, width as Lang.Number, height as Lang.Number) as Void {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
         dc.setFill(color);
         dc.fillRectangle(x, y, width, height);
     }
@@ -375,11 +399,6 @@ class JapaneseInkHeartrateScene {
     function strokeCircleAlpha(dc as Graphics.Dc, color as Lang.Number, x as Lang.Number, y as Lang.Number, radius as Lang.Number) as Void {
         dc.setStroke(color);
         dc.drawCircle(x, y, radius);
-    }
-
-    function fillEllipseAlpha(dc as Graphics.Dc, color as Lang.Number, x as Lang.Number, y as Lang.Number, width as Lang.Number, height as Lang.Number) as Void {
-        dc.setFill(color);
-        dc.fillEllipse(x, y, width, height);
     }
 
     function strokeLineAlpha(dc as Graphics.Dc, color as Lang.Number, x1 as Lang.Number, y1 as Lang.Number, x2 as Lang.Number, y2 as Lang.Number) as Void {

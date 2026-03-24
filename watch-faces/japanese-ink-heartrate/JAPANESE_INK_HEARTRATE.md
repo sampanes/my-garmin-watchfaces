@@ -127,6 +127,11 @@ When there are tradeoffs:
 ### 1. Favor procedural drawing over static imagery
 Use draw calls, buffered composition, and small reusable marks rather than large background assets whenever practical.
 
+Important clarification:
+
+- "procedural" does not have to mean "everything is synthesized from raw primitives"
+- a disciplined hybrid of procedural placement plus tiny grayscale assets is still consistent with the project
+
 ### 2. Keep memory use low
 Prefer:
 - a few arrays of points
@@ -151,6 +156,7 @@ Examples of useful high-level rules:
 - mist appears mainly in valleys and overlaps ridges softly
 - trees are sparse accents, not dense detail
 - mountain structure should emerge from a few vertical ink spines, not one hard-edged cutout band
+- body wash may need to come from a small reusable asset family rather than pure geometry
 
 ### 4. Separate the artistic system from the device/data system
 Try to keep these concerns conceptually distinct:
@@ -264,6 +270,8 @@ Mist is one of the easiest ways to make the face feel painterly.
 Mist should often behave like concealment or erasure.
 
 If it reads as a decorative stripe, the rendering has gone in the wrong direction.
+
+If needed, mist should be one of the first things allowed to become asset-driven.
 
 ---
 
@@ -426,12 +434,14 @@ A mountain system that:
 Use mock data first if needed.
 Do not wait on real heart-rate integration.
 Avoid reverting to one dark filled polygon if it starts looking cleaner in code but worse in art.
+Be willing to use a tiny grayscale asset family if pure procedural rendering keeps failing aesthetically.
 
 ### Success criteria
 - mountain structure looks like landscape, not graph
 - composition still feels clean
 - code path for data-to-structure exists
 - the result does not read as cut paper or rows of dots
+- the renderer stays within watch-face runtime limits
 
 ### If blocked
 Possible issues to solve:

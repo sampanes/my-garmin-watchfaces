@@ -159,6 +159,40 @@ If mist reads as a stripe or banner, it is wrong.
 
 The references work because the darkest marks are selective and structural, not spread evenly across the whole form.
 
+### 6. Dense full-field procedural raster is not the preferred production path
+
+The point-field prototype was useful, but it revealed two problems:
+
+- enough density to look interesting risks watchdog timeouts
+- reduced density survives but loses tonal mass
+
+That means dense full-body per-pixel rendering should not be the default plan.
+
+### 7. A hybrid system is acceptable if the grammar is coherent
+
+"Hybrid" should not mean patchwork.
+
+It should mean:
+
+- procedural placement and variation rules
+- a very small, reusable family of grayscale wash/stroke assets
+- all assets sharing one visual language
+
+If the asset family is disciplined, the result can still look unified rather than assembled.
+
+### 8. Procedural vertical fade descents remain worth testing
+
+One procedural option still fits the references well:
+
+- dark crest anchors
+- repeated vertical descents with random dropout and fade
+
+This is much more promising than:
+
+- repeated circles
+- repeated rectangles
+- broad point clouds
+
 ## Custom Digit Assets
 
 Custom digit images are possible and may become useful later.

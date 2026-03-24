@@ -9,6 +9,8 @@ Planned grayscale assets:
 - `dry_brush_edge`
 - `paper_noise_tile`
 - `seal_mark`
+- `vertical_fade_descent`
+- `crest_anchor_fragment`
 
 Current status:
 
@@ -44,3 +46,11 @@ Recommendation:
 - ignore `art/references/` from git if it is mostly scraped inspiration, private material, or raw working context
 - keep `art/checkpoints/` in git only if the set stays small and intentional
 - do not dump every screenshot there; keep only milestone images that help explain what changed
+
+If the project goes asset-driven, keep the asset family extremely small and general:
+
+- one or two wash bodies
+- one mist erasure strip
+- one or two structural dark accents
+
+The goal is a coherent grammar, not a collage.
