@@ -11,6 +11,7 @@ Shared technical references:
 - [App Lifecycle and Power](../../common/architecture/APP_LIFECYCLE_AND_POWER.md)
 - [Forerunner 265 Spec](../../common/architecture/SPEC_FORERUNNER_265.md)
 - [Vivoactive 6 Spec](../../common/architecture/SPEC_VIVOACTIVE_6.md)
+- [Design Decisions](DESIGN_DECISIONS.md)
 
 ## Project Summary
 
@@ -60,6 +61,12 @@ It should feel like “a subtly evolving Japanese ink painting that happens to b
 - plenty of negative space
 - subtle asymmetry is welcome
 - procedural but hand-touched in feeling
+
+### Palette direction
+- warm washi / mulberry-paper background
+- dense sumi black for the main ridge and key contrast
+- diluted gray washes for distant layers and mist
+- a restrained vermillion accent used sparingly
 
 ### Not the goal
 - not a literal line chart of HR
@@ -179,6 +186,7 @@ At every stage, the watch face should still look intentional, even if incomplete
 - tiny trees or brush marks on one ridge
 - maybe one larger isolated tree if composition allows
 - decorative but sparse
+- a later vermillion seal motif is acceptable if it remains subordinate to time and landscape
 
 ---
 
@@ -278,6 +286,7 @@ The artistic background is successful only if it makes the watch face more beaut
 - high contrast
 - visible in both active and dim conditions if relevant
 - not merged into mountain texture
+- horizontal first; more experimental calligraphic layouts only after standard readability is proven
 
 Avoid placing detailed ridge lines directly through the time unless the contrast is handled carefully.
 

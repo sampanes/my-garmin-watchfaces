@@ -180,6 +180,8 @@ I would avoid promising these in the main concept doc:
 
 None of those are necessary to make the concept compelling, and several add platform risk without improving the core experience much.
 
+I would also avoid promising custom digit art or complex symbolic kanji UI early. Those may become worthwhile later, but they should follow proven composition, not substitute for it.
+
 ## Best Practical Version Of The Idea
 
 The best realistic version of this project is:
