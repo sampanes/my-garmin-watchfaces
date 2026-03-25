@@ -108,3 +108,50 @@ Interpretation:
 - the authored asset style is not being invalidated by the watch
 - the Garmin default import path was invalidating it
 - this means asset work is now worth real effort, provided the import settings stay disciplined
+
+## `codexrevamp3` Production Lesson
+
+Checkpoint:
+
+- `watch-faces/japanese-ink-heartrate/art/checkpoints/2026-03-24_codexrevamp3.png`
+
+Result:
+
+- the non-simple tuned asset is clearly the stronger repeating building block
+- the simple tuned asset is acceptable in isolation but weakens faster when repeated in a mountain pattern
+
+Practical asset-authoring guidance:
+
+- prioritize internal variation, broken softness, and asymmetry
+- do not over-simplify the first-generation assets
+- expect layered composition to increase darkness substantially
+- author assets lighter than the intended final mass so overlap can do the darkening naturally
+
+## `codexrevamp4` Directional Lesson
+
+Checkpoint:
+
+- `watch-faces/japanese-ink-heartrate/art/checkpoints/2026-03-24_codexrevamp4.png`
+
+What improved:
+
+- repeated use of the stronger main asset is finally producing believable soft mountain mass
+- the project is no longer stuck in the "circles / rectangles / obvious primitives" failure mode
+
+What still needs work:
+
+- the crest line needs more structure and should not simply dissolve into the body
+- repetition is visible because the current composition is relying on one asset too literally
+
+Near-term asset strategy:
+
+- keep the current non-simple asset family as the primary base
+- consider a thinner companion descent asset later
+- prefer a small related family over many unrelated one-off images
+- if technically feasible, mirrored/flipped use of the same asset is worth testing to increase variation cheaply
+
+Composition strategy:
+
+- assets should provide the body mass
+- a softer procedural crest/ridge line should provide top structure
+- this is now a stronger direction than trying to make one asset solve both body and ridge

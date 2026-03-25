@@ -1,6 +1,6 @@
 # Japanese Ink Heartrate Research Directions
 
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 
 This note records the more serious research pass on how to move the watch face from "stacked cut paper" toward something that reads as painterly, atmospheric, and intentional.
 
@@ -119,6 +119,51 @@ Research implication:
 - authored grayscale-alpha assets can survive the Garmin pipeline well enough for this project
 - bitmap import settings are not an implementation detail; they are part of the visual system
 - future research and testing should treat tuned import as the default baseline, not as an optional optimization
+
+### 2026-03-24 checkpoint result: `codexrevamp3`
+
+The next useful test was not fidelity but repetition.
+
+Checkpoint:
+
+- `art/checkpoints/2026-03-24_codexrevamp3.png`
+
+Observed result:
+
+- the tuned non-simple asset remains visually stronger when used repeatedly in a mountain-like cluster
+- the tuned simple asset loses richness faster when repeated
+
+Research implication:
+
+- the project should bias toward assets with more internal tonal/event structure, not ultra-minimal simplified shapes
+- source assets should probably start lighter than intuition suggests, because repeated placement creates the final density
+
+### 2026-03-24 checkpoint result: `codexrevamp4`
+
+This is the first checkpoint that meaningfully restores confidence in the asset-driven path.
+
+Checkpoint:
+
+- `art/checkpoints/2026-03-24_codexrevamp4.png`
+
+Observed result:
+
+- the repeated main asset is starting to create convincing soft mountain bodies
+- the scene is still rough, but it no longer reads primarily as visible primitive experiments
+- the remaining problem is no longer "can assets create mass"
+- the remaining problem is "how do we give the mountain a structured crest without losing softness"
+
+Research implication:
+
+- assets appear well suited for body mass
+- crest definition may be better handled by a separate system:
+  - a related narrow asset family
+  - a soft procedural ridge line
+  - or both
+
+Additional implementation thought:
+
+- mirrored or flipped asset use is worth testing if the Garmin bitmap path supports it cleanly, because repetition is now one of the main visible limitations
 
 ## The Core Diagnosis
 

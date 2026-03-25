@@ -126,44 +126,136 @@ class JapaneseInkHeartrateScene {
 
         drawPaperBackground(dc, width, height);
         drawSunWash(dc, width, height, minuteKey);
-        drawSoftMist(dc, width / 2, (height * 48) / 100, 210, 48, minuteKey + 11);
-        drawBitmapFidelityComparison(dc, width, height);
-        drawSoftMist(dc, width / 2, (height * 79) / 100, 240, 56, minuteKey + 19);
+        drawSoftMist(dc, width / 2, (height * 34) / 100, 180, 34, minuteKey + 7);
+        drawAssetMountainPreview(dc, width, height, minuteKey);
+        drawSoftMist(dc, width / 2, (height * 57) / 100, 250, 46, minuteKey + 11);
+        drawSoftMist(dc, width / 2, (height * 74) / 100, 280, 58, minuteKey + 19);
     }
 
-    function drawBitmapFidelityComparison(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
-        var mainDefault = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentDefault);
+    function drawAssetMountainPreview(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
         var mainTuned = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentTuned);
-        var simpleDefault = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentSimpleDefault);
-        var simpleTuned = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentSimpleTuned);
 
-        var leftX = (width / 4) - 16;
-        var rightX = ((width * 3) / 4) - 16;
-        var topY = (height * 42) / 100 - 64;
-        var bottomY = (height * 66) / 100 - 64;
+        drawMountainField(dc, mainTuned, width, height, seed + 3);
+        drawSoftRidge(dc, width, height, seed + 41);
+    }
 
-        if (mainDefault != null) {
-            dc.drawBitmap(leftX, topY, mainDefault);
+    function drawMountainField(dc as Graphics.Dc, asset, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
+        if (asset == null) { return; }
+
+        drawAssetCluster(dc, asset, width, height, seed + 3, 15, 48, 11, 24);
+        drawAssetCluster(dc, asset, width, height, seed + 17, 43, 41, 14, 30);
+        drawAssetCluster(dc, asset, width, height, seed + 29, 71, 47, 10, 22);
+    }
+
+    function drawAssetCluster(
+        dc as Graphics.Dc,
+        asset,
+        width as Lang.Number,
+        height as Lang.Number,
+        seed as Lang.Number,
+        centerXPct as Lang.Number,
+        centerYPct as Lang.Number,
+        spread as Lang.Number,
+        count as Lang.Number
+    ) as Void {
+        var centerX = (width * centerXPct) / 100;
+        var centerY = (height * centerYPct) / 100;
+
+        for (var i = 0; i < count; i++) {
+            var band = i % 4;
+            var x = centerX + getJitter(seed + i, spread * 2) + ((band - 1) * 10);
+            var y = centerY + getJitter(seed + (i * 3), 16) - ((i * 18) / count);
+            var mirrored = ((i % 2) == 1);
+
+            drawAssetPlacement(dc, asset, x, y, mirrored);
+
+            if ((i % 5) == 0) {
+                drawAssetPlacement(dc, asset, x + getJitter(seed + i + 7, 9), y + 8 + getJitter(seed + i + 9, 8), !mirrored);
+            }
+        }
+    }
+
+    function drawAssetPlacement(dc as Graphics.Dc, asset, x as Lang.Number, y as Lang.Number, mirrored as Lang.Boolean) as Void {
+        if (asset == null) { return; }
+
+        if (!mirrored || !(dc has :drawBitmap2) || !(Graphics has :AffineTransform)) {
+            dc.drawBitmap(x, y, asset);
+            return;
         }
 
-        if (mainTuned != null) {
-            dc.drawBitmap(rightX, topY, mainTuned);
+        var transform = new Graphics.AffineTransform();
+        transform.setToScale(-1.0, 1.0);
+        transform.translate(-32.0, 0.0);
+        dc.drawBitmap2(x, y, asset, { :transform => transform });
+    }
+
+    function drawLayeredAssetMass(
+        dc as Graphics.Dc,
+        asset,
+        width as Lang.Number,
+        height as Lang.Number,
+        seed as Lang.Number,
+        anchorXPct as Lang.Number,
+        anchorYPct as Lang.Number,
+        spreadX as Lang.Number,
+        count as Lang.Number,
+        rise as Lang.Number
+    ) as Void {
+        if (asset == null) { return; }
+
+        var anchorX = (width * anchorXPct) / 100;
+        var anchorY = (height * anchorYPct) / 100;
+
+        for (var i = 0; i < count; i++) {
+            var offsetX = ((i * spreadX) / count) + getJitter(seed + i, 18);
+            var offsetY = -((i * rise) / count) + getJitter(seed + (i * 2), 12);
+            var x = anchorX + offsetX;
+            var y = anchorY + offsetY;
+
+            dc.drawBitmap(x, y, asset);
+
+            if ((i % 4) == 0) {
+                dc.drawBitmap(x - 10 + getJitter(seed + i + 9, 10), y + 12 + getJitter(seed + i + 13, 8), asset);
+            }
+        }
+    }
+
+    function drawSoftRidge(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
+        var points = [];
+        var yBase = (height * 44) / 100;
+
+        for (var i = 0; i <= 16; i++) {
+            var x = (width * i) / 16;
+            var y = yBase + getJitter(seed + i, 7) - ((i % 4) * 2);
+            points.add([x, y]);
         }
 
-        if (simpleDefault != null) {
-            dc.drawBitmap(leftX, bottomY, simpleDefault);
+        dc.setStroke(0x7E2E2621);
+        dc.setPenWidth(4);
+        for (var j = 0; j < points.size() - 1; j++) {
+            var p1 = points[j];
+            var p2 = points[j + 1];
+            if ((j % 5) != 2) {
+                dc.drawLine(p1[0], p1[1], p2[0], p2[1]);
+            }
         }
 
-        if (simpleTuned != null) {
-            dc.drawBitmap(rightX, bottomY, simpleTuned);
+        dc.setStroke(0x4E3B312B);
+        dc.setPenWidth(2);
+        for (var k = 0; k < points.size() - 1; k++) {
+            var q1 = points[k];
+            var q2 = points[k + 1];
+            if ((k % 4) != 1) {
+                dc.drawLine(q1[0], q1[1] + 2, q2[0], q2[1] + 1);
+            }
         }
 
-        dc.setStroke(0x8A2D241F);
-        dc.drawLine(leftX - 8, topY + 58, leftX + 34, topY + 51);
-        dc.drawLine(rightX - 8, topY + 58, rightX + 34, topY + 51);
-        dc.drawLine(leftX - 8, bottomY + 58, leftX + 34, bottomY + 51);
-        dc.drawLine(rightX - 8, bottomY + 58, rightX + 34, bottomY + 51);
-        dc.drawLine((width / 2), topY - 8, (width / 2), bottomY + 92);
+        for (var m = 1; m < points.size() - 1; m += 2) {
+            var r = points[m];
+            if (mBrushStamp != null) {
+                dc.drawBitmap(r[0] - 10 + getJitter(seed + m + 20, 4), r[1] - 6 + getJitter(seed + m + 22, 3), mBrushStamp);
+            }
+        }
     }
 
     function drawPaperBackground(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
