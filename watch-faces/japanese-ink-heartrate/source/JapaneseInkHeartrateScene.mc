@@ -1,7 +1,7 @@
 using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.System;
-using Toybox.WatchUi;
+using Toybox.Math;
 
 class JapaneseInkHeartrateScene {
 
@@ -10,10 +10,10 @@ class JapaneseInkHeartrateScene {
     var mBufferHeight as Lang.Number = 0;
     var mLastMinuteKey as Lang.Number = -1;
 
-    // Procedural Stamps
-    var mWashStamp as Graphics.BufferedBitmap?;
-    var mBrushStamp as Graphics.BufferedBitmap?;
-    const STAMP_SIZE = 24;
+    // Procedural Stamps for depth and texture
+    var mInkStamp as Graphics.BufferedBitmap?;
+    var mMistStamp as Graphics.BufferedBitmap?;
+    const STAMP_SIZE = 32;
 
     function initialize() {
         createStamps();
@@ -27,13 +27,13 @@ class JapaneseInkHeartrateScene {
         ensureBuffer(dc.getWidth(), dc.getHeight());
 
         if (mBuffer == null) {
-            renderScene(dc, dc.getWidth(), dc.getHeight(), getMinuteKey());
+            renderTornScene(dc, dc.getWidth(), dc.getHeight(), getMinuteKey());
             return;
         }
 
         var minuteKey = getMinuteKey();
         if (minuteKey != mLastMinuteKey) {
-            renderBufferedScene(minuteKey);
+            renderBufferedTornScene(minuteKey);
         }
 
         var buffer = mBuffer;
@@ -52,11 +52,7 @@ class JapaneseInkHeartrateScene {
             return;
         }
 
-        var options = {
-            :width => width,
-            :height => height
-        };
-
+        var options = { :width => width, :height => height };
         if (Graphics has :createBufferedBitmap) {
             mBuffer = Graphics.createBufferedBitmap(options).get() as Graphics.BufferedBitmap;
         } else if (Graphics has :BufferedBitmap) {
@@ -71,393 +67,124 @@ class JapaneseInkHeartrateScene {
     }
 
     function createStamps() as Void {
-        var options = {
-            :width => STAMP_SIZE,
-            :height => STAMP_SIZE
-        };
+        var options = { :width => STAMP_SIZE, :height => STAMP_SIZE };
+        if (!(Graphics has :createBufferedBitmap)) { return; }
 
-        if (Graphics has :createBufferedBitmap) {
-            mWashStamp = Graphics.createBufferedBitmap(options).get() as Graphics.BufferedBitmap;
-            mBrushStamp = Graphics.createBufferedBitmap(options).get() as Graphics.BufferedBitmap;
-        } else {
-            return;
+        // Ink Stamp: Dark structural core
+        mInkStamp = Graphics.createBufferedBitmap(options).get() as Graphics.BufferedBitmap;
+        if (mInkStamp != null) {
+            var inkDc = mInkStamp.getDc();
+            inkDc.setColor(Graphics.COLOR_TRANSPARENT, Graphics.COLOR_TRANSPARENT);
+            inkDc.clear();
+            inkDc.setFill(Graphics.createColor(45, 26, 26, 27)); // Sumi Black
+            inkDc.fillCircle(16, 16, 10);
+            inkDc.setFill(Graphics.createColor(25, 26, 26, 27));
+            inkDc.fillCircle(16, 16, 14);
         }
 
-        // Render Wash Stamp (Soft, feathered circle)
-        var washDc = mWashStamp.getDc();
-        washDc.setColor(Graphics.COLOR_TRANSPARENT, Graphics.COLOR_TRANSPARENT);
-        washDc.clear();
-        for (var i = 0; i < 8; i++) {
-            var alpha = (10 - i) * 2; // Very faint accumulation
-            var radius = (STAMP_SIZE / 2) - (i * 1.5).toNumber();
-            if (radius > 0) {
-                washDc.setFill(Graphics.createColor(alpha, 0, 0, 0));
-                washDc.fillCircle(STAMP_SIZE / 2, STAMP_SIZE / 2, radius);
+        // Mist Stamp: Very soft, large wash
+        mMistStamp = Graphics.createBufferedBitmap(options).get() as Graphics.BufferedBitmap;
+        if (mMistStamp != null) {
+            var mistDc = mMistStamp.getDc();
+            mistDc.setColor(Graphics.COLOR_TRANSPARENT, Graphics.COLOR_TRANSPARENT);
+            mistDc.clear();
+            for (var i = 0; i < 5; i++) {
+                var alpha = (6 - i) * 3;
+                mistDc.setFill(Graphics.createColor(alpha, 244, 241, 234));
+                mistDc.fillCircle(16, 16, 16 - (i * 2));
             }
         }
-
-        // Render Brush Stamp (Gritty, "dry brush" structural fragment)
-        var brushDc = mBrushStamp.getDc();
-        brushDc.setColor(Graphics.COLOR_TRANSPARENT, Graphics.COLOR_TRANSPARENT);
-        brushDc.clear();
-        brushDc.setFill(Graphics.createColor(60, 0, 0, 0));
-        // Asymmetric "shredded" brush tip
-        brushDc.fillRectangle(10, 4, 4, 12);
-        brushDc.fillRectangle(8, 8, 2, 8);
-        brushDc.fillRectangle(14, 6, 2, 10);
-        brushDc.setFill(Graphics.createColor(30, 0, 0, 0));
-        brushDc.fillRectangle(6, 12, 12, 4);
     }
 
-    function renderBufferedScene(minuteKey as Lang.Number) as Void {
+    function renderBufferedTornScene(minuteKey as Lang.Number) as Void {
         var buffer = mBuffer;
-        if (buffer == null) {
-            return;
-        }
-
-        renderScene(buffer.getDc(), mBufferWidth, mBufferHeight, minuteKey);
+        if (buffer == null) { return; }
+        renderTornScene(buffer.getDc(), mBufferWidth, mBufferHeight, minuteKey);
         mLastMinuteKey = minuteKey;
     }
 
-    function renderScene(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, minuteKey as Lang.Number) as Void {
-        if (dc has :setAntiAlias) {
-            dc.setAntiAlias(true);
-        }
+    function renderTornScene(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
+        if (dc has :setAntiAlias) { dc.setAntiAlias(true); }
 
-        drawPaperBackground(dc, width, height);
-        drawSunWash(dc, width, height, minuteKey);
-        drawSoftMist(dc, width / 2, (height * 34) / 100, 180, 34, minuteKey + 7);
-        drawAssetMountainPreview(dc, width, height, minuteKey);
-        drawSoftMist(dc, width / 2, (height * 57) / 100, 250, 46, minuteKey + 11);
-        drawSoftMist(dc, width / 2, (height * 74) / 100, 280, 58, minuteKey + 19);
-    }
-
-    function drawAssetMountainPreview(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
-        var mainTuned = WatchUi.loadResource(Rez.Drawables.VerticalFadeDescentTuned);
-
-        drawMountainField(dc, mainTuned, width, height, seed + 3);
-        drawSoftRidge(dc, width, height, seed + 41);
-    }
-
-    function drawMountainField(dc as Graphics.Dc, asset, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
-        if (asset == null) { return; }
-
-        drawAssetCluster(dc, asset, width, height, seed + 3, 15, 48, 11, 24);
-        drawAssetCluster(dc, asset, width, height, seed + 17, 43, 41, 14, 30);
-        drawAssetCluster(dc, asset, width, height, seed + 29, 71, 47, 10, 22);
-    }
-
-    function drawAssetCluster(
-        dc as Graphics.Dc,
-        asset,
-        width as Lang.Number,
-        height as Lang.Number,
-        seed as Lang.Number,
-        centerXPct as Lang.Number,
-        centerYPct as Lang.Number,
-        spread as Lang.Number,
-        count as Lang.Number
-    ) as Void {
-        var centerX = (width * centerXPct) / 100;
-        var centerY = (height * centerYPct) / 100;
-
-        for (var i = 0; i < count; i++) {
-            var band = i % 4;
-            var x = centerX + getJitter(seed + i, spread * 2) + ((band - 1) * 10);
-            var y = centerY + getJitter(seed + (i * 3), 16) - ((i * 18) / count);
-            var mirrored = ((i % 2) == 1);
-
-            drawAssetPlacement(dc, asset, x, y, mirrored);
-
-            if ((i % 5) == 0) {
-                drawAssetPlacement(dc, asset, x + getJitter(seed + i + 7, 9), y + 8 + getJitter(seed + i + 9, 8), !mirrored);
-            }
-        }
-    }
-
-    function drawAssetPlacement(dc as Graphics.Dc, asset, x as Lang.Number, y as Lang.Number, mirrored as Lang.Boolean) as Void {
-        if (asset == null) { return; }
-
-        if (!mirrored || !(dc has :drawBitmap2) || !(Graphics has :AffineTransform)) {
-            dc.drawBitmap(x, y, asset);
-            return;
-        }
-
-        var transform = new Graphics.AffineTransform();
-        transform.setToScale(-1.0, 1.0);
-        transform.translate(-32.0, 0.0);
-        dc.drawBitmap2(x, y, asset, { :transform => transform });
-    }
-
-    function drawLayeredAssetMass(
-        dc as Graphics.Dc,
-        asset,
-        width as Lang.Number,
-        height as Lang.Number,
-        seed as Lang.Number,
-        anchorXPct as Lang.Number,
-        anchorYPct as Lang.Number,
-        spreadX as Lang.Number,
-        count as Lang.Number,
-        rise as Lang.Number
-    ) as Void {
-        if (asset == null) { return; }
-
-        var anchorX = (width * anchorXPct) / 100;
-        var anchorY = (height * anchorYPct) / 100;
-
-        for (var i = 0; i < count; i++) {
-            var offsetX = ((i * spreadX) / count) + getJitter(seed + i, 18);
-            var offsetY = -((i * rise) / count) + getJitter(seed + (i * 2), 12);
-            var x = anchorX + offsetX;
-            var y = anchorY + offsetY;
-
-            dc.drawBitmap(x, y, asset);
-
-            if ((i % 4) == 0) {
-                dc.drawBitmap(x - 10 + getJitter(seed + i + 9, 10), y + 12 + getJitter(seed + i + 13, 8), asset);
-            }
-        }
-    }
-
-    function drawSoftRidge(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
-        var points = [];
-        var yBase = (height * 44) / 100;
-
-        for (var i = 0; i <= 16; i++) {
-            var x = (width * i) / 16;
-            var y = yBase + getJitter(seed + i, 7) - ((i % 4) * 2);
-            points.add([x, y]);
-        }
-
-        dc.setStroke(0x7E2E2621);
-        dc.setPenWidth(4);
-        for (var j = 0; j < points.size() - 1; j++) {
-            var p1 = points[j];
-            var p2 = points[j + 1];
-            if ((j % 5) != 2) {
-                dc.drawLine(p1[0], p1[1], p2[0], p2[1]);
-            }
-        }
-
-        dc.setStroke(0x4E3B312B);
-        dc.setPenWidth(2);
-        for (var k = 0; k < points.size() - 1; k++) {
-            var q1 = points[k];
-            var q2 = points[k + 1];
-            if ((k % 4) != 1) {
-                dc.drawLine(q1[0], q1[1] + 2, q2[0], q2[1] + 1);
-            }
-        }
-
-        for (var m = 1; m < points.size() - 1; m += 2) {
-            var r = points[m];
-            if (mBrushStamp != null) {
-                dc.drawBitmap(r[0] - 10 + getJitter(seed + m + 20, 4), r[1] - 6 + getJitter(seed + m + 22, 3), mBrushStamp);
-            }
-        }
-    }
-
-    function drawPaperBackground(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
-        dc.setColor(Graphics.COLOR_WHITE, 0xF4F1EA); // Classic washi paper tone
+        // 1. CLEAR WITH DARK INK (The Underworld base)
+        dc.setColor(0x1A1A1B, 0x1A1A1B);
         dc.clear();
 
-        // Subtle substrate variation
-        fillRectAlpha(dc, 0x08A89F8F, 0, 0, width, height / 2);
-        fillRectAlpha(dc, 0x058B8171, 0, height / 2, width, height / 2);
+        // 2. DRAW UNDERWORLD LANDSCAPE (Hidden behind paper)
+        drawInkMountains(dc, width, height, seed);
+
+        // 3. DRAW TORN PAPER MASK (The Top Layer)
+        drawJaggedPaperMask(dc, width, height, seed);
     }
 
-    function drawSunWash(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, minuteKey as Lang.Number) as Void {
-        var progress = minuteKey.toFloat() / 1440.0;
-        var sunX = 70 + ((width - 140) * progress).toNumber();
-        var arc = progress - 0.5;
-        var sunY = 80 + ((arc * arc) * 110).toNumber();
-
-        // Soft solar glow using wash stamps
-        for (var i = 0; i < 5; i++) {
-            var drift = getJitter(minuteKey + i, 8);
-            drawStamp(dc, mWashStamp, sunX + drift - 12, sunY + drift - 12, 0x0BD4C4A9);
-        }
-        
-        fillCircleAlpha(dc, 0x25E3D3BF, sunX, sunY, 13);
-        strokeCircleAlpha(dc, 0x1AC1A489, sunX, sunY, 11);
-    }
-
-    function drawDistantDescents(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
-        var crest = [
-            [width / 5, (height * 43) / 100, 26, 65],
-            [(width * 60) / 100, (height * 40) / 100, 32, 75]
-        ];
-        drawDescentFamily(dc, crest, seed, 0x35514942, 0x1A5F5852, 7, 9, 5);
-    }
-
-    function drawForegroundDescents(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
-        var crest = [
-            [width / 4, (height * 54) / 100, 34, 120],
-            [(width * 68) / 100, (height * 52) / 100, 40, 145]
-        ];
-        drawDescentFamily(dc, crest, seed, 0x8529211C, 0x302E2722, 12, 12, 7);
-    }
-
-    function drawDescentFamily(
-        dc as Graphics.Dc,
-        crest as Lang.Array,
-        seed as Lang.Number,
-        crestColor as Lang.Number,
-        fadeColor as Lang.Number,
-        countPerAnchor as Lang.Number,
-        xStep as Lang.Number,
-        yStep as Lang.Number
-    ) as Void {
-        for (var i = 0; i < crest.size(); i++) {
-            var anchor = crest[i];
-            var centerX = anchor[0];
-            var crestY = anchor[1];
-            var halfSpan = anchor[2];
-            var maxLength = anchor[3];
-
-            drawCrestAnchor(dc, centerX, crestY, halfSpan, seed + (i * 31), crestColor);
-
-            for (var j = 0; j < countPerAnchor; j++) {
-                var startX = centerX - halfSpan + (j * xStep) + getJitter(seed + (i * 41) + j, 7);
-                var startY = crestY + getJitter(seed + (i * 43) + j, 5);
-                var length = maxLength - (j * yStep) + getJitter(seed + (i * 47) + j, 20);
-                drawVerticalStampDescent(dc, startX, startY, length, seed + (i * 59) + (j * 13), crestColor, fadeColor);
-            }
-        }
-    }
-
-    function drawCrestAnchor(dc as Graphics.Dc, centerX as Lang.Number, crestY as Lang.Number, halfSpan as Lang.Number, seed as Lang.Number, color as Lang.Number) as Void {
-        var leftX = centerX - halfSpan + getJitter(seed, 8);
-        var midX = centerX + getJitter(seed + 2, 7);
-        var rightX = centerX + halfSpan + getJitter(seed + 4, 8);
-
-        dc.setStroke(color);
-        dc.setPenWidth(3);
-        dc.drawLine(leftX, crestY + 5, midX, crestY - 4);
-        dc.drawLine(midX, crestY - 4, rightX, crestY + 6);
-        
-        // Structural brush accents - stacking to create "sharpness"
-        drawStamp(dc, mBrushStamp, midX - 12, crestY - 10, color);
-        drawStamp(dc, mBrushStamp, midX - 10, crestY - 6, color);
-        
-        // Secondary "rib" line
-        dc.setPenWidth(1);
-        dc.drawLine(midX - 10, crestY + 8, midX + 15, crestY + 12);
-    }
-
-    function drawVerticalStampDescent(
-        dc as Graphics.Dc,
-        startX as Lang.Number,
-        startY as Lang.Number,
-        length as Lang.Number,
-        seed as Lang.Number,
-        topColor as Lang.Number,
-        fadeColor as Lang.Number
-    ) as Void {
-        if (length < 20) { return; }
-
-        var x = startX;
-        for (var y = 0; y < length; y += 4) {
-            var progress = y.toFloat() / length.toFloat();
-            var color = fadeColor;
-            var stamp = mWashStamp;
-
-            if (y < 8) {
-                color = topColor;
-                stamp = mBrushStamp;
-            } else if (progress > 0.75) {
-                color = 0x0AF4F1EA; // Fades into paper
-            }
-
-            if (shouldDrop(seed + y, progress)) {
-                drawStamp(dc, stamp, x - 12, startY + y - 12, color);
-                // Occasionally add a second "bleed" stamp
-                if ((seed + y) % 17 == 0) {
-                   drawStamp(dc, mWashStamp, x - 10 + getJitter(seed + y, 4), startY + y - 10, 0x105F5852);
+    function drawInkMountains(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
+        // Draw deep ink pillars visible in the tear
+        for (var i = 1; i <= 3; i++) {
+            var x = (width * i) / 4;
+            var startY = height / 3;
+            for (var j = 0; j < 12; j++) {
+                var dX = getJitter(seed + i + j, 30);
+                var dY = j * 12 + getJitter(seed * 2 + j, 10);
+                if (mInkStamp != null) {
+                    dc.drawBitmap(x + dX - 16, startY + dY - 16, mInkStamp);
+                }
+                
+                if ((seed + j) % 4 == 0) {
+                    if (mMistStamp != null) {
+                        dc.drawBitmap(x + dX - 30, startY + dY, mMistStamp);
+                    }
                 }
             }
+        }
+    }
 
-            if ((y % 8) == 0) {
-                x += getJitter(seed + y, 4);
+    function drawJaggedPaperMask(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
+        var paperColor = 0xF4F1EA;
+        
+        // We draw per-pixel columns for a truly jagged "torn" edge
+        for (var x = 0; x < width; x++) {
+            // Heart-rate-like jitter for the tear boundary
+            var tearY = height / 2 + getJitter(seed + x, 50);
+            var gap = 60 + getJitter(seed * 3 + x, 30);
+            
+            var topBoundary = tearY - (gap / 2);
+            var bottomBoundary = tearY + (gap / 2);
+
+            // --- Draw Top Paper Piece ---
+            dc.setColor(paperColor, paperColor);
+            dc.drawLine(x, 0, x, topBoundary);
+            
+            // --- Draw Bottom Paper Piece ---
+            dc.drawLine(x, bottomBoundary, x, height);
+
+            // --- Torn Edge Details ---
+            // Shadow depth inside the tear
+            dc.setColor(0x50000000, Graphics.COLOR_TRANSPARENT);
+            dc.drawPoint(x, topBoundary + 1);
+            dc.drawPoint(x, bottomBoundary - 1);
+            
+            // Fiber highlight on the paper edge
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            dc.drawPoint(x, topBoundary);
+            dc.drawPoint(x, bottomBoundary);
+            
+            // Random paper "fibers" jutting out
+            if ((Math.rand() % 20) == 0) {
+                dc.drawLine(x, topBoundary, x, topBoundary + 3);
+            }
+            if ((Math.rand() % 20) == 0) {
+                dc.drawLine(x, bottomBoundary, x, bottomBoundary - 3);
             }
         }
-    }
-
-    function drawLonePine(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number, size as Lang.Number, seed as Lang.Number) as Void {
-        var color = 0xD01A1A1B; // Deep sumi black
-        dc.setStroke(color);
-        dc.setPenWidth(3);
-        
-        // Trunk
-        var trunkTopX = x + getJitter(seed, 5);
-        var trunkTopY = y - size;
-        dc.drawLine(x, y, trunkTopX, trunkTopY);
-        
-        // Branches
-        for (var i = 0; i < 4; i++) {
-            var bY = trunkTopY + (i * size / 4);
-            var bX = trunkTopX + getJitter(seed + i, 10);
-            var bLen = (size / 2) - (i * size / 10);
-            
-            // Left branch
-            dc.setPenWidth(2);
-            dc.drawLine(bX, bY, bX - bLen, bY + getJitter(seed + i + 1, 8));
-            drawStamp(dc, mBrushStamp, bX - bLen - 8, bY - 4, color);
-            
-            // Right branch
-            dc.drawLine(bX, bY, bX + bLen, bY + getJitter(seed + i + 2, 8));
-            drawStamp(dc, mBrushStamp, bX + bLen - 4, bY - 4, color);
-        }
-    }
-
-    function drawSoftMist(dc as Graphics.Dc, centerX as Lang.Number, centerY as Lang.Number, width as Lang.Number, height as Lang.Number, seed as Lang.Number) as Void {
-        var mistColor = 0x08F4F1EA; // Slightly more opaque
-        for (var i = 0; i < 6; i++) {
-            var driftX = getJitter(seed + i, 25);
-            var driftY = getJitter(seed + i + 10, 15);
-            var w = width + (i * 12);
-            var h = height + (i * 6);
-            fillRectAlpha(dc, mistColor, centerX + driftX - (w / 2), centerY + driftY - (h / 2), w, h);
-            
-            // Overlapping wash stamps for organic edges
-            drawStamp(dc, mWashStamp, centerX + driftX - 50, centerY + driftY, 0x05F4F1EA);
-            drawStamp(dc, mWashStamp, centerX + driftX + 30, centerY + driftY - 15, 0x05F4F1EA);
-        }
-    }
-
-    function shouldDrop(seed as Lang.Number, progress as Lang.Float) as Lang.Boolean {
-        var limit = 10;
-        if (progress > 0.25) { limit = 8; }
-        if (progress > 0.55) { limit = 5; }
-        if (progress > 0.8) { limit = 3; }
-        return (((seed * 23) + 7) % 11) < limit;
-    }
-
-    function drawStamp(dc as Graphics.Dc, stamp as Graphics.BufferedBitmap?, x as Lang.Number, y as Lang.Number, color as Lang.Number) as Void {
-        if (stamp == null) { return; }
-        dc.drawBitmap(x, y, stamp);
-    }
-
-    function fillRectAlpha(dc as Graphics.Dc, color as Lang.Number, x as Lang.Number, y as Lang.Number, width as Lang.Number, height as Lang.Number) as Void {
-        if (width <= 0 || height <= 0) { return; }
-        dc.setFill(color);
-        dc.fillRectangle(x, y, width, height);
-    }
-
-    function fillCircleAlpha(dc as Graphics.Dc, color as Lang.Number, x as Lang.Number, y as Lang.Number, radius as Lang.Number) as Void {
-        dc.setFill(color);
-        dc.fillCircle(x, y, radius);
-    }
-
-    function strokeCircleAlpha(dc as Graphics.Dc, color as Lang.Number, x as Lang.Number, y as Lang.Number, radius as Lang.Number) as Void {
-        dc.setStroke(color);
-        dc.drawCircle(x, y, radius);
     }
 
     function getJitter(seed as Lang.Number, scale as Lang.Number) as Lang.Number {
-        var pattern = [0, -2, 1, -1, 2, -3, 1, 0, -2, 2, -1, 3, -2];
-        return pattern[seed % pattern.size()] * scale / 6;
+        // High-contrast jitter pattern for jagged edges
+        var pattern = [0, -3, 5, -2, 4, -6, 2, -1, 3, -4, 6, -3, 1];
+        var s = seed;
+        if (s < 0) { s = -s; }
+        var idx = s % pattern.size();
+        return (pattern[idx] * scale) / 6;
     }
 
 }

@@ -106,7 +106,8 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             return;
         }
 
-        dc.setColor(0xFAF2E8, Graphics.COLOR_TRANSPARENT);
+        // Dark shadow for depth
+        dc.setColor(0x231B16, Graphics.COLOR_TRANSPARENT);
         dc.drawText(
             x + 2,
             y + 3,
@@ -115,7 +116,8 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
         );
 
-        dc.setColor(0x231B16, Graphics.COLOR_TRANSPARENT);
+        // Light main text
+        dc.setColor(0xFAF2E8, Graphics.COLOR_TRANSPARENT);
         dc.drawText(
             x,
             y,
