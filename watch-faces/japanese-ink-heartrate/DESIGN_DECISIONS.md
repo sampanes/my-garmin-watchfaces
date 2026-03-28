@@ -214,6 +214,55 @@ This is much more promising than:
 - repeated rectangles
 - broad point clouds
 
+## Ink Sandbox Iteration Log
+
+The `playgrounds/ink-sandbox` browser canvas prototype has been the main proving ground for the mountain rendering approach. These lessons are from direct iteration and should inform the Garmin implementation.
+
+### Iteration 1: stamp clusters on peaks (failed)
+
+Approach: build the mountain silhouette from HR data, then place vertical brush stamps at every local maximum along the ridge to add ink texture.
+
+Result: at 160–240 HR data points mapped to a 416px canvas, local maxima appear every 2–4 pixels. Stamps placed that densely formed a curtain of vertical columns — a city skyline, not a mountain. The "texture" overwhelmed the shape.
+
+Secondary failure: drawing an explicit stroke line along the ridge (to reinforce the crest) produced an EKG trace layered on top of the fill. The ridge became data-visible again, defeating the purpose of treating it as terrain.
+
+Rule added: no stamps on mid-layer peaks. No drawn ridge lines. Ever.
+
+### Iteration 2: fill + shadowBlur approach (current, working but unfinished)
+
+Approach:
+- mountain is a filled closed polygon (ridge silhouette, extended down to canvas bottom)
+- fill is a gradient: most ink at the ridge, fades aggressively downward — ~70% of opacity gone by 20% depth
+- `ctx.shadowBlur` with a slight upward offset fakes wet-ink bleed at the ridge boundary
+- a second, lighter fill pass over the same shape simulates ink dilution as the brush runs dry
+- 2–3 near-vertical cliff marks placed only at the tallest peaks provide calligraphic structure
+
+HR data smoothing levels used per layer:
+- far mountains: window ~65 → 3–4 gentle undulations
+- mid mountains (main HR layer): window ~24 → 8–10 peaks, reads as a range
+- foreground silhouette: window ~80 → 2–3 simple humps
+
+Result: working. The scene reads as layered mountains on parchment with atmospheric mist between layers. The core logic is sound. The current output is "okay, not perfect" — the ridgelines can feel slightly too smooth/cloud-like, and the three layers may not be differentiated enough in character.
+
+### Open questions from sandbox work
+
+These need more iteration before they are resolved:
+
+**Gradient falloff curve.** The current gradient uses four stops with values tuned by hand. A steeper initial falloff (dropping from 0.62 opacity to 0.10 by 10% depth rather than 18%) may push the result closer to the references, where ink pools tightly at the crest and the body reads as very light wash.
+
+**Layer color temperature.** Distant mountains in sumi-e references often carry a faint cool blue-grey. Near mountains are warm dark ink. The sandbox currently approximates this (`rgb(88,97,106)` for far, `rgb(33,26,18)` for near) but the contrast between them may need to be pushed further.
+
+**Texture within the fill body.** Real ink wash has subtle variation — pooling, brush direction, fiber of the paper. The sandbox has none of that. A few barely-visible near-horizontal strokes clipped to the mountain fill body, at very low opacity, may add that quality without cost. Needs testing.
+
+**Smoothing vs. HR fidelity.** At window=24, the mid layer loses most short-interval HR variation. This is correct for aesthetics but means a short 3-minute sprint may not be distinguishable from a 10-minute effort zone. The right tradeoff is still open — possibly: use the smoothed version for the fill body but let a slightly less-smoothed version define just the topmost few pixels of the ridge, so the overall shape is mountain-like but the crest still carries some true data texture.
+
+**Garmin translation.** The browser canvas approach uses `shadowBlur`, `createLinearGradient`, and `globalAlpha` compositing. Garmin's `Dc` does not support any of these directly. The fill + gradient behavior will need to be approximated in Monkey C with:
+- repeated horizontal spans at decreasing opacity (simulating gradient)
+- a small pre-authored PNG descent asset for the wet-edge bleed (as already explored in `codexrevamp` work)
+- the crest line in Garmin will need to come from a structural asset or explicit stroke, not shadowBlur
+
+The sandbox is still useful because it establishes what the target should look like. Garmin translation is a separate step.
+
 ## Custom Digit Assets
 
 Custom digit images are possible and may become useful later.
