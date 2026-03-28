@@ -463,6 +463,26 @@ Following a deep dive into Monkey C Graphics capabilities (API 4.0.0+), we are p
 - **Performance:** Drawing a bitmap is faster than many individual `drawPoint` calls once the stamp is cached.
 - **Flexibility:** Stamps can be scaled or rotated slightly to avoid repetitive patterns.
 
+## Architectural Target: Porting the NPR Engine
+
+Following the 2026-03-24 sandbox breakthroughs, the goal is to move from simple stamps to a **Layered Influence Model**.
+
+### 1. The "Bone and Flesh" Strategy
+- **Flesh:** In Monkey C, simulate the "rapid-falloff gradient" using 3-4 overlapping `fillPolygon` calls with decreasing alpha and increasing Y-offsets.
+- **Bones:** Use the `BrushStamp` specifically for "Cun" strokes (texture) and "Flying White" (jagged edges).
+- **Substrate:** Implement a low-alpha "Grain Pass" using `drawPoint` or tiny stamps to break up the sterile AMOLED black/paper background.
+
+### 2. Gaussian Ridge Grammar
+Replace the simple jittered peaks with a Gaussian summation model:
+- Define ridges as a set of `{nx, h, s}` (Position, Height, Spread).
+- Sum these values during the minute-cache render to create natural, swelling mountain forms instead of "sawtooth" jaggedness.
+
+### 3. Three-Pass Mist
+Move from a single mist band to:
+1. **The Base Wash:** A large, extremely faint polygon.
+2. **The Cloud Puffs:** Low-alpha `fillCircle` clusters at mountain bases.
+3. **The Wisps:** Thin horizontal `drawLine` or `fillRect` marks with tapered alpha.
+
 ## Best Recommendation Right Now
 
 The buffered-bitmap pivot has already happened, and that part was correct.

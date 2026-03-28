@@ -83,6 +83,27 @@ The HR data drives the middle layer directly. Smoothing window size is the main 
 
 **Small smoothing window** (first iteration, window=9): with 180–220 HR points mapped to 416px, a 9-point smooth still left ~50 micro-peaks per layer — spiky terrain instead of mountains. A window of 20+ is the minimum for mountain-shaped output.
 
+## The Language of the Shapes (NPR Engine)
+
+The current sandbox has evolved into a sophisticated **Non-Photorealistic Rendering (NPR)** engine. It treats the canvas not as a UI, but as a physical medium.
+
+### 1. The Anatomy of a Stroke: "Bone and Flesh"
+The engine follows traditional sumi-e philosophy:
+- **The Flesh (`fillMtn`):** Uses rapid-falloff gradients (6+ stops) where ink is concentrated at the ridge and dissolves by 40% depth, mimicking water-carried pigment.
+- **The Bones (`cun` and `flyWhite`):** 
+    - **Cun (皴法):** Internal texture strokes for rock mass.
+    - **Flying White (飛白):** Dry-brush texture near ridges using low-opacity dashed lines.
+- **The Bleed (`bleedEdge`):** Radial micro-blobs scattered along ridges to simulate wicking into paper fibers.
+
+### 2. Generative Grammar
+- **Gaussian Summation:** Ridges are built by summing Gaussian "peaks" derived from HR data.
+- **Multi-Octave Noise:** Layered value noise (low-freq for hills, high-freq for rock grit).
+- **Three-Pass Mist:** Combines noise-displaced bands, cloud puffs, and thin wisps for believable atmospheric depth.
+
+### 3. Material Simulation
+- **Paper Grain:** Thousands of micro-lines simulate physical washi fibers.
+- **Vignette & Lighting:** Radial gradients simulate a soft "studio light" on the parchment.
+
 ## Rule of thumb
 
 The mountain IS the fill. Shape and gradient carry the whole weight.
