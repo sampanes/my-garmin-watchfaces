@@ -11,8 +11,11 @@ Shared technical references:
 - [App Lifecycle and Power](../../common/architecture/APP_LIFECYCLE_AND_POWER.md)
 - [Forerunner 265 Spec](../../common/architecture/SPEC_FORERUNNER_265.md)
 - [Vivoactive 6 Spec](../../common/architecture/SPEC_VIVOACTIVE_6.md)
+- [Render Spec](RENDER_SPEC.md)
+- [Checkpoint Postmortem: 2026-03-29 Codex 1](CHECKPOINT_2026-03-29_CODEX1_POSTMORTEM.md)
 - [Design Decisions](DESIGN_DECISIONS.md)
 - [Research Directions](RESEARCH_DIRECTIONS.md)
+- [Asset Plan](art/ASSET_PLAN.md)
 
 ## Project Summary
 

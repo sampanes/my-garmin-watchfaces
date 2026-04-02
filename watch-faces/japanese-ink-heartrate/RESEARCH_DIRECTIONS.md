@@ -4,6 +4,15 @@ Last updated: 2026-03-25
 
 This note records the more serious research pass on how to move the watch face from "stacked cut paper" toward something that reads as painterly, atmospheric, and intentional.
 
+Related docs:
+
+- [Project Vision](JAPANESE_INK_HEARTRATE.md)
+- [Render Spec](RENDER_SPEC.md)
+- [Checkpoint Postmortem: 2026-03-29 Codex 1](CHECKPOINT_2026-03-29_CODEX1_POSTMORTEM.md)
+- [Design Decisions](DESIGN_DECISIONS.md)
+- [Feasibility Assessment](FEASIBILITY_ASSESSMENT.md)
+- [Asset Plan](art/ASSET_PLAN.md)
+
 It combines:
 
 - what the current prototype is doing wrong

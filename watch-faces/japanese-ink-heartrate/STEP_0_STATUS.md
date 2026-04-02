@@ -1,5 +1,11 @@
 # Step 0 Status
 
+Related docs:
+
+- [Project Vision](JAPANESE_INK_HEARTRATE.md)
+- [Feasibility Assessment](FEASIBILITY_ASSESSMENT.md)
+- [Render Spec](RENDER_SPEC.md)
+
 This directory now contains a minimal Garmin Connect IQ watch-face project skeleton for the Forerunner 265:
 
 - `manifest.xml`

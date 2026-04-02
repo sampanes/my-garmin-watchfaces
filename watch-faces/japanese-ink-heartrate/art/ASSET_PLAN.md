@@ -1,5 +1,13 @@
 # Asset Plan
 
+Related docs:
+
+- [Project Vision](../JAPANESE_INK_HEARTRATE.md)
+- [Render Spec](../RENDER_SPEC.md)
+- [Checkpoint Postmortem: 2026-03-29 Codex 1](../CHECKPOINT_2026-03-29_CODEX1_POSTMORTEM.md)
+- [Design Decisions](../DESIGN_DECISIONS.md)
+- [Research Directions](../RESEARCH_DIRECTIONS.md)
+
 This folder is reserved for painterly assets now that the bitmap-fidelity path is proving workable.
 
 Planned grayscale assets:

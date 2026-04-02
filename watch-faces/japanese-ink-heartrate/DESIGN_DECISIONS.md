@@ -1,8 +1,17 @@
 # Japanese Ink Heartrate Design Decisions
 
-Last updated: 2026-03-24
+Last updated: 2026-03-28
 
 This note consolidates the strongest ideas from the private concept exploration into the public project docs, while keeping scope aligned with the current feasibility and build stages.
+
+Related docs:
+
+- [Project Vision](JAPANESE_INK_HEARTRATE.md)
+- [Render Spec](RENDER_SPEC.md)
+- [Checkpoint Postmortem: 2026-03-29 Codex 1](CHECKPOINT_2026-03-29_CODEX1_POSTMORTEM.md)
+- [Research Directions](RESEARCH_DIRECTIONS.md)
+- [Feasibility Assessment](FEASIBILITY_ASSESSMENT.md)
+- [Asset Plan](art/ASSET_PLAN.md)
 
 ## Strong Ideas To Keep
 
@@ -243,6 +252,34 @@ HR data smoothing levels used per layer:
 - foreground silhouette: window ~80 → 2–3 simple humps
 
 Result: working. The scene reads as layered mountains on parchment with atmospheric mist between layers. The core logic is sound. The current output is "okay, not perfect" — the ridgelines can feel slightly too smooth/cloud-like, and the three layers may not be differentiated enough in character.
+
+### Iteration 3: noise subsystem upgrade — SimplexNoise + fBm + domain warping (2026-03)
+
+The 1D value noise system (`VNoise` + `oNoise`) has been replaced across the sandbox with a full 2D noise stack. The change affects mountain profile generation, mist band displacement, brush stroke pressure modulation, and tree branch angle variation.
+
+**What changed and why:**
+
+| Old | New | Reason |
+|-----|-----|--------|
+| `VNoise(seed)` 1D table lookup | `SimplexNoise(seed)` 2D gradient noise | Isotropic; no directional grain artifacts; correct 2D-space seeding |
+| `oNoise(fn, x, oct, p)` 1D fBm | `fbm(noise, x, y, octaves, lacunarity, gain)` | Full frequency control; lacunarity and gain are explicit, not hardcoded |
+| Three separate noise instances per profile | `domainWarp(noise, x, y)` — nested fBm reads | "Folded rock" creases at ridgelines; more organic than additive noise |
+| No turbulence | `turbulence(noise, x, y, octaves)` = abs-value fBm | Veiny, craggy rock face texture at high spatial frequencies |
+
+Additional changes in the same pass:
+- `cun()` rewritten with `drawBrushStroke()` — bell-curve pressure formula per segment replaces uniform lineWidth
+- `pine()` replaced by `generateBranch()` + `drawFoliageCluster()` — recursive, noise-guided, foliage blobs
+- `dryBrush()` pass added — horizontal dashed marks inside mountain body
+
+**Garmin translation notes (per technique):**
+
+- **SimplexNoise 2D** — pre-compute a 1D permutation table as a `[256]B` array at `initialize()` and implement `noise2D` as a static helper. Or pre-bake the profile Float32Array once per minute and cache it as a member variable. The bake approach is safer for watchdog timeout.
+- **fBm** — the loop structure translates cleanly to Monkey C. Cap at 4 octaves on-device (not 6) to stay within draw-cycle budget. Precompute rather than calling per-draw.
+- **Domain warping** — the full nested form (6 fBm calls per pixel) is too expensive per draw on Garmin. On-device approximation: single-level warp using one fBm read for the offset. Or bake the domain-warped profile once at `onUpdate` entry and cache.
+- **Turbulence** — translates directly to Monkey C. Use 2–3 octaves instead of 5. Only used for micro-crags so quality reduction is acceptable.
+- **Pressure-varying brush strokes** — Garmin can vary pen width via `dc.setPenWidth(w)` per segment. The bell-curve formula translates to a simple integer lookup table. Noise modulation of pressure should be dropped on Garmin — uniform bell curve is sufficient.
+- **Ink diffusion** — `getImageData`/`putImageData` do not exist on `Dc`. The `bleedEdge()` radial-gradient approximation is already the Garmin path: translate to scattered `dc.fillCircle()` calls with decreasing radius along the ridge.
+- **Recursive tree** — recursion is legal in Monkey C; cap depth at 3 to avoid timeout. Foliage blobs become `dc.fillCircle()` calls with noise-varied radius. If recursion causes issues, convert to an explicit stack.
 
 ### Open questions from sandbox work
 

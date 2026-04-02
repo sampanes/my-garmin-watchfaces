@@ -2,6 +2,14 @@
 
 Last reviewed: 2026-03-23
 
+Related docs:
+
+- [Project Vision](JAPANESE_INK_HEARTRATE.md)
+- [Render Spec](RENDER_SPEC.md)
+- [Design Decisions](DESIGN_DECISIONS.md)
+- [Research Directions](RESEARCH_DIRECTIONS.md)
+- [Step 0 Status](STEP_0_STATUS.md)
+
 ## Bottom Line
 
 This watch face is feasible.
