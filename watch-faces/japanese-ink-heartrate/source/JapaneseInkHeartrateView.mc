@@ -24,7 +24,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         var width = dc.getWidth();
         var height = dc.getHeight();
         var centerX = width / 2;
-        var centerY = height / 2;
+        var centerY = (height * 72) / 100;
         var xOffset = 0;
         var yOffset = 0;
 
@@ -44,9 +44,6 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
 
         drawTime(dc, centerX + xOffset, centerY + yOffset, isAmoledSleepMode());
 
-        if (!isAmoledSleepMode()) {
-            drawTimeUnderline(dc, centerX, centerY);
-        }
     }
 
     function onEnterSleep() as Void {
@@ -106,18 +103,16 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             return;
         }
 
-        // Dark shadow for depth
-        dc.setColor(0x231B16, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(0x2A231D, Graphics.COLOR_TRANSPARENT);
         dc.drawText(
             x + 2,
-            y + 3,
+            y + 2,
             Graphics.FONT_NUMBER_HOT,
             timeText,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
         );
 
-        // Light main text
-        dc.setColor(0xFAF2E8, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(0xF7F0E6, Graphics.COLOR_TRANSPARENT);
         dc.drawText(
             x,
             y,
@@ -125,12 +120,6 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             timeText,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
         );
-    }
-
-    function drawTimeUnderline(dc as Graphics.Dc, centerX as Lang.Number, centerY as Lang.Number) as Void {
-        dc.setColor(0xBFAF99, Graphics.COLOR_TRANSPARENT);
-        dc.drawLine(centerX - 58, centerY + 66, centerX + 58, centerY + 66);
-        dc.drawLine(centerX - 34, centerY + 72, centerX + 34, centerY + 72);
     }
 
 }
