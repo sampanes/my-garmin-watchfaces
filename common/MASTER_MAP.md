@@ -41,7 +41,7 @@ Welcome to the linked knowledge tree for Garmin development. This map connects t
 ### 6. Watch Face Projects
 *Project-specific concept docs, feasibility notes, and build plans.*
 - [Japanese Ink Heartrate](../watch-faces/japanese-ink-heartrate/JAPANESE_INK_HEARTRATE.md)
-- [Japanese Ink Heartrate Feasibility](../watch-faces/japanese-ink-heartrate/FEASIBILITY_ASSESSMENT.md)
+- [Japanese Ink Heartrate Renderer Plan](../watch-faces/japanese-ink-heartrate/RENDERER_PLAN.md)
 
 ---
 

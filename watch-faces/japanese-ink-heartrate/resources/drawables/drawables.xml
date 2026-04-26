@@ -2,4 +2,7 @@
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
     <bitmap id="VerticalFadeDescentDefault" filename="vertical_fade_descent.png" />
     <bitmap id="VerticalFadeDescentTuned" filename="vertical_fade_descent.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="BodyWashSoftTuned" filename="body_wash_soft.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="CrestAnchorTuned" filename="crest_anchor.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="MistStripTuned" filename="mist_strip.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

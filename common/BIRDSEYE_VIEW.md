@@ -59,7 +59,7 @@ We will systematically fetch and decompose the following resources into specific
 
 ### Folder: `/watch-faces`
 - [x] `japanese-ink-heartrate/JAPANESE_INK_HEARTRATE.md`: product vision and staged build plan.
-- [x] `japanese-ink-heartrate/FEASIBILITY_ASSESSMENT.md`: feasibility assessment and scope constraints.
+- [x] `japanese-ink-heartrate/RENDERER_PLAN.md`: implementation plan — diagnosis, asset family, draw recipe.
 
 ---
 
