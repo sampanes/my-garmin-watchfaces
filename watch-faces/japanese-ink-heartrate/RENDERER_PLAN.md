@@ -1,6 +1,33 @@
 # Japanese Ink Heartrate — Renderer Plan
 
-Last updated: 2026-04-22
+Last updated: 2026-06-10
+
+> **2026-06-10 PIVOT — complete-painting grammar (CURRENT).** The small-stamp
+> asset family below (§4–§7, §12) is superseded. The working architecture,
+> proven on-device in iter11/11b, inverts it: each mountain is authored
+> offline as a FINISHED sumi-e painting (tower-profile spires `h·(1-t^q)^p`,
+> facet shading, domain-warped dry-brush streaks, cun hatch, flying-white
+> ridge gaps, blob-cluster pines, mist-dissolved base — all baked into PNG
+> alpha at 3x supersample). Monkey C places ~7 bitmaps per scene, positioned/
+> scaled by the same 3-peak HR descriptor.
+>
+> - Authoring: `scripts/gen_sumie_kit.py` (deterministic; regen = identical)
+> - Layout iteration: `scripts/compose_preview.py` (offline 416x416 mock of
+>   the exact Monkey C recipe — iterate THERE, then port numbers 1:1)
+> - Kit: host_mountain, guest_mountain, far_range, mist_band(+lite),
+>   shore_foreground, paper_grain — all tuned-import (§3 contract holds)
+> - Mist rule: mist RGB must equal the paper fill EXACTLY (0xF2EEE6) so it
+>   only erases ink, never shows over bare paper
+> - Time: inscription column (FONT_LARGE, ink 0x342A22, upper-left void) +
+>   vermillion seal w/ live HR — replaces face-center digits
+>
+> §1–§3 (gradient diagnosis, failure catalog, tuned-import contract), §5
+> (HR pipeline), §8 caps-in-spirit, §10 anti-goals, §11 acceptance criteria
+> all remain authoritative.
+>
+> **Full methods documentation: [ART_PIPELINE.md](ART_PIPELINE.md)** —
+> generator techniques, ink model, asset inventory, preview→port contract,
+> and the Python→device translation gaps.
 
 This is the single authoritative implementation document for the watch face. It replaces:
 

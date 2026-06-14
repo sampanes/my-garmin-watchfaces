@@ -52,7 +52,33 @@ This is a "hidden" constraint. Even if you have 50KB of free memory, the device 
 
 ---
 
-## 5. The ERA Tool (Error Reporting Archive)
+## 5. Android Wireless Debugging / ADB Pairing
+If a phone connected over Wi-Fi debugging earlier and then refuses later, the stable DHCP reservation helps but does not freeze Android's debugging ports. Android can rotate the pairing and debug ports after toggles, reboots, or network changes.
+
+### Recovery Workflow:
+1. Restart the phone, PC, and router if the network path seems stale. In one May 2026 failure, a router reset may have been necessary before pairing worked again.
+2. On the phone, go to Developer options -> **Wireless debugging**, then turn wireless debugging off and back on.
+3. Tap **Pair device with pairing code**.
+4. On the PC:
+   ```powershell
+   adb kill-server
+   adb start-server
+   adb pair PHONE_IP:PAIRING_PORT
+   adb connect PHONE_IP:DEBUG_PORT
+   adb devices -l
+   ```
+5. Use the pairing-code screen's port only for `adb pair`. After pairing, use the IP/port shown on the main Wireless debugging screen for `adb connect`; these ports are usually different.
+
+### Checks:
+- Phone and PC must be on the same Wi-Fi network, not a guest network.
+- Router AP/client isolation must be off.
+- VPNs on either device can block discovery or connection.
+- Windows firewall/network profile can block the ADB path if the network is treated too restrictively.
+- If `adb` is not on `PATH`, try `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`.
+
+---
+
+## 6. The ERA Tool (Error Reporting Archive)
 Garmin provides a tool to see crashes from users in the "real world."
 - **Access**: In VS Code, `Ctrl+Shift+P` -> **Monkey C: View Error Reports**.
 - **Usage**: This pulls logs from the Garmin App Store servers, showing you exactly which line of code crashed on which device model for your published apps.

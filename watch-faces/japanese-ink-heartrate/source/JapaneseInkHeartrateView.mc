@@ -1,3 +1,4 @@
+using Toybox.Activity;
 using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.System;
@@ -7,6 +8,12 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
 
     var mIsLowPower as Lang.Boolean = false;
     var mScene as JapaneseInkHeartrateScene;
+
+    // Sumi ink for the inscription digits; vermillion for the seal.
+    const INK = 0x342A22;
+    const SEAL_RED_R = 176;
+    const SEAL_RED_G = 52;
+    const SEAL_RED_B = 38;
 
     function initialize() {
         WatchUi.WatchFace.initialize();
@@ -23,12 +30,11 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     function onUpdate(dc as Graphics.Dc) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
-        var centerX = width / 2;
-        var centerY = (height * 72) / 100;
         var xOffset = 0;
         var yOffset = 0;
 
-        if (isAmoledSleepMode()) {
+        var aod = isAmoledSleepMode();
+        if (aod) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
             dc.clear();
             drawAodRidge(dc, width, height);
@@ -42,8 +48,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             yOffset = ((minute / 3) % 3) - 1;
         }
 
-        drawTime(dc, centerX + xOffset, centerY + yOffset, isAmoledSleepMode());
-
+        drawInscription(dc, width, height, xOffset, yOffset, aod);
     }
 
     function onEnterSleep() as Void {
@@ -52,23 +57,6 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
 
     function onExitSleep() as Void {
         mIsLowPower = false;
-    }
-
-    function getTimeString() as Lang.String {
-        var clockTime = System.getClockTime();
-        var hour = clockTime.hour;
-        var minuteText = clockTime.min.format("%02d");
-        var settings = System.getDeviceSettings();
-
-        if ((settings has :is24Hour) && !settings.is24Hour) {
-            if (hour == 0) {
-                hour = 12;
-            } else if (hour > 12) {
-                hour = hour - 12;
-            }
-        }
-
-        return Lang.format("$1$:$2$", [hour, minuteText]);
     }
 
     function needsBurnInProtection() as Lang.Boolean {
@@ -88,38 +76,71 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         dc.drawLine((width * 2) / 3, ridgeY + 2, (width * 7) / 8, ridgeY - 4);
     }
 
-    function drawTime(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number, isAod as Lang.Boolean) as Void {
-        var timeText = getTimeString();
+    // The time as a painter's inscription: hour above minutes in a column in
+    // the upper-left void, with a vermillion artist's seal beneath carrying
+    // the live heart rate. Mirrors the inscription+seal grammar of the
+    // reference paintings (and replaces the face-center digits).
+    function drawInscription(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number,
+                             xOff as Lang.Number, yOff as Lang.Number, isAod as Lang.Boolean) as Void {
+        var clockTime = System.getClockTime();
+        var hour = clockTime.hour;
+        var settings = System.getDeviceSettings();
+        if ((settings has :is24Hour) && !settings.is24Hour) {
+            if (hour == 0) {
+                hour = 12;
+            } else if (hour > 12) {
+                hour = hour - 12;
+            }
+        }
+        var hourText = hour.format("%d");
+        var minText = clockTime.min.format("%02d");
+
+        var colX = ((width * 22) / 100) + xOff;
+        var hourY = ((height * 21) / 100) + yOff;
+        var minY = ((height * 33) / 100) + yOff;
 
         if (isAod) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(
-                x,
-                y,
-                Graphics.FONT_NUMBER_HOT,
-                timeText,
-                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
-            );
+        } else {
+            dc.setColor(INK, Graphics.COLOR_TRANSPARENT);
+        }
+        dc.drawText(colX, hourY, Graphics.FONT_LARGE, hourText,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(colX, minY, Graphics.FONT_LARGE, minText,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        if (isAod) {
             return;
         }
 
-        dc.setColor(0x2A231D, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(
-            x + 2,
-            y + 2,
-            Graphics.FONT_NUMBER_HOT,
-            timeText,
-            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
-        );
+        // Artist's seal: rounded vermillion square, live HR inside.
+        var sealSize = (width * 67) / 1000;
+        var sealX = colX - (sealSize / 2);
+        var sealY = (height * 425) / 1000;
+        dc.setFill(Graphics.createColor(0xEB, SEAL_RED_R, SEAL_RED_G, SEAL_RED_B));
+        dc.fillRoundedRectangle(sealX, sealY, sealSize, sealSize, sealSize / 7);
 
-        dc.setColor(0xF7F0E6, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(
-            x,
-            y,
-            Graphics.FONT_NUMBER_HOT,
-            timeText,
-            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
-        );
+        var hrText = currentHeartRateText();
+        if (hrText != null) {
+            dc.setColor(0xF4EEE2, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(colX, sealY + (sealSize / 2), Graphics.FONT_XTINY, hrText,
+                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
+    }
+
+    function currentHeartRateText() as Lang.String? {
+        if (!(Toybox has :Activity)) {
+            return null;
+        }
+        var info = Activity.getActivityInfo();
+        if (info == null) {
+            return null;
+        }
+        var hr = info.currentHeartRate;
+        if (hr == null) {
+            return null;
+        }
+        return hr.format("%d");
     }
 
 }

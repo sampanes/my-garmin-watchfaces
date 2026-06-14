@@ -3,6 +3,8 @@ ROOT_*
 bin/
 watch-faces/japanese-ink-heartrate/art/references/
 watch-faces/japanese-ink-heartrate/art/checkpoints/
+watch-faces/japanese-ink-heartrate/art/kit_preview.png
+my-garmin-watchfaces.zip
 
 # Node.js / Playgrounds
 node_modules/

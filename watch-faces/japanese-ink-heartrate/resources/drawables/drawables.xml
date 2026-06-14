@@ -1,8 +1,10 @@
 <drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
-    <bitmap id="VerticalFadeDescentDefault" filename="vertical_fade_descent.png" />
-    <bitmap id="VerticalFadeDescentTuned" filename="vertical_fade_descent.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="BodyWashSoftTuned" filename="body_wash_soft.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="CrestAnchorTuned" filename="crest_anchor.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="MistStripTuned" filename="mist_strip.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="HostMountainTuned" filename="host_mountain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="GuestMountainTuned" filename="guest_mountain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FarRangeTuned" filename="far_range.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="MistBandTuned" filename="mist_band.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="MistBandLiteTuned" filename="mist_band_lite.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="ShoreForegroundTuned" filename="shore_foreground.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PaperGrainTuned" filename="paper_grain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>
