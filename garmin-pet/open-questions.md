@@ -100,13 +100,18 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
 
 ## C. Product decisions
 
-- [ ] **Messaging:** canned vocabulary/stickers only vs free text. *(Recommend
-      canned — watch text entry is bad + moderation burden.)*
+- [x] **Messaging: LOCKED canned** vocabulary/stickers (no free text). Reinforced twice:
+      watch text entry is bad, *and* canned/enumerated content dodges the §1(g) UGC
+      moderation/reporting/DMCA regime (store-policy research, §B). Free text → companion app only.
 - [ ] **Companion phone app:** build one, or watch-only `makeWebRequest`?
       *(Recommend launch without; add later if it has legs.)* Gates push + QR-add.
-- [ ] **Failure mechanic:** punishing (death) vs gentle (sick/sad). *(Gentle ages
-      better for a glanceable wearable.)*
-- [ ] **Species/evolution:** single species first vs branching tree.
+- [x] **Failure mechanic: LOCKED gentle** (sick/sad, never death/neglect-spiral) — cozy
+      guardrails, `05-progression.md`. Decay forgives missed days.
+- [~] **Species/evolution: structure decided in `05-progression.md`** — evolution is *the one
+      real fork* + the meta-track (infinite height), branches sampled across lives so none
+      "rot". Still open: # of evolution bands, gates, and whether branches differ by
+      power/verb vs cosmetic-only (lean: a signature verb + a look — horizontal, not vertical).
+      MVP still starts single-species (see `01` MVP scope).
 - [ ] **Sensor tie-ins:** which to ship first (recommend steps→food as the proof).
 - [ ] **Device priority:** target FR265 + VA6 day one, or FR265 first then port?
 - [ ] **Monetization:** hobby/free vs anything paid (affects store + ops appetite).

@@ -26,6 +26,10 @@ Track 1 add-on capability: [04-activity-sensing.md](04-activity-sensing.md) — 
 reacts to lifting / push-ups via accelerometer rep-counting (sidesteps Garmin's clunky
 Strength activity).
 
+**Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer
+progression/ownership model (how the pet "scales up" without becoming a paralyzing
+skill-tree *or* an ownerless treadmill). Underpins both Track 1 and Track 2.
+
 What's now confirmed vs still open: [open-questions.md](open-questions.md).
 
 ## Target hardware (yours + wife's) — confirmed from repo SPEC docs

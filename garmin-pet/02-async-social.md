@@ -49,9 +49,13 @@ phone. So the natural, reliable design is **store-and-forward**:
 
 ## "Visiting" + gifts + mail
 
-- **Visit:** `GET` the friend's latest pet snapshot (species/stage/mood/decor) and
-  render it locally with your existing sprite engine. Optional **guestbook /
-  footprint**: leave a tiny "was here" marker.
+- **Visit:** `GET` the friend's latest pet snapshot and render it locally with your
+  existing sprite engine. **The snapshot *is* the progression model's output** — a
+  handful of tiny integers: permanent identity (species + evolution branch + name) +
+  current arrangement (worn cosmetics + displayed gifts/trophies) + track tiers. That's
+  exactly what makes two pets look distinct at a glance even though everyone eventually
+  unlocks everything (see `05-progression.md §"Won't everyone end up identical?"`).
+  Optional **guestbook / footprint**: leave a tiny "was here" marker.
 - **Gift:** item id + optional note → `POST /mail` → friend's mailbox → applied on
   their next open (food, decor, currency).
 - **Mailbox:** server-side queue; client pulls `since` a cursor. Idempotent apply

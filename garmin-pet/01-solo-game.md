@@ -20,10 +20,17 @@ Needs decay over real time; the player tops them back up.
 
 - **Stats:** hunger, happiness/affection, energy/sleep, hygiene, health.
 - **Actions:** feed, play, clean, pet, put to sleep, medicine.
-- **Progression:** life stages (egg → baby → child → adult), maybe evolution
-  branches driven by care quality. Currency + simple inventory (food, toys, decor).
-- **Failure states:** sickness / "runs away" / sleeps unhappily. Decide how
-  punishing (see decisions) — gentle tends to age better for a wearable you glance at.
+- **Progression:** life stages (egg → baby → child → adult) + **evolution branches**
+  (the one "real fork"). Currency + simple inventory (food, toys, decor). The full
+  scaling model — *how* the pet grows without becoming a paralyzing skill-tree or an
+  ownerless treadmill — is its own doc: **`05-progression.md` (three-layer model)**.
+  TL;DR for this loop: progression tracks are **additive** (you get everything
+  eventually; order is the expression), daily choices are small/reversible, and a
+  *few* permanent identity choices (name, species, evolution branch) carry ownership.
+- **Failure states:** **LOCKED gentle** (sick/sad, never death/neglect-spiral) — per
+  the cozy guardrails in `05-progression.md §Cozy guardrails`. Decay forgives missed
+  days; effort always yields visible positive change. (For a glance-able wearable,
+  punishing failure ages badly and kills the cozy loop.)
 
 ## The watch differentiator: feed the pet with *your* body
 
@@ -84,7 +91,9 @@ storage caps — verify). Shape sketch:
 - **Sprites:** frame bitmaps in resources; animate by swapping frames on a `Timer`.
   **Bitmaps eat app memory** — limited palette, reuse frames, lazy-load. **Design to
   the VA6 device-app heap of 256–512 KB**, not FR265's 1 MB (VA6 is the tighter
-  target). See `common/memory/MEM_PART1..3` and `common/graphics/DC_PART3_RESOURCES_AND_PERFORMANCE.md`.
+  target). ⚠️ *These heap figures are disputed — community `compiler.json` reads say
+  768 KB uniform; verify against local SDK. See README + `open-questions.md §B2`.*
+  See `common/memory/MEM_PART1..3` and `common/graphics/DC_PART3_RESOURCES_AND_PERFORMANCE.md`.
 - **Three resolutions:** FR265 416×416, FR265S 360×360, VA6 390×390 → relative/scaled
   layouts + per-device resource sets. Strategy: `common/workflow/MULTI_DEVICE_STRATEGY.md`.
 - **Two input profiles:** touch-first (tap zones for actions); VA6 has only **2 buttons
