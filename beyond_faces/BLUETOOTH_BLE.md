@@ -2,7 +2,7 @@
 
 # Beyond Faces: Bluetooth Low Energy (BLE)
 
-Garmin watches can act as both a **Central** (controlling a smart light or bike sensor) and a **Peripheral** (broadcasting data to another device) using the `BluetoothLowEnergy` module.
+Garmin watches can act as a BLE **Central** (scanning for and connecting to external peripherals like a smart light or bike sensor) using the `BluetoothLowEnergy` module. **They cannot act as a Peripheral / advertiser / GATT server** — see §4.
 
 ---
 
@@ -57,10 +57,20 @@ Once connected, you interact with the device's **Characteristics**.
 
 ---
 
-## 4. BLE Peripheral (Broadcasting)
-Some Garmin watches can broadcast their own data (like Heart Rate) to other devices.
-- **Usage**: Use `BluetoothLowEnergy.setAdvertisingData()` and `BluetoothLowEnergy.setAdvertisingPayload()`.
-- **Constraint**: This is very power-intensive and usually limited by watch model.
+## 4. BLE Peripheral / Advertising — NOT SUPPORTED
+**Connect IQ cannot act as a BLE peripheral, advertiser, or GATT server.** The
+`BluetoothLowEnergy` module is **central/client only** (GATTC operations, since API
+3.1.0). Methods like `setAdvertisingData()` / `setAdvertisingPayload()` /
+`startAdvertising()` **do not exist** in the API. A watch can connect *to* a sensor;
+it cannot *be* one — so it can't broadcast HR to Zwift, and **two watches cannot
+connect to each other over BLE**.
+
+> ⚠️ Corrected 2026-06-15. The previous version of this section (claiming
+> `setAdvertisingData()`/`setAdvertisingPayload()` broadcasting) was an AI-research
+> hallucination. Per Garmin dev Jim M: *"The BLE in CIQ is meant to connect to
+> external sensors, but not act as one. I doubt that will change."*
+> Sources: [BLE API docs](https://developer.garmin.com/connect-iq/api-docs/Toybox/BluetoothLowEnergy.html),
+> [forum: broadcast HR by BLE](https://forums.garmin.com/developer/connect-iq/f/app-ideas/224447/broadcast-heart-rate-by-ble).
 
 ---
 
