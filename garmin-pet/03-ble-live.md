@@ -53,11 +53,25 @@ Hard limits / landmines (why this is a *spike*, not a plan):
   stream) and a slave that stops receiving after the app is backgrounded → need acks/retries.
 - **Simulator won't prove it.** `GenericChannel` has had sim regressions and there's
   nothing to pair with in the sim — inherently a **two-real-device** test.
-- **Watch support unconfirmed.** Garmin's official `GenericChannelBurst` sample targets
-  **Edge** units (520/820/1000), not Forerunner/Vivoactive — so FR265/VA6 master-mode +
-  cross-model pairing is *the* unknown.
-- **SDK bug to re-check:** `Ant.BurstPayload` threw "Symbol not found" on SDKs ≥ 4.1.6;
-  confirm fixed on 8.1.x before relying on burst.
+- **Watch master-mode: likely OK (de-risked 2026-06-15).** The only documented block on
+  master/TX is the **ANT+ network** (`NETWORK_ANTPLUS` throws "Master channels on the ANT+
+  network are not allowed" — anti-spoofing). On `NETWORK_PUBLIC` a master channel **ran
+  without error on a Forerunner profile** (FR745) per the forums; no source blocks master
+  mode by form factor. Garmin's `GenericChannelBurst` *sample* is Edge-only, but that's a
+  sample target, not an API restriction. So the unknown narrowed from "can a watch master at
+  all?" to **"does master-on-public actually transmit on FR265/VA6 silicon?"**
+- **`Ant.BurstPayload` bug is SIMULATOR-ONLY.** The "Symbol not found" regression (SDK ≥4.1.6,
+  still "Acknowledged") is reproduced **only in the sim**; the bug reporter states *"the code
+  DOES work on devices."* → burst-based designs aren't dead; just can't be proven in the sim
+  (which is true of all ANT here anyway). Debug burst on real hardware.
+- **Channel availability is the other real risk.** The ~8 ANT channels are **shared with the
+  system's own HR/sensor use**; on older Vivoactives, just having many sensors *paired* (not
+  even connected) could starve `open()`. Keep the paired-sensor list minimal; if `open()`
+  returns true but `onMessage` never fires in 1–2 s, **release and recreate the channel**
+  (reported workaround).
+- **Existence proof:** the shipped app **"Chess! – Blind Knights"** advertises watch-to-watch
+  play over ANT — the best lead that two watches *can* link. Confirming its compatible-device
+  list would cheaply validate cross-model pairing before you build anything.
 
 Sources: [ANT/ANT+ core topic](https://developer.garmin.com/connect-iq/core-topics/ant-and-ant-plus/),
 [Custom ANT Broadcast w/ GenericChannel](https://forums.garmin.com/developer/connect-iq/f/discussion/411246/custom-ant-broadcast-using-genericchannel),
@@ -128,10 +142,17 @@ acknowledged round-trip works → build a tiny snapshot-swap / co-op tap minigam
 channel, won't pair cross-model, burst is broken on 8.1.x, or loss is too high.
 
 ### The "maybe"s only real hardware can settle (checklist)
-- [ ] FR265 **and** VA6 each let a CIQ app open a **master** GenericChannel (sample is Edge-only).
+*Updated 2026-06-15 — several de-risked by web research; the live unknowns are now the
+hardware-physics ones, not API-permission ones.*
+
+- [ ] **(top risk)** Master-on-`NETWORK_PUBLIC` actually **transmits** on FR265/VA6 silicon
+      (compiles/opens clean per forums; on-air TX from these watches is unverified).
 - [ ] Two **different models** (FR265 ↔ VA6) actually pair on a shared custom channel.
-- [ ] A **free ANT channel** exists while the watch's own HR/sensors are using ANT.
+      *(Cheaper first step: check the "Chess! – Blind Knights" store listing's device support.)*
+- [ ] A **free ANT channel** exists while the watch's HR/sensors use ANT — keep paired sensors
+      minimal; expect to use the release-and-recreate workaround if `onMessage` stalls.
 - [ ] Delivery is reliable enough at realistic range/blockage (the loss numbers above).
 - [ ] Truly works **offline** (airplane mode / no phone) — expected, but confirm.
 - [ ] Channel stays alive for a whole foreground session (no silent stop after a minute).
-- [ ] `Ant.BurstPayload` works on SDK 8.1.x (the ≥ 4.1.6 "Symbol not found" regression).
+- [x] ~~`Ant.BurstPayload` works on SDK 8.x~~ — bug is **simulator-only; works on devices**
+      (per the bug reporter). Still verify your burst on real HW, but it's not a blocker.

@@ -54,6 +54,15 @@ What's now confirmed vs still open: [open-questions.md](open-questions.md).
 > target. And **background sync gets only 32 KB everywhere**: the JSON parser can
 > crash on a large response, so social payloads must be tiny. Memory deep-dive:
 > `common/memory/MEM_PART1..3`.
+>
+> ⚠️ **CONFLICT to resolve (flagged 2026-06-15, web research).** Community reads of
+> Garmin's own `compiler.json` report a **uniform 768 KB device-app heap and 64 KB
+> background across all three** (FR265 / 265S / VA6) — contradicting the table above
+> (which came from this repo's SPEC docs). The web source is **second-hand**, so the
+> table is left as-is pending **a direct check of `compiler.json` in your installed SDK**.
+> If 768 KB is right, the tightest constraint loosens a lot — design conservatively to
+> ~256 KB until confirmed. (Background sync being 64 KB rather than 32 KB would also ease
+> social-payload limits.) See `open-questions.md §B2`.
 
 ## SDK / API target — from SPEC docs
 
