@@ -18,6 +18,74 @@ doing?"), and from then on the watch **counts reps automatically** off the
 accelerometer. That directly fixes your complaint — the native Strength activity makes
 you fight the UI; here the only input is picking the move.
 
+## The dream UX: "press GO, he figures it out" (and roasts you)
+
+Spitball (2026-06-15) — the flow worth aiming for: you walk up to the pull-up bar, **press
+your friend, he says "sup, let's go" and does NOT ask what you're doing.** Then he *watches
+the signal and guesses out loud*, e.g.:
+- "up-down... that's a **squat**. 12. keep moving."
+- "**left-hand curl**... long pause... **right-hand curl?**... left again. make up your mind."
+- "wrist barely moved but your **HR and breathing spiked** — good shit, bruh."
+
+This is one notch more ambitious than Level 2: you don't even pick the move (still a
+foreground "buddy" session — *not* the impossible fully-passive Level 1). The pet
+**auto-classifies**. But §"Telling push-ups from curls" already warned auto-classification
+is the finicky part — so here's the trick that makes it shippable instead of frustrating:
+
+## ⭐ Confidence becomes character (the key insight)
+
+The classifier *will* be uncertain a lot of the time. **Don't hide that behind an error or a
+menu — let the pet's confidence drive its dialogue.** This converts a hard ML problem into the
+product's whole personality:
+
+| Classifier state | What he says |
+|---|---|
+| **High confidence** | "That's a squat. 12 reps. Don't you dare slow down." |
+| **Low confidence** | "...the hell was that? A curl? Sure. I'll allow it." |
+| **Motion unreadable, body working** | "Wrist barely moved but your heart's redlining — good shit, bruh." |
+
+The asshole is *allowed* to guess wrong and cover with snark. **Misclassification stops being a
+bug and becomes banter.** Fits the locked canned-vocabulary model perfectly — these are
+pre-written lines keyed by `guess × confidence × performance`.
+
+## What the wrist can actually see (feasibility, grounded)
+
+Mapping the spitball's own examples to honest tiers (the watch is on **one** wrist):
+- **Squat** — *medium.* Low cadence, big slow vertical component, stable wrist orientation. Guessable.
+- **Curl on the WATCH arm** — *easy.* Forearm rotates through gravity → the gravity vector
+  swings between axes (§ above already calls this "very recognizable").
+- **Curl on the OTHER arm** — *~invisible.* Curling the off arm barely moves the watch. **That's
+  exactly why "right-hand curl?" deserves a question mark — he genuinely can't see it well and is
+  guessing from body sway + timing.** Your phrasing nailed the physics; make that uncertainty
+  *diegetic* (he's confident on the watch arm, hedging on the other).
+- **Tempo / pauses / rest** — *easy.* Gaps between rep peaks. Prime roast material ("you paused.
+  tired already?").
+- **Pull-ups** — *hard on motion alone* (hand gripped to bar, wrist semi-fixed, weak/ambiguous
+  bob) — which is the whole reason for the next section.
+
+## Multi-signal fusion — when motion fails, read the body
+
+The pet fuses **accelerometer + heart rate (+ maybe respiration)** and **degrades gracefully**:
+- **HR** — solid, real-time (`Sensor.getInfo().heartRate`) + `SensorHistory`. A pull-up set
+  spikes HR even when the wrist signal is mush. **This is the dependable fallback.**
+- **Respiration / breathing** — ⚠️ *verify CIQ exposes real-time respiration*; if not, infer
+  "breathing went up" from HR. (Don't promise breathing data until confirmed.)
+- Net: even an **unclassifiable** movement still reads as **effort** via physiology → the pet
+  rewards it ("can't tell what that was, but you're gassed — it counts"). This fusion *is* the
+  graceful-degradation engine behind "confidence becomes character," and it reinforces the
+  locked principle: **reward effort, not precision.**
+
+## Personality model (the actual soul)
+
+- The "asshole friend" is **canned dialogue with attitude**, keyed by
+  `(exercise-guess × confidence × performance × streak × time-of-day)`. Cheap, watch-native,
+  on-brand with the locked canned-messaging model (`02`).
+- **He doesn't care what you're about to do** — no menu, no setup screen. Press → "sup, let's
+  go" → he reacts to whatever happens. *The absence of a setup screen IS the personality.*
+- Tone scales with the relationship/streak: more roast when you slack, grudging respect when
+  you deliver. (May graduate to its own `07-personality.md` if it grows — for now it's coupled
+  to sensing.)
+
 ## The mechanism (confirmed feasible)
 
 - **Sensor:** `Sensor.registerSensorDataListener` streams the **accelerometer up to
