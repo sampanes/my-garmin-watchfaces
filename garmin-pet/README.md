@@ -20,7 +20,11 @@ This is a notes folder (markdown), **not code yet** — snippets are illustrativ
 |---|-------|-----------|------|
 | 1 | **Solo game** — the pet itself, offline, single-device | High — clearly doable | [01-solo-game.md](01-solo-game.md) |
 | 2 | **Async social** — ACNH-style visits, gifts, mailbox | Medium — doable, needs *your* backend + *your* friend graph | [02-async-social.md](02-async-social.md) |
-| 3 | **Live co-presence** — pets "meet" when physically together | Low — radio feasibility unproven | [03-ble-live.md](03-ble-live.md) |
+| 3 | **Live co-presence** — pets "meet" when physically together | Low — **direct BLE ruled out**; ANT unproven; plan for phone-bridged | [03-ble-live.md](03-ble-live.md) |
+
+Track 1 add-on capability: [04-activity-sensing.md](04-activity-sensing.md) — the pet
+reacts to lifting / push-ups via accelerometer rep-counting (sidesteps Garmin's clunky
+Strength activity).
 
 What's now confirmed vs still open: [open-questions.md](open-questions.md).
 

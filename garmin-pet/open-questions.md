@@ -31,6 +31,13 @@ which trails your unpushed local — re-confirm against the local repo.
 - [x] **Sensor inputs for pet mechanics** — `Sensor.getInfo()` (HR, cadence, temp;
       pressure **FR265 only**); `SensorHistory` (HR last ~4 h, elevation, pressure);
       `Complications` STEPS subscription (battery-efficient). → `beyond_faces/SENSORS_AND_GPS.md`
+- [x] **BLE peripheral / watch↔watch** — ❌ **NOT POSSIBLE.** CIQ BLE is central-only
+      (GATTC since API 3.1.0); no advertising / GATT server. Two watches **cannot**
+      connect directly over BLE. → [BLE API docs](https://developer.garmin.com/connect-iq/api-docs/Toybox/BluetoothLowEnergy.html),
+      [forum 224447](https://forums.garmin.com/developer/connect-iq/f/app-ideas/224447/broadcast-heart-rate-by-ble) (verified 2026-06-15)
+- [x] **Accelerometer rep-counting** — ✅ **feasible.** 25 Hz accel via
+      `registerSensorDataListener`; peak-detection rep counting is proven. Foreground
+      session only (CPU/heap heavy). → `beyond_faces/SENSORS_AND_GPS.md §3`, see `04-activity-sensing.md`
 
 ## B. STILL OPEN — verify against Garmin developer docs ⏳
 
@@ -39,11 +46,10 @@ which trails your unpushed local — re-confirm against the local repo.
 - [ ] **makeOAuthRequest** concrete flow for a custom backend (named only).
 - [ ] **App-wake API** — does `Background.requestApplicationWake` / a Notifications API
       exist for a "you have mail" nudge? (Real-time push already ruled out.)
-- [ ] **BLE peripheral/advertising** — can a CIQ watch advertise (not just act as
-      central)? **Makes or breaks Track 3 direct BLE.** (Repo says doubtful.)
 - [ ] **ANT generic channel** watch↔watch — supported? throughput? (Both devices have
-      ANT+ per SPEC docs, but generic device-to-device messaging is unconfirmed.)
-- [ ] Test BLE/ANT on the **actual FR265 + VA6 pair**, not two identical units.
+      ANT+ per SPEC docs, but generic device-to-device messaging is unconfirmed.) **Now
+      the only candidate for true P2P** since BLE is ruled out — test on the actual
+      FR265 + VA6 pair (not two identical units).
 - [ ] **Store review** rules for apps calling external servers + handling messaging.
 - [ ] **Dev agreement** restrictions on social/messaging apps + **COPPA/kids** data.
 
