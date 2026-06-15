@@ -83,8 +83,9 @@ The pet fuses **accelerometer + heart rate (+ maybe respiration)** and **degrade
 - **He doesn't care what you're about to do** — no menu, no setup screen. Press → "sup, let's
   go" → he reacts to whatever happens. *The absence of a setup screen IS the personality.*
 - Tone scales with the relationship/streak: more roast when you slack, grudging respect when
-  you deliver. (May graduate to its own `07-personality.md` if it grows — for now it's coupled
-  to sensing.)
+  you deliver. **The lines above are the *Drill Sergeant* voice specifically** — temperament is
+  now a **permanent identity trait** (asshole vs cheerleader vs deadpan vs zen), so every persona
+  reacts to these same sensing events in its own voice. Full system: **`07-personality.md`**.
 
 ## The mechanism (confirmed feasible)
 

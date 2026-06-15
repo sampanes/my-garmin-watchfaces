@@ -60,8 +60,10 @@ Both are "all figs, at once, forever." Neither belongs in a cozy daily game.
 ### Layer A — Identity: FEW + PERMANENT. *This is where ownership lives.*
 
 A small handful of one-time, committed choices: the pet's **name**, its **species at birth**,
-and the **branch chosen at each evolution**. Spaced weeks apart, so you never face more than
-one at a time (simultaneity dial = serialized).
+its **persona/temperament** (the asshole-vs-sycophant axis — full system in `07-personality.md`),
+and the **branch chosen at each evolution**. Spaced out so you never face more than one at a
+time (simultaneity dial = serialized). Persona is **orthogonal to species/look** (any creature
+can be any temperament) and, like the evolution branch, is re-pickable only *at evolution*.
 
 **Why permanent, counter-intuitively:** Gilbert & Ebert (*JPSP* 2002, the photography-class
 study) found people who made an **irreversible** choice ended up *liking it more* than those
@@ -166,8 +168,9 @@ state = {
   id: {                       // Layer A — PERMANENT, set-once, never re-written freely
     name:    "Spud",          // one-time at creation
     species: 2,               // one-time at creation
+    persona: 0,               // 0=drill-sgt 1=cheerleader 2=deadpan 3=zen (07-personality.md)
     evo:     [1, 0]           // chosen branch per evolution; append-only history
-  }
+  }                           // persona re-pickable only at evolution (like a branch)
 }
 
 // CATALOG (static, in resources)
@@ -189,8 +192,8 @@ EVOLUTIONS = [
 
 - [x] **Not open-vs-single-track** — both, by layer (permanence where it creates ownership;
       abundance where it kills FOMO; guidance where it prevents paralysis).
-- [x] **~3–4 permanent identity choices** (name, species, evolution branches) = the ownership
-      engine. Gated behind explicit confirm; never freely editable.
+- [x] **~4 permanent identity choices** (name, species, **persona** [`07`], evolution branches)
+      = the ownership engine. Gated behind explicit confirm; re-pick only at evolution.
 - [x] **Progression tracks are additive** (everything eventually; order = expression).
 - [x] **Daily choices are small, telegraphed, reversible**; acquisition persists, arrangement is fluid.
 - [x] **Evolution = the one real fork + the meta-track** (infinite height, no dead end), sampled
