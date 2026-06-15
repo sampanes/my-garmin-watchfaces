@@ -46,10 +46,10 @@ which trails your unpushed local — re-confirm against the local repo.
 - [ ] **makeOAuthRequest** concrete flow for a custom backend (named only).
 - [ ] **App-wake API** — does `Background.requestApplicationWake` / a Notifications API
       exist for a "you have mail" nudge? (Real-time push already ruled out.)
-- [ ] **ANT generic channel** watch↔watch — supported? throughput? (Both devices have
-      ANT+ per SPEC docs, but generic device-to-device messaging is unconfirmed.) **Now
-      the only candidate for true P2P** since BLE is ruled out — test on the actual
-      FR265 + VA6 pair (not two identical units).
+- [ ] **ANT generic channel** watch↔watch — `Ant.GenericChannel` master/slave *can* do
+      device-to-device in principle (8-byte msgs, NETWORK_PUBLIC), but watch master-mode +
+      cross-model pairing is unconfirmed. **Now the only candidate for true P2P** since BLE
+      is ruled out. → **full hardware test protocol + checklist in `03-ble-live.md` (Spike B)**.
 - [ ] **Store review** rules for apps calling external servers + handling messaging.
 - [ ] **Dev agreement** restrictions on social/messaging apps + **COPPA/kids** data.
 

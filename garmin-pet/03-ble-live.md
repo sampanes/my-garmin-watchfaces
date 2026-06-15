@@ -29,13 +29,39 @@ advertising, no GATT server, no peripheral role** — no `setAdvertisingData`, n
 - Sources: [BLE API docs](https://developer.garmin.com/connect-iq/api-docs/Toybox/BluetoothLowEnergy.html),
   [forum: broadcast HR by BLE](https://forums.garmin.com/developer/connect-iq/f/app-ideas/224447/broadcast-heart-rate-by-ble).
 
-### ANT / ANT+ (`Toybox.Ant`) — the more plausible native path
-- Garmin's own low-power radio; supports **generic device-to-device channels**.
-- More likely than BLE to allow two watches to exchange small messages without a
-  phone or server.
-- Caveats: tiny throughput, fiddly channel/pairing setup, both apps must implement
-  the identical channel config, UX for "find each other" is non-trivial. **Verify**
-  with a real two-device test.
+### ANT generic channel (`Toybox.Ant` / `Ant.GenericChannel`) — the only remaining P2P path
+**This CAN do device-to-device** (unlike BLE). An app extends `Ant.GenericChannel`,
+opens one watch as **master** (transmit) and the other as **slave** (receive), and they
+exchange messages directly over Garmin's own radio — **no phone, no server**.
+
+How it's wired (from API docs + forum examples):
+- **Channel type:** master = `CHANNEL_TYPE_TX_NOT_RX`, slave = `CHANNEL_TYPE_RX_NOT_TX`
+  (a bidirectional type exists for two-way).
+- **Network:** `NETWORK_PUBLIC` — **not** `NETWORK_ANTPLUS` (master mode on the ANT+
+  network throws a runtime error).
+- **RF frequency:** 2–80 (2402–2480 MHz); **avoid 57** (reserved for ANT+). Both apps
+  hard-code the same custom freq.
+- **Device number** ≠ 0 for the master; **transmission type** (forums: use `1`, not `5`);
+  **message period** sets the rate (generic can run far faster than ANT+'s 4 Hz).
+- Send via `sendBroadcast(payload)` / `sendAcknowledge(payload)`; bigger transfers via
+  **burst** (`Ant.BurstPayload`). Permission: `<iq:permission id="Ant"/>` (verify exact id on 8.1.x).
+
+Hard limits / landmines (why this is a *spike*, not a plan):
+- **8 bytes per message.** A pet snapshot must be packed into a few 8-byte frames or
+  sent as a burst (burst ≈ up to 8192 B / 1024 msgs, device-varying).
+- **Best-effort, lossy.** Devs report dropped messages (e.g. losing ~5 s of a 2 Hz
+  stream) and a slave that stops receiving after the app is backgrounded → need acks/retries.
+- **Simulator won't prove it.** `GenericChannel` has had sim regressions and there's
+  nothing to pair with in the sim — inherently a **two-real-device** test.
+- **Watch support unconfirmed.** Garmin's official `GenericChannelBurst` sample targets
+  **Edge** units (520/820/1000), not Forerunner/Vivoactive — so FR265/VA6 master-mode +
+  cross-model pairing is *the* unknown.
+- **SDK bug to re-check:** `Ant.BurstPayload` threw "Symbol not found" on SDKs ≥ 4.1.6;
+  confirm fixed on 8.1.x before relying on burst.
+
+Sources: [ANT/ANT+ core topic](https://developer.garmin.com/connect-iq/core-topics/ant-and-ant-plus/),
+[Custom ANT Broadcast w/ GenericChannel](https://forums.garmin.com/developer/connect-iq/f/discussion/411246/custom-ant-broadcast-using-genericchannel),
+[Ant.BurstPayload docs](https://developer.garmin.com/connect-iq/api-docs/Toybox/Ant/BurstPayload.html).
 
 ### Phone-bridged "proximity" — not true P2P, but a fallback
 - Companion phone apps detect proximity (phone↔phone BLE, or both reporting
@@ -55,10 +81,8 @@ Keep it tiny — latency + throughput are brutal on these radios:
 Treat this as a **feasibility spike**, isolated from Tracks 1–2:
 
 1. ~~Spike A — BLE peripheral?~~ **DONE: answered NO** (BLE is central-only; see above).
-2. Spike B — can two watches exchange bytes over an **ANT generic channel**
-   (`Toybox.Ant` / `AntPlus` generic channel)? This is now the *only* path to true
-   offline P2P. Test on the *actual* FR265 + VA6 pair (cross-device, not two identical
-   units). If ANT generic D2D isn't exposed/usable either, true P2P is dead.
+2. Spike B — **ANT generic channel** is now the *only* path to true offline P2P.
+   Full test protocol + the hardware-only "maybe"s are at the bottom of this file.
 3. If ANT works: design a tiny in-person "playdate" (snapshot swap / co-op tap game).
 4. If ANT fails: **phone-bridged pseudo-live** is the fallback — a short-lived server
    "room" two friends join by code or phone-proximity. Not offline, needs connectivity
@@ -66,3 +90,48 @@ Treat this as a **feasibility spike**, isolated from Tracks 1–2:
 
 Realistically, **plan for the phone-bridged fallback** and treat ANT as a bonus spike.
 Do **not** let Track 3 block Tracks 1–2 — it's the bonus, not the spine.
+
+---
+
+## Spike B — ANT generic-channel feasibility (real hardware only)
+
+**Question it answers:** can a FR265 and a VA6 exchange a few bytes app-to-app over a
+generic ANT channel, reliably enough for an in-person "playdate," with **no phone/server**?
+
+**Why hardware-only:** the simulator can't pair two devices over ANT and has had
+`GenericChannel` regressions — you need both watches in hand. Budget it as a throwaway
+test app, not production code.
+
+**Minimal test app** (one app with a master/slave role toggle, or two build flavors):
+
+| Param | Master watch | Slave watch |
+|-------|--------------|-------------|
+| Channel type | `TX_NOT_RX` | `RX_NOT_TX` |
+| Network | `NETWORK_PUBLIC` | `NETWORK_PUBLIC` |
+| RF frequency | fixed, e.g. **66** (≠57) | same (66) |
+| Device number | fixed non-zero, e.g. `0xBEEF` | same |
+| Device type / trans type | e.g. `1` / `1` | match |
+| Message period | start ~4–8 Hz | match |
+| Action | `sendBroadcast()` an incrementing counter each tick | log received counter |
+
+**Steps:**
+1. Build & sideload to both watches (master→FR265, slave→VA6; then **swap roles** to test both directions).
+2. Master broadcasts an incrementing counter in an 8-byte payload.
+3. Slave logs received counters → compute **received ÷ expected** over 60 s at ~1 m.
+4. Repeat at ~5 m, and with a body/wrist between the watches (real blockage).
+5. Try `sendAcknowledge()` for a round-trip, then a small **burst** for a bigger blob.
+
+**Success ⇒ design the playdate UX:** ≥ ~90% of broadcasts received at 1–3 m **and** an
+acknowledged round-trip works → build a tiny snapshot-swap / co-op tap minigame.
+
+**Kill ⇒ fall back to phone-bridged pseudo-live:** if the watches won't open a master
+channel, won't pair cross-model, burst is broken on 8.1.x, or loss is too high.
+
+### The "maybe"s only real hardware can settle (checklist)
+- [ ] FR265 **and** VA6 each let a CIQ app open a **master** GenericChannel (sample is Edge-only).
+- [ ] Two **different models** (FR265 ↔ VA6) actually pair on a shared custom channel.
+- [ ] A **free ANT channel** exists while the watch's own HR/sensors are using ANT.
+- [ ] Delivery is reliable enough at realistic range/blockage (the loss numbers above).
+- [ ] Truly works **offline** (airplane mode / no phone) — expected, but confirm.
+- [ ] Channel stays alive for a whole foreground session (no silent stop after a minute).
+- [ ] `Ant.BurstPayload` works on SDK 8.1.x (the ≥ 4.1.6 "Symbol not found" regression).
