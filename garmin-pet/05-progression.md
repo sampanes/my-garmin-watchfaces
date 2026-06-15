@@ -104,6 +104,45 @@ exactly why the permanent stuff lives in Layer A, not here.)
 
 ---
 
+## What "power" means — and the track quadrant
+
+The progression tracks aren't four flavors of one thing; each has **one distinct job.**
+Two are about the *pet*, two about the *world*:
+
+|  | The pet | The world |
+|---|---|---|
+| **grows with effort** | **fit** — its body mirroring your training | **power** — its *capabilities* (what it can sense / say / do) |
+| **expresses identity** | *persona* (`07`, Layer A) | **house** — your stage · **gift** — social exchange |
+
+The track that needed defining was **power.** This game has **no combat**, so a power is
+**never a stat multiplier** ("effort counts 1.3×" — invisible, and exactly the PoE/Diablo
+number-grind trap flagged above). Instead:
+
+> **A power is a capability — something the pet can now *sense, say, or do* that it
+> couldn't before.** Powers make the *world bigger*, not the *numbers bigger.* Horizontal,
+> discrete, felt, and earned from your real effort (the pet gets smarter as you train).
+
+Powers split in two:
+- **Functional powers** — change what the loop *does*: a newly-sensed exercise (the `04`
+  sensing roadmap, *paced out* instead of dumped on day one), the proactive nag (`06`),
+  "challenge of the day," streak-shields, small idle returns. **Consequence.**
+- **Expressive powers / emotes** — change how it *feels/looks*, **zero consequence** (ACNH
+  reactions — the pointless ones are the most loved): burst into flames, flex, faceplant.
+  Same earn-with-effort economy; they're the raw material for the visitor-greeting routine
+  (`02`).
+
+Both are earned the same way and both feed the "scaling up" fantasy; they differ only on
+whether they touch game state.
+
+**Gifts/items, by contrast, are expression — never capability.** They decorate (the `house`
+stage) and flow between friends as a love-language (`02`); at most they trigger *flavor* (a
+cute animation, a transient mood bump). "Better gifts" means *prettier/rarer*, not *stronger*
+— which keeps **single-player complete** (you never need a friend's gift to progress) and
+kills pay/social-to-win. This is forced by the locked cozy guardrails (no FOMO) + Layer B's
+everything-eventually.
+
+---
+
 ## The one *real* fig — and why it doesn't rot
 
 Keep exactly **one** weighty, committed fork: **the evolution branch.** When the pet evolves,
@@ -185,6 +224,9 @@ EVOLUTIONS = [
   they're the permanent ones).
 - **Layer B** = the existing `tier{}` indices climbing through `TRACKS` (all eventually maxable).
 - **Layer C** = a per-day surfaced subset of affordable next-tiers + telegraphed unlock previews.
+  Editable *arrangement* also includes the **visitor-greeting routine** (`02`): the earned
+  emotes are Layer-B acquisition (permanent), the routine composed from them is Layer-C
+  arrangement (freely re-editable) — no new rules needed.
 
 ---
 
@@ -202,9 +244,11 @@ EVOLUTIONS = [
 
 ### Still open (product calls, see also `open-questions.md §C`)
 - [ ] How many evolution **bands** total, and what gates each (track-tier? age? a quest?).
-- [ ] Do evolution branches differ in **powers/verbs**, **cosmetics only**, or both? (Lean: a
-      signature verb + a look, so the fork feels real but isn't strictly power-superior —
-      horizontal, not vertical.)
+- [ ] Do evolution branches differ in **powers/verbs**, **cosmetics only**, or both? (Lean, now
+      that "power" = a capability-verb: a branch grants **one signature *functional* power + a
+      look** — horizontal, not power-superior. The Layer-B power track is the broad menu everyone
+      eventually unlocks; the evolution branch is the one *permanent signature* capability. —
+      firming up next.)
 - [ ] Exact **decay forgiveness** curve (how gentle; does it pause when away?).
 
 ---

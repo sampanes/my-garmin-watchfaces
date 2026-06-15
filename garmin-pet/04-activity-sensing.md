@@ -75,6 +75,24 @@ The pet fuses **accelerometer + heart rate (+ maybe respiration)** and **degrade
   graceful-degradation engine behind "confidence becomes character," and it reinforces the
   locked principle: **reward effort, not precision.**
 
+## Sensing is *earned*, not dumped — the capability ladder
+
+These detections are the **functional "powers"** from `05-progression.md §"What power means"`
+— the pet's sensing repertoire is a **track you climb**, not a feature you get all at once:
+
+- Start knowing **squats** → earn **push-up** detection → earn **watch-arm curls** → earn the
+  **HR "you're gassed" fallback** → earn **tempo/pause callouts** → earn **run/distance**.
+- Each unlock is a discrete, felt capability ("oh — he can tell I'm doing curls now"). **The pet
+  literally perceives more of your workout the longer you train**, which is the perfect marriage
+  of theme and mechanic *and* solves a real design problem: don't hand a day-one player a
+  classifier that claims to read everything (it'll be wrong and feel broken). Open it up as it
+  earns trust.
+
+This is the **functional** half of "power." The other half is **expressive powers / emotes** —
+zero-consequence animations the pet earns (burst into flames, flex, faceplant); same
+earn-with-effort economy, no game-state effect. They're the raw material for the visitor-greeting
+routine (`02`). Full split + quadrant: `05`.
+
 ## Personality model (the actual soul)
 
 - The "asshole friend" is **canned dialogue with attitude**, keyed by

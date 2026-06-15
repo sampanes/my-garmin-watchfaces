@@ -51,15 +51,42 @@ phone. So the natural, reliable design is **store-and-forward**:
 
 - **Visit:** `GET` the friend's latest pet snapshot and render it locally with your
   existing sprite engine. **The snapshot *is* the progression model's output** — a
-  handful of tiny integers: permanent identity (species + evolution branch + name) +
-  current arrangement (worn cosmetics + displayed gifts/trophies) + track tiers. That's
+  handful of tiny integers: permanent identity (species + evolution branch + name + persona) +
+  current arrangement (worn cosmetics + displayed gifts/trophies + greeting routine) + track
+  tiers. That's
   exactly what makes two pets look distinct at a glance even though everyone eventually
   unlocks everything (see `05-progression.md §"Won't everyone end up identical?"`).
   Optional **guestbook / footprint**: leave a tiny "was here" marker.
-- **Gift:** item id + optional note → `POST /mail` → friend's mailbox → applied on
-  their next open (food, decor, currency).
+- **Gift:** item id + optional canned note → `POST /mail` → friend's mailbox → applied
+  on their next open. **Gifts are expression, not power** (decor/cosmetics + at most a
+  *flavor* treat — a cute animation, a transient mood bump) — you **never need** one to
+  progress, which keeps single-player complete and kills social/pay-to-win (`05`).
 - **Mailbox:** server-side queue; client pulls `since` a cursor. Idempotent apply
   (don't double-grant a gift on re-sync).
+
+### Visitor greeting routine — authored expression, zero moderation cost
+
+A small but load-bearing feature: you **compose a little routine your pet performs for
+visitors** — e.g. *"when a guest arrives: pose in the gym room → burst into flames."* It's
+built entirely from **unlocked emotes** (the expressive "powers" of `04`/`05`), picked from a
+vocabulary — **no free text.**
+
+- **Why it matters (the clever bit):** it's genuine user-authored *performance* that still
+  **dodges the §1(g) UGC moderation/reporting/DMCA regime** (`open-questions §C`) — that regime
+  only triggers on **free text**, and pick-from-a-vocabulary stays moderation-free. So you get
+  personal, funny, *authored* self-expression **without** a moderation backend — the same lever
+  that made canned messaging safe, now made expressive and personal at once.
+- **It gives a visit a payoff.** Today a "visit" is just *see their pet + arrangement*; the
+  greeting is the **punchline** of going over.
+- **Persona-flavored for free** (`07`): the Drill Sergeant's "burst into flames" welcome reads
+  nothing like the Zen Buddy's — same emote, different framing line.
+- **Already covered by the `05` model — no new rules.** Earning an emote = Layer B acquisition
+  (permanent); composing the routine = Layer C arrangement (freely editable).
+- **Tiny on the wire:** the routine is just a short list of emote-IDs riding in the snapshot —
+  `greet: [roomId, emoteId, emoteId]` — a few integers next to `persona`.
+- **The one real cost:** emotes are **sprite animations**, so the *catalog* costs art + heap
+  (the VA6 ceiling — `04`/README) in a way canned *text* never did. Budget the **animation
+  count**; the routine built from them is free.
 
 ## Messaging: use canned vocabulary, NOT free text
 
@@ -70,6 +97,8 @@ Strong recommendation:
 - → Ship a **fixed vocabulary**: reactions/stickers + a curated phrase list (think
   ACNH reactions or Splatoon's preset phrases). Expressive, safe, watch-friendly,
   and tiny on the wire. Free text (if ever) belongs in the companion phone app.
+- The unlockable **emotes** here are the same **expressive "powers"** from `04`/`05` — and the
+  raw material for the **visitor-greeting routine** above. Same vocabulary, double duty.
 
 ## Companion phone app — optional but powerful
 
