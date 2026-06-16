@@ -47,6 +47,32 @@ wearer's real activity. Available inputs (confirmed in `beyond_faces/SENSORS_AND
 
 This turns "don't neglect the pet" into "don't neglect yourself," which is sticky.
 
+## Live (mat reps) vs after-the-fact (walks/runs) — the foreground rule
+
+A real constraint that shapes *which* activities the pet experiences live: **only one app
+is foreground at a time.** When you start Garmin's **native** Run/Walk (for the GPS map),
+the pet app isn't running — so there's **no live ride-along during a native-tracked cardio
+session**, and no live IPC between the native activity and the pet.
+
+- **Mat reps (lifting, push-ups, etc.) → LIVE.** They run *inside* the pet's own "workout
+  buddy" foreground session (25 Hz accel, `04`), so the pet senses + roasts in real time.
+  This is the live experience.
+- **Walks / runs → AFTER THE FACT.** The pet reads the day's **aggregates** on next open
+  (or a ≥5-min background poll): steps / distance / active-minutes via the `Complications`
+  STEPS subscription (battery-cheap, OS-pushed) + `ActivityMonitor`. So *"you ran today —
+  good shit"* works **retroactively**. No route, no live presence, but the cardio still
+  feeds the pet.
+- **Stretch — "Run with [pet]" mode (later):** to have the pet actually *present* during a
+  run (live pace + a saved GPS map), the pet must **be the recorder** — its own
+  `ActivityRecording` session with `Position`/GPS, which saves a real activity to Garmin
+  Connect and hands the pet live `Activity.Info`. Cost: it **replaces** the native Run UI
+  and burns GPS battery (`SENSORS_AND_GPS.md`: GPS drains an FR265 in hours) — you can't
+  foreground both. Deliberately a **separate mode**, and it slots into the `05` power ladder
+  as an *earned functional power*, not a rework.
+
+**Default (MVP): mat = live, cardio = after-the-fact.** The "run with pet" GPS mode is a
+clean later add, not day-one.
+
 ## Time model — compute decay from timestamps, do NOT tick
 
 The single most important design decision for battery + correctness:
