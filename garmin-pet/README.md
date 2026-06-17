@@ -32,6 +32,24 @@ skill-tree *or* an ownerless treadmill). Underpins both Track 1 and Track 2.
 
 What's now confirmed vs still open: [open-questions.md](open-questions.md).
 
+## Build stance (2026-06-16 sanity pass)
+
+The watch-native core is the product: **Track 1 + the activity buddy**. Build the
+offline pet first, then add the foreground rep-counting loop once the care loop is
+pleasant on real hardware.
+
+Use the other tracks as gated expansions:
+- **Track 2 social** is a second product, not a feature. Only start it after the solo
+  loop is sticky enough to justify backend/auth/privacy/ops.
+- **Track 3 live co-presence** is a hardware spike. It must not block Tracks 1-2; if
+  ANT fails on real watches, fall back to phone/server-brokered visits or drop it.
+- **Companion app** is Tier 2. Its first real job is proactive nudging / QR friend-add /
+  account management, not becoming the main pet home.
+
+Tone guardrail: ship personas as **Drill Sergeant / Hype Cheerleader / Deadpan / Zen**.
+"Asshole coach" is useful internal shorthand, but product copy should roast effort gaps,
+not bodies, worth, or identity.
+
 ## Target hardware (yours + wife's) — confirmed from repo SPEC docs
 
 | Device | Display | Shape | Input | Notes |

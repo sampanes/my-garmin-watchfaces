@@ -100,11 +100,17 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
 
 ## C. Product decisions
 
+- [x] **Build order: LOCKED.** Ship the solo watch pet first, then the foreground
+      activity-buddy loop. Treat social, ANT co-presence, and phone companion work as
+      gated expansions only after the core loop is fun on real hardware.
 - [x] **Messaging: LOCKED canned** vocabulary/stickers (no free text). Reinforced twice:
       watch text entry is bad, *and* canned/enumerated content dodges the §1(g) UGC
       moderation/reporting/DMCA regime (store-policy research, §B). Free text → companion app only.
 - [ ] **Companion phone app:** build one, or watch-only `makeWebRequest`?
       *(Recommend launch without; add later if it has legs.)* Gates push + QR-add.
+- [x] **Persona tone: LOCKED guardrail.** User-facing labels are Drill Sergeant /
+      Hype Cheerleader / Deadpan / Zen. Internal "asshole coach" shorthand is fine
+      for ideation, but shipped lines roast the effort gap, never body/worth/identity.
 - [x] **Failure mechanic: LOCKED gentle** (sick/sad, never death/neglect-spiral) — cozy
       guardrails, `05-progression.md`. Decay forgives missed days.
 - [~] **Species/evolution: structure decided in `05-progression.md`** — evolution is *the one

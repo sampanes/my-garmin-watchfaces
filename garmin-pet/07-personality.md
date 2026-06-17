@@ -80,11 +80,18 @@ body/worth — sarcasm aimed at the *effort gap*, always with an implicit "now g
 general-audience (store policy, `open-questions §B`) and, frankly, keeps it from being a
 genuinely demotivating jerk. Mean *flavor*, supportive *function*.
 
+Shipping-label rule: **Drill Sergeant / Hype Cheerleader / Deadpan / Zen** are the
+user-facing labels. "Asshole" / "sycophant" can remain internal shorthand for ideation,
+but should not appear in store copy, onboarding, or the picker UI. The joke is the
+relationship dynamic, not edgelord labeling.
+
 ## Decision
 
 - [x] **Persona = permanent Layer-A identity trait** (with evolution as the re-pick valve).
 - [x] **Orthogonal to species/look**; implemented as a voice-pack (line table + weights).
 - [x] **Telegraphed at creation** (sample line preview before commit).
+- [x] **Shipping labels separated from internal shorthand** (market-safe labels in UI/store;
+      sharper language can stay in design notes).
 - [ ] Final persona roster (start with the 4 above? add more later?) — open.
 - [ ] Per-persona behavior-weight tuning (nag cadence, praise thresholds) — open.
 
