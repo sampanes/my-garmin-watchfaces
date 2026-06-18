@@ -6,6 +6,11 @@ import { getCreature, getCreatureNames } from "./creatures.js";
 
 const canvas = document.getElementById("watch-canvas");
 const ctx = canvas.getContext("2d");
+const watchFrame = canvas.closest(".watch-frame");
+const controlSheet = document.getElementById("control-sheet");
+const controlMeta = document.getElementById("control-meta");
+const wideLayoutQuery = window.matchMedia("(min-width: 900px)");
+const forceControlsOpen = new URLSearchParams(window.location.search).get("controls") === "open";
 let RES = 416;
 
 // ── PIXEL DENSITY NOTES ──────────────────────────────────────────────────────
@@ -23,19 +28,13 @@ let RES = 416;
 let truePixels = false;
 
 function resize(r) {
-  RES = r;
+  RES = Number.parseInt(r, 10);
   canvas.width = RES;
   canvas.height = RES;
-  if (truePixels) {
-    // Each canvas pixel = exactly 1 device pixel
-    const cssSize = Math.round(RES / (window.devicePixelRatio || 1));
-    canvas.style.width = cssSize + "px";
-    canvas.style.height = cssSize + "px";
-  } else {
-    // Comfortable viewing — CSS pixels, upscaled with pixelated rendering
-    canvas.style.width = RES + "px";
-    canvas.style.height = RES + "px";
-  }
+
+  const deviceScale = window.devicePixelRatio || 1;
+  const cssSize = truePixels ? Math.max(1, Math.round(RES / deviceScale)) : RES;
+  watchFrame.style.setProperty("--watch-size", `${cssSize}px`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -400,6 +399,13 @@ function drawSpeechBubble(text, petScreenX, petScreenY, opacity) {
   ctx.restore();
 }
 
+function getSpeechOpacity(timer) {
+  if (timer <= 0) return 0;
+  if (timer < 0.3) return timer / 0.3;
+  if (timer > 2.7) return (3 - timer) / 0.3;
+  return 1;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ACTION EFFECTS (food item, sparkles, zzz)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -540,7 +546,7 @@ function render(dt) {
   drawPetShadow(petScreenX, petScreenY, stageSize, mood);
 
   const creature = getCreature(state.creature);
-  const actionProg = state.action ? state.actionTime / state.actionDuration : 0;
+  const actionProg = state.action ? Math.min(1, state.actionTime / state.actionDuration) : 0;
   creature.draw(ctx, petScreenX, petScreenY, stageSize, {
     t,
     mood,
@@ -555,8 +561,12 @@ function render(dt) {
   // HUD + speech
   drawStatusHud(mood);
 
-  const speechOpacity = Math.min(1, state.speechTimer * 3) * Math.min(1, (3 - Math.max(0, 3 - state.speechTimer)));
-  drawSpeechBubble(state.speechText, petScreenX, petScreenY - stageSize * 0.7, Math.min(1, state.speechTimer > 0 ? 1 : 0) * (state.speechTimer < 0.3 ? state.speechTimer / 0.3 : state.speechTimer > 2.7 ? (3 - state.speechTimer) / 0.3 : 1));
+  drawSpeechBubble(
+    state.speechText,
+    petScreenX,
+    petScreenY - stageSize * 0.7,
+    getSpeechOpacity(state.speechTimer),
+  );
 
   // Bezel ring
   ctx.strokeStyle = "rgba(255,255,255,0.06)";
@@ -624,6 +634,8 @@ function updateSpeech(dt) {
 }
 
 function triggerAction(actionId) {
+  if (state.action) return;
+
   state.action = actionId;
   state.actionTime = 0;
   state.actionDuration = actionId === "sleep" ? 2.5 : 1.5;
@@ -661,6 +673,28 @@ function enableActionButtons(enabled) {
   document.querySelectorAll(".btn-action").forEach(b => b.disabled = !enabled);
 }
 
+function formatStage(stage) {
+  return stage.charAt(0).toUpperCase() + stage.slice(1);
+}
+
+function updateControlMeta() {
+  if (!controlMeta) return;
+
+  const creature = getCreature(state.creature);
+  controlMeta.textContent = `${creature.name} - ${formatStage(state.stage)}`;
+}
+
+function syncControlSheetForViewport() {
+  if (!controlSheet) return;
+  controlSheet.open = wideLayoutQuery.matches || forceControlsOpen;
+  updateControlSheetStateClass();
+}
+
+function updateControlSheetStateClass() {
+  if (!controlSheet) return;
+  document.documentElement.classList.toggle("controls-open", controlSheet.open);
+}
+
 function initControls() {
   // Creature select
   const creatureSel = document.getElementById("creature-select");
@@ -671,11 +705,14 @@ function initControls() {
     creatureSel.appendChild(opt);
   });
   creatureSel.value = state.creature;
-  creatureSel.addEventListener("change", () => { state.creature = creatureSel.value; });
+  creatureSel.addEventListener("change", () => {
+    state.creature = creatureSel.value;
+    updateControlMeta();
+  });
 
   // Resolution
   const resSel = document.getElementById("res-select");
-  resSel.addEventListener("change", () => resize(parseInt(resSel.value)));
+  resSel.addEventListener("change", () => resize(Number.parseInt(resSel.value, 10)));
 
   // 1:1 pixel toggle
   const pixelToggle = document.getElementById("pixel-toggle");
@@ -688,8 +725,7 @@ function initControls() {
   document.querySelectorAll('input[name="stage"]').forEach(radio => {
     radio.addEventListener("change", () => {
       state.stage = radio.value;
-      document.querySelectorAll(".radio-chip").forEach(c => c.classList.remove("selected"));
-      radio.closest(".radio-chip").classList.add("selected");
+      updateControlMeta();
     });
   });
 
@@ -697,7 +733,7 @@ function initControls() {
   const moodSlider = document.getElementById("mood-slider");
   const moodValue = document.getElementById("mood-value");
   moodSlider.addEventListener("input", () => {
-    state.mood = parseInt(moodSlider.value) / 100;
+    state.mood = Number.parseInt(moodSlider.value, 10) / 100;
     moodValue.textContent = moodSlider.value + "%";
   });
 
@@ -705,8 +741,8 @@ function initControls() {
   const speedSlider = document.getElementById("speed-slider");
   const speedValue = document.getElementById("speed-value");
   speedSlider.addEventListener("input", () => {
-    state.animSpeed = parseInt(speedSlider.value) / 100;
-    speedValue.textContent = state.animSpeed.toFixed(1) + "×";
+    state.animSpeed = Number.parseInt(speedSlider.value, 10) / 100;
+    speedValue.textContent = state.animSpeed.toFixed(1) + "x";
   });
 
   // Persona
@@ -720,6 +756,8 @@ function initControls() {
 
   // Speak
   document.getElementById("speak-btn").addEventListener("click", triggerSpeak);
+
+  updateControlMeta();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -728,4 +766,8 @@ function initControls() {
 
 resize(416);
 initControls();
+syncControlSheetForViewport();
+controlSheet?.addEventListener("toggle", updateControlSheetStateClass);
+wideLayoutQuery.addEventListener("change", syncControlSheetForViewport);
+window.addEventListener("resize", () => resize(RES));
 requestAnimationFrame(frame);

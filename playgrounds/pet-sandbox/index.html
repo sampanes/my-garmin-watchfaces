@@ -4,89 +4,93 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pet Sandbox</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="app">
-      <!-- ── Sidebar Controls ── -->
-      <aside class="sidebar">
-        <h1 class="logo">🐾 Pet Sandbox</h1>
-        <p class="subtitle">Garmin pet look &amp; feel lab</p>
-
-        <div class="control-group">
-          <label class="control-label" for="creature-select">Creature</label>
-          <select id="creature-select"></select>
-        </div>
-
-        <div class="control-group">
-          <label class="control-label">Life Stage</label>
-          <div class="radio-row">
-            <label class="radio-chip"><input type="radio" name="stage" value="baby" /><span>Baby</span></label>
-            <label class="radio-chip"><input type="radio" name="stage" value="child" /><span>Child</span></label>
-            <label class="radio-chip selected"><input type="radio" name="stage" value="adult" checked /><span>Adult</span></label>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label class="control-label" for="res-select">Resolution</label>
-          <select id="res-select">
-            <option value="416" selected>416 × 416 (FR265)</option>
-            <option value="390">390 × 390 (VA6)</option>
-            <option value="360">360 × 360 (FR265S)</option>
-          </select>
-        </div>
-
-        <div class="control-group">
-          <label class="radio-chip toggle-chip">
-            <input type="checkbox" id="pixel-toggle" />
-            <span>🔍 True 1:1 Pixels</span>
-          </label>
-          <span class="hint">Each canvas pixel = 1 screen pixel. Tiny but truthful.</span>
-        </div>
-
-        <div class="control-group">
-          <label class="control-label">Actions</label>
-          <div class="actions-grid">
-            <button class="btn btn-action" data-action="eat">🍗 Feed</button>
-            <button class="btn btn-action" data-action="play">🎾 Play</button>
-            <button class="btn btn-action" data-action="clean">✨ Clean</button>
-            <button class="btn btn-action" data-action="sleep">💤 Sleep</button>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label class="control-label" for="mood-slider">Mood <span id="mood-value" class="slider-value">70%</span></label>
-          <input type="range" id="mood-slider" min="0" max="100" value="70" />
-        </div>
-
-        <div class="control-group">
-          <label class="control-label" for="persona-select">Persona</label>
-          <div class="row-gap">
-            <select id="persona-select">
-              <option value="drill">🪖 Drill Sergeant</option>
-              <option value="hype">📣 Hype Cheerleader</option>
-              <option value="deadpan">😐 Deadpan</option>
-              <option value="zen">🧘 Zen Buddy</option>
-            </select>
-            <button class="btn btn-speak" id="speak-btn">Speak</button>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label class="control-label" for="speed-slider">Anim Speed <span id="speed-value" class="slider-value">1.0×</span></label>
-          <input type="range" id="speed-slider" min="20" max="300" value="100" />
-        </div>
-      </aside>
-
-      <!-- ── Watch Canvas ── -->
-      <section class="stage">
+      <section class="stage" aria-label="Watch preview">
         <div class="watch-frame">
           <canvas id="watch-canvas" width="416" height="416"></canvas>
         </div>
       </section>
+
+      <details class="control-sheet" id="control-sheet">
+        <summary class="controls-summary">
+          <span class="summary-title">Pet Sandbox</span>
+          <span class="summary-meta" id="control-meta">Ditto - Adult</span>
+        </summary>
+
+        <aside class="controls-content" aria-label="Pet sandbox controls">
+          <div class="control-heading">
+            <h1 class="logo">Pet Sandbox</h1>
+            <p class="subtitle">Garmin pet look &amp; feel lab</p>
+          </div>
+
+          <div class="control-group control-group--half">
+            <label class="control-label" for="creature-select">Creature</label>
+            <select id="creature-select"></select>
+          </div>
+
+          <div class="control-group control-group--half">
+            <label class="control-label">Life Stage</label>
+            <div class="radio-row">
+              <label class="radio-chip"><input type="radio" name="stage" value="baby" /><span>Baby</span></label>
+              <label class="radio-chip"><input type="radio" name="stage" value="child" /><span>Child</span></label>
+              <label class="radio-chip"><input type="radio" name="stage" value="adult" checked /><span>Adult</span></label>
+            </div>
+          </div>
+
+          <div class="control-group control-group--half">
+            <label class="control-label" for="res-select">Resolution</label>
+            <select id="res-select">
+              <option value="416" selected>416 x 416 (FR265)</option>
+              <option value="390">390 x 390 (VA6)</option>
+              <option value="360">360 x 360 (FR265S)</option>
+            </select>
+          </div>
+
+          <div class="control-group control-group--half">
+            <label class="radio-chip toggle-chip">
+              <input type="checkbox" id="pixel-toggle" />
+              <span>🔍 True 1:1 Pixels</span>
+            </label>
+            <span class="hint">Each canvas pixel = 1 screen pixel. Tiny but truthful.</span>
+          </div>
+
+          <div class="control-group control-group--wide">
+            <label class="control-label">Actions</label>
+            <div class="actions-grid">
+              <button class="btn btn-action" data-action="eat">🍗 Feed</button>
+              <button class="btn btn-action" data-action="play">🎾 Play</button>
+              <button class="btn btn-action" data-action="clean">✨ Clean</button>
+              <button class="btn btn-action" data-action="sleep">💤 Sleep</button>
+            </div>
+          </div>
+
+          <div class="control-group control-group--half">
+            <label class="control-label" for="mood-slider">Mood <span id="mood-value" class="slider-value">70%</span></label>
+            <input type="range" id="mood-slider" min="0" max="100" value="70" />
+          </div>
+
+          <div class="control-group control-group--half">
+            <label class="control-label" for="persona-select">Persona</label>
+            <div class="row-gap">
+              <select id="persona-select">
+                <option value="drill">Drill Sergeant</option>
+                <option value="hype">Hype Cheerleader</option>
+                <option value="deadpan">Deadpan</option>
+                <option value="zen">Zen Buddy</option>
+              </select>
+              <button class="btn btn-speak" id="speak-btn">Speak</button>
+            </div>
+          </div>
+
+          <div class="control-group control-group--wide">
+            <label class="control-label" for="speed-slider">Anim Speed <span id="speed-value" class="slider-value">1.0x</span></label>
+            <input type="range" id="speed-slider" min="20" max="300" value="100" />
+          </div>
+        </aside>
+      </details>
     </main>
     <script type="module" src="./main.js"></script>
   </body>
