@@ -22,8 +22,9 @@ not because the watch has many clickable controls.
 ## Non-negotiables
 
 - **No tiny touch targets.** Touch is optional convenience, not the interaction model.
-- **No required four-way swipe grammar.** Some Garmin devices map swipe/right-like
-  behavior to Back/Esc. Do not make right swipe a core game verb.
+- **No required four-way swipe grammar.** On touchscreen devices (including VA6), SWIPE_RIGHT
+  fires `KEY_ESC` at the OS level before your app sees it as a swipe event — it is not
+  available as a game verb. Do not make right swipe mean anything.
 - **Back is sacred.** Back means back/cancel/exit, always.
 - **One primary action.** Select/tap/Start means yes, start, continue, accept, or mark.
 - **Full-screen choices.** One visible card or action at a time.
@@ -256,8 +257,11 @@ whether the game is actually playable with one primary action.
 
 ## Open implementation questions
 
-- Exact VA6 Action Notch behavior on hardware.
-- Whether `onActionMenu()` or an action-view pattern is the best hook on VA6.
+- Exact VA6 Action Notch behavior on hardware. **MVP fallback:** do not depend on
+  `onActionMenu()` — make the action sheet reachable via `onSelect()` on a dedicated
+  card instead, so the app is fully playable even if the Action Notch doesn't fire.
+- Whether `onActionMenu()` or an action-view pattern is the best hook on VA6 (unverified
+  on real hardware — needs a device test).
 - How much raw swipe behavior survives after `BehaviorDelegate` consumes page/back actions.
 - The first three card types for MVP.
 - Whether the first buddy mode starts fully generic or asks for one coarse lens:

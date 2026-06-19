@@ -121,14 +121,23 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
 - [x] **Activity sensing — live vs after-the-fact RESOLVED.** Only one app is foreground, so
       the pet **can't ride along during Garmin's *native* Run/Walk** (and no live IPC between
       them). Mat reps run **live** in the pet's own session (`04`); walks/runs feed it **after
-      the fact** via the `Complications` STEPS subscription + `ActivityMonitor` aggregates (no
-      route). A live "Run with pet" GPS mode is possible **only if the pet itself records**
-      (`Position`/`ActivityRecording`, saves to Garmin Connect) — a later *earned power*, not
-      MVP. → `01-solo-game.md §"Live (mat reps) vs after-the-fact"`.
+      the fact** via `ActivityMonitor.getInfo()` — the OS pedometer ledger, always accumulating
+      regardless of which app is foreground, guaranteed. Note: this is a **daily aggregate with
+      no per-step timestamps** — you know total steps today, not *when* they happened. ("Complications
+      STEPS" is watch-face language; device apps call `ActivityMonitor` directly.) A live "Run with
+      pet" GPS mode is possible **only if the pet itself records** (`Position`/`ActivityRecording`,
+      saves to Garmin Connect) — a later *earned power*, not MVP. → `01-solo-game.md §"Live (mat
+      reps) vs after-the-fact"`.
 - [x] **Watch interaction model: LOCKED behavior-first.** The app is not a tiny touchscreen
       menu. Baseline UX is one primary action + Back + page navigation, implemented through
       `WatchUi.BehaviorDelegate`; full-screen cards/action sheets only; no required four-way
       swipe grammar. → `08-watch-interaction-model.md`.
+- [x] **VA6 input model — confirmed.** VA6 has 2 physical buttons (action/select + back) plus
+      a touchscreen. Swipe up/down = safe page nav. **SWIPE_RIGHT fires KEY_ESC at the OS level**
+      before your app sees it as a swipe — it is unavailable as a game verb. Tap works on large
+      targets only. `onActionMenu()` / Action Notch behavior on VA6 hardware is **still unverified**;
+      MVP fallback: make the action sheet reachable via `onSelect()` on the right card rather than
+      depending on it. → `08-watch-interaction-model.md §Open implementation questions`.
 - [ ] **Sensor tie-ins:** which to ship first (recommend steps→food as the proof).
 - [ ] **Device priority:** target FR265 + VA6 day one, or FR265 first then port?
 - [ ] **Monetization:** hobby/free vs anything paid (affects store + ops appetite).

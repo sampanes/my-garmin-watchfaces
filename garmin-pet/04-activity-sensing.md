@@ -152,9 +152,15 @@ finicky (miscounts, makes you confirm weight). The pet doesn't need clinical acc
 - **Foreground only.** 25 Hz accel is CPU- and memory-heavy (the repo doc literally
   says "massive amount of CPU and memory"). Run it only during an open "workout buddy"
   session; process samples immediately, don't hoard them (watch the VA6 256–512 KB heap).
-- **No all-day passive detection.** If you want "I did push-ups earlier, pet noticed,"
-  the only honest source is Garmin's *own* recorded activity history after the
+- **No all-day passive detection for strength moves.** If you want "I did push-ups earlier,
+  pet noticed," the only honest source is Garmin's *own* recorded activity history after the
   fact — and CIQ won't hand you "you did push-ups" as a labeled event. Set expectations.
+- **Walks/steps ARE passively accumulated.** `ActivityMonitor.getInfo()` reads the OS pedometer
+  ledger — always running, guaranteed, regardless of which app is foreground. Call it on open
+  and the daily step total is there. Caveat: daily aggregate only, **no per-step timestamps**
+  (you know *how many* steps today, not *when* they happened). This is the after-the-fact
+  walk/run path for the pet; it's free and reliable. ("Complications STEPS" is watch-face
+  terminology for the same underlying data source — device apps call `ActivityMonitor` directly.)
 - **Tuning per move + per device** (FR265 vs VA6 wrist accel differ). Calibrate.
 
 ## MVP for this capability
