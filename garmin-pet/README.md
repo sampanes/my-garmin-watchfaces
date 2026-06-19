@@ -32,6 +32,10 @@ skill-tree *or* an ownerless treadmill). Underpins both Track 1 and Track 2.
 
 What's now confirmed vs still open: [open-questions.md](open-questions.md).
 
+**Watch UX spine:** [08-watch-interaction-model.md](08-watch-interaction-model.md) —
+the behavior-first, one-primary-action control model. This is the current answer to
+"what can the user do on the watch?" and it supersedes older touch-first thinking.
+
 ## Build stance (2026-06-16 sanity pass)
 
 The watch-native core is the product: **Track 1 + the activity buddy**. Build the
@@ -60,7 +64,9 @@ not bodies, worth, or identity.
 
 **Design implications:**
 - **Three resolutions** (416 / 360 / 390) → relative/scaled layouts, per-device resource sets. See `common/workflow/MULTI_DEVICE_STRATEGY.md` (jungle `resourcePath` + scale factor, or the JSON "configurator" layout pattern).
-- **Two input profiles** → touch-first; never *require* 5 buttons (VA6 has 2 + Action Notch).
+- **Two input profiles** → behavior-first; never *require* 5 buttons or tiny touch targets.
+  Design for one primary action + Back + page navigation, with FR265's extra buttons as
+  accelerators. See `08-watch-interaction-model.md`.
 - **No barometer on VA6** → gate barometric/altitude features with `has`.
 
 ## Memory budget (the real design constraint) — from SPEC docs

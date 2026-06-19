@@ -16,7 +16,10 @@ foundation; build it fully standalone before any networking. The watch angle
 
 ## Core loop
 
-Needs decay over real time; the player tops them back up.
+Needs decay over real time; the player tops them back up. The care loop exists, but it
+must not become a tiny-button chore board. On-watch interaction follows
+`08-watch-interaction-model.md`: one primary action, full-screen cards, and behavior
+events before raw touch.
 
 - **Stats:** hunger, happiness/affection, energy/sleep, hygiene, health.
 - **Actions:** feed, play, clean, pet, put to sleep, medicine.
@@ -122,8 +125,11 @@ storage caps — verify). Shape sketch:
   See `common/memory/MEM_PART1..3` and `common/graphics/DC_PART3_RESOURCES_AND_PERFORMANCE.md`.
 - **Three resolutions:** FR265 416×416, FR265S 360×360, VA6 390×390 → relative/scaled
   layouts + per-device resource sets. Strategy: `common/workflow/MULTI_DEVICE_STRATEGY.md`.
-- **Two input profiles:** touch-first (tap zones for actions); VA6 has only **2 buttons
-  + an Action Notch**, so never require 5. Button mappings are fallback, not primary.
+- **Input stance:** behavior-first, not touch-first. Use `WatchUi.BehaviorDelegate` for
+  Select / Back / NextPage / PreviousPage / ActionMenu. Select is the one primary action;
+  Back is sacred; up/down pages through big cards; any touch target must be whole-screen
+  or large-row. VA6 has only **2 buttons + an Action Notch**, so never require 5 buttons
+  or four distinct swipe directions. Full model: `08-watch-interaction-model.md`.
 - **Power / AMOLED:** foreground animation drains AMOLED; keep sessions short, throttle
   redraws, idle when no interaction. Burn-in guidance: `common/architecture/AMOLED_BURN_IN.md`,
   `APP_LIFECYCLE_AND_POWER.md`.

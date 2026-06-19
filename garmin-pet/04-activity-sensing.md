@@ -13,10 +13,11 @@ There are three levels, and only the middle one is both realistic and pleasant:
 | Feasible? | ❌ Not really | ✅ Yes | ✅ Yes (but tedious) |
 | Why | CIQ can't stream high-freq accel **in the background / all day** — battery + the 32 KB background heap kill it. Passive all-day movement classification isn't exposed to apps. | App is open in a "workout buddy" mode → reads 25 Hz accel → counts reps live. You only tell it *which* exercise (one tap); it counts the *reps* for you. | Watch text/number entry is miserable; defeats the point. |
 
-So the design target is **Level 2**: you tap "Push-ups" (or the pet asks "what are we
-doing?"), and from then on the watch **counts reps automatically** off the
-accelerometer. That directly fixes your complaint — the native Strength activity makes
-you fight the UI; here the only input is picking the move.
+So the design target is **Level 2**: one primary action starts a foreground buddy session
+(or, if needed, a single full-screen card picks "Push-ups" / "Squats" / "Generic"), and
+from then on the watch **counts reps automatically** off the accelerometer. That directly
+fixes your complaint — the native Strength activity makes you fight the UI; here the only
+input is a single coarse commitment. The control grammar lives in `08-watch-interaction-model.md`.
 
 ## The dream UX: "press GO, he figures it out" (and roasts you)
 
@@ -98,8 +99,8 @@ routine (`02`). Full split + quadrant: `05`.
 - The "asshole friend" is **canned dialogue with attitude**, keyed by
   `(exercise-guess × confidence × performance × streak × time-of-day)`. Cheap, watch-native,
   on-brand with the locked canned-messaging model (`02`).
-- **He doesn't care what you're about to do** — no menu, no setup screen. Press → "sup, let's
-  go" → he reacts to whatever happens. *The absence of a setup screen IS the personality.*
+- **He doesn't care what you're about to do** — no tiny menu, no setup maze. Press → "sup,
+  let's go" → he reacts to whatever happens. *The absence of a setup screen IS the personality.*
 - Tone scales with the relationship/streak: more roast when you slack, grudging respect when
   you deliver. **The lines above are the *Drill Sergeant* voice specifically** — temperament is
   now a **permanent identity trait** (asshole vs cheerleader vs deadpan vs zen), so every persona

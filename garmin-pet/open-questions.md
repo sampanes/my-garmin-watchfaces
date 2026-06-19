@@ -125,6 +125,10 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
       route). A live "Run with pet" GPS mode is possible **only if the pet itself records**
       (`Position`/`ActivityRecording`, saves to Garmin Connect) — a later *earned power*, not
       MVP. → `01-solo-game.md §"Live (mat reps) vs after-the-fact"`.
+- [x] **Watch interaction model: LOCKED behavior-first.** The app is not a tiny touchscreen
+      menu. Baseline UX is one primary action + Back + page navigation, implemented through
+      `WatchUi.BehaviorDelegate`; full-screen cards/action sheets only; no required four-way
+      swipe grammar. → `08-watch-interaction-model.md`.
 - [ ] **Sensor tie-ins:** which to ship first (recommend steps→food as the proof).
 - [ ] **Device priority:** target FR265 + VA6 day one, or FR265 first then port?
 - [ ] **Monetization:** hobby/free vs anything paid (affects store + ops appetite).
