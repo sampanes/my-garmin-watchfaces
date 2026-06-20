@@ -11,7 +11,22 @@
       <section class="stage" aria-label="Watch preview">
         <div class="watch-frame">
           <canvas id="watch-canvas" width="416" height="416"></canvas>
+
+          <!-- Behavior-first interaction overlay (see garmin-pet/08-watch-interaction-model.md) -->
+          <div class="screen" id="screen" aria-live="polite">
+            <p class="screen-top" id="screen-top"></p>
+            <div class="screen-card" id="screen-card"></div>
+            <div class="screen-dots" id="screen-dots"></div>
+          </div>
+
+          <!-- The one physical button, floating on screen -->
+          <button type="button" class="press-btn" id="press-btn"
+                  aria-label="Primary action — tap to select, hold for menu">
+            <span class="press-label" id="press-label">Start</span>
+          </button>
         </div>
+
+        <p class="gesture-hint" id="gesture-hint">swipe ↑ ↓ pages · → back · tap ● select · hold ● menu</p>
       </section>
 
       <details class="control-sheet" id="control-sheet">

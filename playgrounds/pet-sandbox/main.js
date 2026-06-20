@@ -1,4 +1,5 @@
 import { getCreature, getCreatureNames } from "./creatures.js";
+import { initInteraction } from "./interaction.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CANVAS SETUP
@@ -62,6 +63,8 @@ const state = {
   petTargetX: 0,
   wanderTimer: 3,
   isWalking: false,
+  // interaction
+  buddyActive: false, // foreground buddy session running (see interaction.js)
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -599,11 +602,15 @@ function updateBlink(dt) {
 function updateWander(dt) {
   if (state.action) return; // don't wander during actions
 
-  state.wanderTimer -= dt;
-  if (state.wanderTimer <= 0) {
-    state.petTargetX = (Math.random() - 0.5) * 1.5;
-    state.wanderTimer = 3 + Math.random() * 5;
-    state.isWalking = true;
+  if (state.buddyActive) {
+    state.petTargetX = 0; // stay centered and "work" during a buddy session
+  } else {
+    state.wanderTimer -= dt;
+    if (state.wanderTimer <= 0) {
+      state.petTargetX = (Math.random() - 0.5) * 1.5;
+      state.wanderTimer = 3 + Math.random() * 5;
+      state.isWalking = true;
+    }
   }
 
   const dx = state.petTargetX - state.petX;
@@ -770,4 +777,14 @@ syncControlSheetForViewport();
 controlSheet?.addEventListener("toggle", updateControlSheetStateClass);
 wideLayoutQuery.addEventListener("change", syncControlSheetForViewport);
 window.addEventListener("resize", () => resize(RES));
+
+// Behavior-first interaction layer (swipe + one floating button). See interaction.js.
+initInteraction({
+  state,
+  persona: () => state.persona,
+  say: (text) => { state.speechText = text; state.speechTimer = 3; },
+  triggerCare: (id) => triggerAction(id),
+  setBuddyActive: (on) => { state.buddyActive = on; },
+});
+
 requestAnimationFrame(frame);

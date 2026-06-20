@@ -69,6 +69,12 @@ select {
     0 0 0 6px #121618,
     0 18px 40px rgba(0, 0, 0, 0.36);
   line-height: 0;
+  touch-action: none;        /* swipes drive the pet, not the page */
+  container-type: size;      /* overlay text scales with the watch (cqmin) */
+}
+
+.stage {
+  position: relative;
 }
 
 canvas {
@@ -469,3 +475,205 @@ input[type="range"]::-moz-range-thumb {
     width: min(var(--watch-size), calc(100vw - 444px), calc(100dvh - 80px));
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   INTERACTION OVERLAY — behavior-first screen + one floating button
+   See garmin-pet/08-watch-interaction-model.md
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: center;
+  justify-items: center;
+  padding: 13% 14% 11%;       /* keep content inside the round display */
+  border-radius: 50%;
+  text-align: center;
+  pointer-events: none;        /* swipes fall through to .watch-frame */
+  line-height: 1.3;
+}
+
+.screen-top {
+  margin: 0;
+  align-self: start;
+  color: var(--text-dim);
+  font-size: 3.6cqmin;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.screen-card {
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+
+.card-panel {
+  max-width: 100%;
+  padding: 5cqmin 6cqmin;
+  border: 1px solid rgba(107, 214, 180, 0.22);
+  border-radius: 4cqmin;
+  background: rgba(9, 11, 16, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.card-panel h2 {
+  margin: 0 0 2cqmin;
+  font-size: 6.4cqmin;
+  font-weight: 800;
+}
+
+.card-panel p {
+  margin: 0;
+  color: var(--text);
+  font-size: 4.4cqmin;
+}
+
+.card-panel.reward {
+  border-color: rgba(240, 200, 80, 0.4);
+}
+
+.card-skip {
+  display: block;
+  margin-top: 3cqmin;
+  color: var(--text-dim);
+  font-size: 3.2cqmin;
+  font-weight: 600;
+}
+
+/* Buddy Mode readout (relative-effort demo) */
+.hr {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1.5cqmin;
+  font-size: 5.6cqmin;
+  font-weight: 800;
+  color: var(--text-dim);
+}
+
+.hr--up { color: #f0a050; }
+
+.hr-delta {
+  font-size: 3.4cqmin;
+  font-weight: 700;
+}
+
+.buddy-readout {
+  display: grid;
+  gap: 3cqmin;
+  width: 100%;
+}
+
+.effort-bar {
+  height: 4cqmin;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.effort-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  transition: width 0.2s ease;
+}
+
+.buddy-stats {
+  color: var(--text-dim);
+  font-size: 3.8cqmin;
+}
+
+.buddy-stats b { color: var(--text); }
+
+/* Action sheet */
+.sheet {
+  display: grid;
+  gap: 2cqmin;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet li {
+  padding: 3cqmin;
+  border: 1px solid var(--border);
+  border-radius: 3cqmin;
+  background: rgba(9, 11, 16, 0.66);
+  font-size: 4.2cqmin;
+  font-weight: 700;
+}
+
+.sheet li.is-sel {
+  border-color: var(--accent);
+  background: var(--accent-2);
+  color: #fff;
+}
+
+/* Page dots */
+.screen-dots {
+  display: flex;
+  gap: 2cqmin;
+  align-self: end;
+}
+
+.dot {
+  width: 2cqmin;
+  height: 2cqmin;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.dot.is-active {
+  background: var(--accent);
+}
+
+/* The one floating "physical" button */
+.press-btn {
+  position: absolute;
+  right: 7%;
+  bottom: 8%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: clamp(48px, 18cqmin, 80px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--accent), var(--accent-2));
+  color: #04140f;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.press-btn:active { transform: translateY(1px) scale(0.97); }
+.press-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(107, 214, 180, 0.35); }
+
+.press-label {
+  padding: 0 4px;
+  font-size: clamp(0.6rem, 3.4cqmin, 0.84rem);
+  font-weight: 800;
+  line-height: 1.05;
+  text-align: center;
+}
+
+/* Fading one-time gesture hint, below the watch */
+.gesture-hint {
+  position: absolute;
+  bottom: 6px;
+  margin: 0;
+  padding: 4px 10px;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  text-align: center;
+  opacity: 0.7;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+
+.gesture-hint.is-fading { opacity: 0; }
