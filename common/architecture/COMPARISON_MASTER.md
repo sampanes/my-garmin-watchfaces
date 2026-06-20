@@ -9,12 +9,17 @@ This document breaks down the technical hierarchy between your two target device
 ## 1. Head-to-Head: FR265 vs. VA6
 | Feature | Forerunner 265 | Vivoactive 6 | Winner/Winner Reason |
 | :--- | :--- | :--- | :--- |
-| **Heap (Watchface)** | 128 KB | 124 KB | **FR265** (Slight edge for assets) |
+| **Heap (Watchface)** | 128 KB | 128 KB | **Tie** (identical per SDK 9.1.0 `compiler.json`) |
 | **GPS Precision** | Multi-Band (L1+L5) | Multi-GNSS (L1) | **FR265** (Superior for city/forest) |
 | **Altitude** | Barometric | GPS-Derived | **FR265** (Baro is 10x more accurate) |
 | **Input** | 5 Buttons + Touch | 2 Buttons + Touch | **FR265** (Better for sweaty hands) |
 | **Brightness** | ~1000 nits | **~1500 nits** | **VA6** (Better in direct sun) |
 | **CIQ System** | System 7 | **System 8** | **VA6** (Supports newer UI APIs) |
+
+> **Heap note (verified 2026-06-20 from the installed SDK `compiler.json`, 9.1.0):** watch-face
+> heap is **128 KB on both** devices — the earlier "124 KB VA6 / FR265 edge" was wrong. And for
+> *device apps* (not watch faces) both are **768 KB** (background 64 KB, glance 64 KB), so there
+> is no FR265 memory advantage for app-type targets either. See `garmin-pet/open-questions.md §B2`.
 
 ---
 
