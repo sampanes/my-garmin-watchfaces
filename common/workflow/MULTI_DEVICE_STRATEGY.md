@@ -2,7 +2,7 @@
 
 # Workflow: Multi-Device Strategy (The "Jungle" Way)
 
-You have a **Forerunner 265** (416px, 5-button) and your wife has a **Vivoactive 6** (390px, 2-button). Managing one codebase for both is an engineering challenge.
+The two targets are a **Forerunner 265** (416px, 5-button) and a **Vivoactive 6** (390px, 2-button). Managing one codebase for both is an engineering challenge.
 
 ---
 
@@ -14,7 +14,7 @@ The Jungle file is the "Makefile" of the Garmin world. Use it to swap resources 
 base.sourcePath = source
 base.resourcePath = resources
 
-# Special resources for the wife's VA6
+# Special resources for the VA6
 vivoactive6.resourcePath = $(base.resourcePath);resources-va6
 vivoactive6.excludeAnnotations = Buttons;Barometer
 
@@ -57,7 +57,7 @@ var scale = dc.getWidth() / 416.0; // Scale factor relative to FR265
 Instead of two different layouts, use a **JSON-based layout engine**.
 1. Load a JSON file from `resources/` that defines where the Time, Heart Rate, and Steps should go.
 2. Provide a different JSON for the VA6 vs. FR265.
-3. This allows you to "re-skin" the watchface for your wife without touching a single line of Monkey C code.
+3. This allows you to "re-skin" the watchface for the VA6 without touching a single line of Monkey C code.
 
 ---
 

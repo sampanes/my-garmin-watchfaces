@@ -1,7 +1,6 @@
 [Home](MASTER_MAP.md) | [Overview](BIRDSEYE_VIEW.md)
 
-You have bought your wife a VivoActive 6
- and yourself a Forerunner 265, I will notate this and keep it as a priority pair of watch-types for future documentation.
+The target pair is a VivoActive 6 and a Forerunner 265; I will notate this and keep it as a priority pair of watch-types for future documentation.
 
 Since you are an embedded engineer, I will skip the fluff. You want to use Monkey C (Garmin’s OO language, ref-counted, compiles to bytecode for a VM) and the Connect IQ SDK. [1] 
 Here is the engineering fast-track to building and sideloading your own watch faces.
@@ -9,7 +8,7 @@ Here is the engineering fast-track to building and sideloading your own watch fa
 Garmin deprecated the Eclipse plugin. The standard environment is now:
 
 * VS Code + Monkey C Extension (Official Garmin).
-* Connect IQ SDK Manager: Use this to download the toolchain and specific device definitions (download the specific models you and your wife own).
+* Connect IQ SDK Manager: Use this to download the toolchain and specific device definitions (download the specific models you target).
 * Developer Key: Required to sign binaries (.prg). Generate this via the VS Code extension command palette: Monkey C: Generate Developer Key. [1, 2, 3, 4] 
 
 2. The Runtime Architecture
@@ -29,7 +28,7 @@ A watch face is a strictly power-constrained app. You subclass WatchUi.WatchFace
 * MIP (Fenix/Forerunner): straightforward bit-mapped reflex display.
    * AMOLED (Venu/Epix): You must implement burn-in protection. In "Always On" mode, you cannot light up more than ~10% of pixels, and you must shift static elements periodically. The SDK provides flags to detect this mode.
 * Jungles (.jungle):
-* This is the build configuration system (like a Makefile). Since you and your wife likely have different watches (different resolutions/shapes), you use Jungles to map different resource paths (layouts, fonts) to specific device compiler targets. [5] 
+* This is the build configuration system (like a Makefile). Since the two target watches have different resolutions/shapes, you use Jungles to map different resource paths (layouts, fonts) to specific device compiler targets. [5] 
 
 4. "Hello World" to Wrist (Sideloading)
 You do not need to publish to the store to run code on your own devices.

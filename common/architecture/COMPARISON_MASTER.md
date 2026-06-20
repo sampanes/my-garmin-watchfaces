@@ -55,4 +55,4 @@ This document breaks down the technical hierarchy between your two target device
 
 ## 4. [Gemini] Final Architectural Verdict
 - **For your FR265**: Build a **High-Density Data Face**. You have the memory and the barometric sensor to show altitude trends and complex running metrics.
-- **For your Wife's VA6**: Build a **Clean, High-Aesthetic Face**. Utilize the 1,500-nit screen for vibrant colors, but use the **System 8 Complications** to keep the logic light and the battery drain low.
+- **For the VA6**: Build a **Clean, High-Aesthetic Face**. Utilize the 1,500-nit screen for vibrant colors, but use the **System 8 Complications** to keep the logic light and the battery drain low.

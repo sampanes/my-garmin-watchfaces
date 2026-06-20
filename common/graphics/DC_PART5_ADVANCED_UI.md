@@ -30,7 +30,7 @@ function drawRotatingHand(dc, bitmap, angle) {
 ## 2. Scalable Vector UI (`drawPath`)
 Instead of pixel-perfect bitmaps, you can now define your UI as a series of coordinates (similar to SVG paths).
 - **The Function**: `dc.drawPath(points)`.
-- **The Advantage**: One "Path" definition works perfectly on both your wife's 390px VA6 and your 416px FR265. No more resizing bitmaps!
+- **The Advantage**: One "Path" definition works perfectly on both the 390px VA6 and the 416px FR265. No more resizing bitmaps!
 - **[Gemini] Idea**: Create "Morphing" UI elements. By mathematically interpolating the coordinates of a path, you can make a square icon smoothly transform into a circle or a heart based on the user's heart rate.
 
 ---

@@ -5,7 +5,7 @@
 evolution.** It's implemented as a **"voice pack"** — a table of canned lines + a few
 behavior weights — so it's nearly free to add and tiny on the wire.
 
-> Origin (2026-06-15): "make personality a lock-in trait too... my wife might prefer a very
+> Origin (2026-06-15): "make personality a lock-in trait too... another user might prefer a very
 > cute supportive sycophant, unlike me." Two people, two opposite coaches, **one app**.
 
 ## Why permanent (and why this is the right call)
@@ -60,7 +60,7 @@ it doesn't repeat. **Adding or swapping a persona = swap the line table**, not n
 - **Memory-friendly** — persona is dialogue + weights, *not* new sprites; the same art serves
   every temperament.
 - **Tiny on the wire** — `state.id.persona` is one int; a visiting friend sees/hears *your*
-  pet's persona (your wife visiting your jerk-pet = built-in comedy).
+  pet's persona (a friend visiting your jerk-pet = built-in comedy).
 
 ## Sample lines (original; same events, four voices)
 
