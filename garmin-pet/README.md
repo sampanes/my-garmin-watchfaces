@@ -91,8 +91,11 @@ Read directly from `compiler.json` in the active **SDK 9.1.0** (`Devices/fr265/`
 > (uniform **768 KB device-app / 64 KB background** across FR265 / 265S / VA6) was
 > **correct**; the prior SPEC-doc figures here (1 MB FR265 / 256–512 KB VA6 / 32 KB bg)
 > were **wrong** and have been replaced with the values read from the installed SDK.
-> Note: this is the **heap** budget only — it does *not* settle the per-app **Storage
-> (disk) total**, which stays open. See `open-questions.md §B2`.
+> Note: this is the **heap** budget. Persistent **Storage (disk)** is separate and now also
+> settled — `simulator.json` reports `appStorageCapacity` = **10 MB on both** devices (total
+> app-data). The only tight Storage limit is **32 KB per `Storage` value** (`StorageFullException`
+> past it), so save-state headroom is effectively a non-issue — design to the 768 KB *runtime
+> heap*, not disk. See `open-questions.md §B2`.
 
 ## SDK / API target — from SPEC docs + installed SDK
 

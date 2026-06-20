@@ -44,10 +44,12 @@ which trails your unpushed local — re-confirm against the local repo.
 Confidence tags: **[OFFICIAL]** = developer.garmin.com API docs; **[SEMI]** = named Garmin
 staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
 
-- [x] **Storage size** — **32 KB per value [OFFICIAL]** (`Storage.setValue` throws
-      `StorageFullException` past it). Per-app **total** "varies by device" (official) but
-      no number published; **~100–128 KB total [FOLKLORE]**. → use Storage for anything
-      beyond tiny settings.
+- [x] **Storage size — total now pinned from the installed SDK.** **32 KB per value [OFFICIAL]**
+      (`Storage.setValue` throws `StorageFullException` past it). Per-app **total** was "varies by
+      device" with no published number (folklore guessed ~100–128 KB) — but the installed SDK device
+      profiles settle it: `simulator.json` reports **`appStorageCapacity` = 10485760 = 10 MB on BOTH
+      FR265 and VA6** (see §B2). Folklore was an order of magnitude low. → Storage *total* is a
+      non-issue for this app; the real limits are the 32 KB-per-value cap and the 768 KB runtime heap.
 - [x] **Properties size** — **~8 KB total [SEMI]** (Travis Vitek), and the whole dict is
       **RAM-resident the entire session** (loaded at app start), unlike Storage which is
       lazy-loaded from disk [SEMI, Brian.ConnectIQ]. → prefer **Storage**, not Properties,
@@ -97,11 +99,19 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
       768 KB, and background sync gets **64 KB** not 32 KB. Also confirmed from `compiler.json`:
       **VA6 min CIQ = 6.0.0**, FR265 = 5.2.0. ⚠️ This is the **heap** budget only — it does *not*
       settle the per-app **Storage (disk)** total (next item).
-- [ ] **Per-device Storage total** — exact persistent-Storage byte cap for FR265 / VA6 (only
-      "varies by device" is official; `compiler.json` covers heap, not the Object Store). Still open.
+- [x] **Per-device Storage total — RESOLVED (2026-06-20, from installed SDK).** `simulator.json`
+      for both `fr265` and `vivoactive6` declares **`appStorageCapacity` = 10485760 bytes = 10 MB** —
+      the simulator's emulated total app-data storage, identical on both. Caveats: it's the
+      **simulator** profile value (best authoritative proxy short of an on-device write test), and it's
+      the *total* app-data budget — separate from the **32 KB-per-`Storage`-value** cap (still applies)
+      and the 768 KB runtime heap. Net: persistent save-state has ~10 MB of headroom; the step timeline,
+      HR baseline buckets, etc. cost kilobytes against that. Verify on real hardware only if you ever
+      approach it (you won't).
 - [x] **In-app purchase — moot.** Project is personal / free / sideload (see §C Monetization); no
       IAP path needed. (For the record: CIQ true IAP beyond paid-upfront remains unconfirmed.)
-- [ ] **Re-confirm against local unpushed repo** (see Reconcile TODO below).
+- [~] **Re-confirm against local repo** — specs/SDK half **done** (read directly from the installed
+      SDK 9.1.0 on this PC: heap, background, glance, storage all corrected). Code-salvage half still
+      pending (see Reconcile TODO below).
 
 ## C. Product decisions
 
@@ -153,6 +163,10 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
 
 ## Reconcile-with-real-code TODO
 - [x] First pass done vs the **cloned GitHub remote** (this folder's parent repo).
-- [ ] Re-reconcile against the **local unpushed** `my-garmin-watchfaces` on your
-      personal PC — confirm specs/SDK haven't moved, and salvage any sprite/animation
-      or layout-helper code worth reusing.
+- [x] **Specs/SDK reconfirmed (2026-06-20) directly from the installed SDK 9.1.0 on this PC** —
+      `compiler.json` (heap 768 KB / bg 64 KB / glance 64 KB / watchface 128 KB, both devices;
+      VA6 min CIQ 6.0.0) and `simulator.json` (`appStorageCapacity` 10 MB). README + §A/§B/§B2
+      corrected. No surprises remain on the platform-numbers side.
+- [ ] **Code salvage** — still pending: pull any reusable sprite/animation or layout-helper code
+      from the existing `watch-faces/` work (e.g. the japanese-ink scene) into the pet app when it
+      starts. Not blocking design.
