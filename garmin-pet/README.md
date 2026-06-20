@@ -54,7 +54,7 @@ Tone guardrail: ship personas as **Drill Sergeant / Hype Cheerleader / Deadpan /
 "Asshole coach" is useful internal shorthand, but product copy should roast effort gaps,
 not bodies, worth, or identity.
 
-## Target hardware (yours + wife's) — confirmed from repo SPEC docs
+## Target hardware (two devices) — confirmed from repo SPEC docs
 
 | Device | Display | Shape | Input | Notes |
 |--------|---------|-------|-------|-------|
@@ -69,33 +69,38 @@ not bodies, worth, or identity.
   accelerators. See `08-watch-interaction-model.md`.
 - **No barometer on VA6** → gate barometric/altitude features with `has`.
 
-## Memory budget (the real design constraint) — from SPEC docs
+## Memory budget (the real design constraint) — from installed SDK `compiler.json`
+
+Read directly from `compiler.json` in the active **SDK 9.1.0** (`Devices/fr265/` and
+`Devices/vivoactive6/`). The two targets are **identical**:
 
 | Heap tier | FR265 / 265S | Vivoactive 6 |
 |-----------|--------------|--------------|
-| **Device app / widget** (our type) | **1024 KB (1 MB)** | **256–512 KB** (varies by firmware) |
-| Background process | **32 KB** | **32 KB** |
-| Glance | — | 64 KB |
-| Watch face (not our type) | 128 KB | ~124 KB |
+| **Device app / `watchApp`** (our type) | **768 KB** | **768 KB** |
+| Background process | **64 KB** | **64 KB** |
+| Glance | 64 KB | 64 KB |
+| Data field | 256 KB | 256 KB |
+| Watch face (not our type) | 128 KB | 128 KB |
 
-> **Design to the VA6 ceiling (256–512 KB), not FR265's 1 MB** — VA6 is the tighter
-> target. And **background sync gets only 32 KB everywhere**: the JSON parser can
-> crash on a large response, so social payloads must be tiny. Memory deep-dive:
-> `common/memory/MEM_PART1..3`.
+> **Design both watches to 768 KB.** There is no tighter VA6 ceiling — the old
+> "256–512 KB VA6" figure was wrong. **Background sync gets 64 KB** (not 32 KB), which
+> roughly doubles the social-payload headroom, though the JSON parser can still crash on
+> a large response so keep payloads tiny. Memory deep-dive: `common/memory/MEM_PART1..3`.
 >
-> ⚠️ **CONFLICT to resolve (flagged 2026-06-15, web research).** Community reads of
-> Garmin's own `compiler.json` report a **uniform 768 KB device-app heap and 64 KB
-> background across all three** (FR265 / 265S / VA6) — contradicting the table above
-> (which came from this repo's SPEC docs). The web source is **second-hand**, so the
-> table is left as-is pending **a direct check of `compiler.json` in your installed SDK**.
-> If 768 KB is right, the tightest constraint loosens a lot — design conservatively to
-> ~256 KB until confirmed. (Background sync being 64 KB rather than 32 KB would also ease
-> social-payload limits.) See `open-questions.md §B2`.
+> ✅ **CONFLICT RESOLVED (2026-06-19).** The community read of Garmin's `compiler.json`
+> (uniform **768 KB device-app / 64 KB background** across FR265 / 265S / VA6) was
+> **correct**; the prior SPEC-doc figures here (1 MB FR265 / 256–512 KB VA6 / 32 KB bg)
+> were **wrong** and have been replaced with the values read from the installed SDK.
+> Note: this is the **heap** budget only — it does *not* settle the per-app **Storage
+> (disk) total**, which stays open. See `open-questions.md §B2`.
 
-## SDK / API target — from SPEC docs
+## SDK / API target — from SPEC docs + installed SDK
 
-- **Common API floor: 5.2** (VA6 needs API ≥ 5.2.0 / System 8; FR265 is API ≥ 5.0.0 / System 7).
-- **Build with Connect IQ SDK 8.1.1** (VA6's minimum) and **gate System-8-only features with the `has` operator** so FR265 still builds/runs.
+- **Device API floors (from `compiler.json`):** FR265 min CIQ **5.2.0**, VA6 min CIQ **6.0.0**.
+  A single binary targeting both must not call APIs above what either device's firmware provides
+  — **gate newer/System-8-only features with the `has` operator** so FR265 still builds/runs.
+- **Active installed SDK: 9.1.0** (2026-03-09); 8.1.1 also installed. (Earlier notes said "build
+  with 8.1.1" — superseded.)
 
 ## Connectivity model (shapes every social idea)
 

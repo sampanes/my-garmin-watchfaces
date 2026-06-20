@@ -88,14 +88,19 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
 
 ## B2. Genuinely still open ⏳
 
-- [ ] **Memory budgets — RESOLVE THE CONFLICT.** Community `compiler.json` reads report **768 KB
-      device-app / 64 KB background, identical across FR265/265S/VA6** — contradicting the SPEC-doc
-      figures in README (1 MB / 256–512 KB / 32 KB bg). Source is second-hand. **Check
-      `compiler.json` in the installed SDK on your personal PC** to settle it; it loosens the
-      tightest design constraint if true. (Also: VA6 may be **API 6.0**, not 5.2 — doesn't move
-      the build floor, which stays FR265's 5.2.)
-- [ ] **Per-device Storage total** — exact cap for FR265 / VA6 (only "varies by device" is official).
-- [ ] **In-app purchase** — does CIQ support true IAP/consumables beyond paid-upfront? (unconfirmed)
+- [x] **Memory budgets — CONFLICT RESOLVED (2026-06-19, read from the installed SDK).**
+      `compiler.json` in the active **SDK 9.1.0** (`Devices/fr265/` and `Devices/vivoactive6/`)
+      reports **identical** limits on both: device app (`watchApp`) **768 KB**, background **64 KB**,
+      glance **64 KB**, datafield **256 KB**, watch face **128 KB**. The community "768/64 uniform"
+      read was right; the old SPEC-doc figures (1 MB / 256–512 KB / 32 KB bg) were **wrong** →
+      README table corrected. Net: the tightest constraint **loosens** — design both watches to
+      768 KB, and background sync gets **64 KB** not 32 KB. Also confirmed from `compiler.json`:
+      **VA6 min CIQ = 6.0.0**, FR265 = 5.2.0. ⚠️ This is the **heap** budget only — it does *not*
+      settle the per-app **Storage (disk)** total (next item).
+- [ ] **Per-device Storage total** — exact persistent-Storage byte cap for FR265 / VA6 (only
+      "varies by device" is official; `compiler.json` covers heap, not the Object Store). Still open.
+- [x] **In-app purchase — moot.** Project is personal / free / sideload (see §C Monetization); no
+      IAP path needed. (For the record: CIQ true IAP beyond paid-upfront remains unconfirmed.)
 - [ ] **Re-confirm against local unpushed repo** (see Reconcile TODO below).
 
 ## C. Product decisions
@@ -140,7 +145,9 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
       depending on it. → `08-watch-interaction-model.md §Open implementation questions`.
 - [ ] **Sensor tie-ins:** which to ship first (recommend steps→food as the proof).
 - [ ] **Device priority:** target FR265 + VA6 day one, or FR265 first then port?
-- [ ] **Monetization:** hobby/free vs anything paid (affects store + ops appetite).
+- [x] **Monetization: DECIDED — personal / free / sideload.** No payment, no store-listing
+      monetization, no Garmin Pay. Side-loading the target devices means no public store listing
+      and **no privacy-policy obligation until/unless user data ever leaves the device.**
 - [ ] **Backend ownership:** are you actually willing to run/maintain a service
       (Track 2)? If not, Track 2/3 social is off the table — be honest early.
 

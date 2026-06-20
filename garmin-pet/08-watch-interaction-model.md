@@ -105,9 +105,12 @@ Foreground live session. The pet watches the body.
 
 Inputs:
 
-- Heart rate.
+- Heart rate, **compared against the trailing ~4h HR baseline** so the pet reads *relative*
+  effort (e.g. live 89 vs a 69 baseline = "up 20 over your normal") even when it can't classify
+  the move. See `04-activity-sensing.md §Relative effort & baselines`.
 - Accelerometer / motion samples.
 - Elapsed time.
+- Optional declared intent ("starting a light workout") as the launch action.
 - Optional one-press set marker.
 
 Outputs:

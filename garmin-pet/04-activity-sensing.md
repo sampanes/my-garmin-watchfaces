@@ -147,11 +147,81 @@ finicky (miscounts, makes you confirm weight). The pet doesn't need clinical acc
   levels up STR." Approximate counts are fine and forgiving feels good.
 - **The pet provides the motivation Garmin's UI doesn't** — it's cheering, not logging.
 
+## Relative effort & baselines — the buddy reads *change*, not just absolutes
+
+The pet doesn't need to name the exercise to know you're working. It needs to know you're
+doing **more than your own normal**. Three cheap, watch-native signals make that possible —
+and none of them require classification. This is the most robust sensing the pet has.
+
+### 1. The rolling HR baseline (free from the watch)
+
+`SensorHistory.getHeartRateHistory()` is the watch's own internal database of roughly the
+**last ~4 hours** of heart rate (`beyond_faces/SENSORS_AND_GPS.md §4`). Iterate it, average it,
+and you have the wearer's recent resting baseline for **zero storage cost** — the watch already
+keeps it.
+
+So when the user taps **"starting a light workout"** and live HR (`Sensor.getInfo().heartRate`)
+reads **89** while the trailing ~4-hour baseline sat at **69**, the buddy *knows* — with no
+accelerometer, no rep-counting, no idea what the move even is — that **effort is up ~20 bpm over
+this person's own recent normal.** The declared intent ("light workout") plus the HR delta vs
+baseline is enough to react honestly:
+
+| Signal | What he says |
+|---|---|
+| HR ~20 over 4h baseline | "Eighty-nine. Twenty over where you've been sitting. I see you." |
+| Declared "light," HR says otherwise | "You said *light*. Your heart disagrees — that's twenty up. Good." |
+| HR ≈ baseline | "Heart says you haven't started yet. Whenever you're ready." |
+
+This is **relative-effort detection**, and it's the dependable floor under everything in
+"Multi-signal fusion" above: it works for pull-ups, a brisk walk, yoga, or a move the classifier
+can't read — anything that moves HR. It reinforces the locked principle: **reward effort, not
+precision.** The accelerometer rep-counter is the *upgrade*; the HR-vs-baseline delta is the
+thing that always works.
+
+### 2. Lifetime baseline (one stored number)
+
+For "calmer/harder than *usual*" (not just the last 4h), keep a running mean — an exponential
+moving average nudged on each reading — in `Storage`. One float. Now the pet can compare today
+against the wearer's whole history: *"calmest morning you've had in a while."*
+
+### 3. "Past X" beyond ~4 hours (a handful of buckets)
+
+`SensorHistory` only reaches back ~4h. For "past day / past week" baselines, persist your own
+**roll-ups**: e.g. one HR average per hour (24 floats ≈ last day) or per day (7 floats ≈ last
+week). "Baseline for the past week" = mean of those buckets. Tiny storage, simple math.
+
+### 4. The step *timeline* — reconstruct *when*, not just *how many*
+
+`ActivityMonitor.getInfo().steps` is a **daily cumulative counter** with **no per-step
+timestamps** — but you manufacture the timing by **snapshot-and-diff**: persist `{timestamp,
+steps}` and subtract consecutive readings.
+
+- Open at 11:00 → steps = 4000, store it.
+- Open at 13:00 → steps = 5000 → **1000 steps happened in the 11:00–13:00 window.**
+
+Each sample is two numbers (a few bytes). Sampling every ~5 min all day (~288 samples) is a
+couple KB — trivially under the 32 KB-per-value Storage cap. Do the sampling in a **background
+temporal event** (`registerForTemporalEvent`, ≥5 min, 64 KB heap, ~30 s, **no phone needed** —
+`ActivityMonitor` is local) and you get a **~5-minute-resolution step timeline without the user
+ever opening the app.** That turns "8k steps, no idea when" into *"still all morning, then you
+crushed it 1–3pm."* Two caveats: handle the **midnight reset** (a negative delta = new day, not
+negative steps), and background firing is **best-effort ≥5 min**, not exact.
+
+### Why this matters for the pet
+
+Together these give the buddy a sense of **rhythm and change** — not "you have 8000 steps" but
+"you were still all morning and then moved"; not "your HR is 89" but "your HR is 20 over your own
+baseline." That's the difference between a step counter and a companion that *notices*. None of
+it requires classifying the exercise, and all of it is cheap. Cross-ref: the declared-intent
+entry point ("starting a light workout") is a Buddy-Mode launch action — control grammar in
+`08-watch-interaction-model.md §Buddy Mode`.
+
 ## Caveats / constraints
 
 - **Foreground only.** 25 Hz accel is CPU- and memory-heavy (the repo doc literally
   says "massive amount of CPU and memory"). Run it only during an open "workout buddy"
-  session; process samples immediately, don't hoard them (watch the VA6 256–512 KB heap).
+  session; process samples immediately, don't hoard them (watch the 768 KB device-app heap —
+  same on FR265 and VA6 per `compiler.json`, SDK 9.1.0).
 - **No all-day passive detection for strength moves.** If you want "I did push-ups earlier,
   pet noticed," the only honest source is Garmin's *own* recorded activity history after the
   fact — and CIQ won't hand you "you did push-ups" as a labeled event. Set expectations.
