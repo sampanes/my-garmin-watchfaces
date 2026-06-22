@@ -158,6 +158,25 @@ Over-talking turns texture into nagging and trips the cozy guardrails (no guilt 
 chore-board → `05-progression.md §Cozy guardrails`). Exact cadence / frequency = **kicked can**
 (feel it out in `pet-sandbox`), consistent with the §Momentum and `open-questions.md §C` deferrals.
 
+### The readiness ritual is a *care* moment, not a data grab
+
+When the pet invites a stillness ritual — *"lie down with me two minutes"* (the DIY-HRV / stress
+capture, `10-power-roster.md`) — the **biometrics it gathers can override the ritual's own
+purpose.** If the signal says she's too stressed / depleted, the pet **abandons the measurement
+and pivots to care**: the number stops mattering, the point becomes *her*. It fires
+`HIGH_STRESS` (`07-personality.md`), persona-flavored:
+
+- **Hype Cheerleader (her):** the **empty-cup analogy** ("you can't pour from empty — fill your
+  cup first"), gentle permission that **some things on the list just aren't important today**,
+  and **self-care-as-science** framing (rest is maintenance, not indulgence). Warm, not preachy.
+- **Drill Sergeant:** same truth as *strategy* — "can't pour from an empty canteen; that's
+  logistics, sit down." **Zen:** rest as system maintenance. **Deadpan:** "do less, world survives."
+
+**Cozy-guardrail tie:** this is the no-guilt / no-punishment-clock principle made literal — *the
+pet that sometimes asks you to perform will also tell you to stop.* "Knowing without being told"
+(§above) here becomes **knowing when to let you off the hook.** Guardrail: never clinical, never
+alarmist (no "your stress is dangerously high") — it's a friend reading the room, not a readout.
+
 **Guardrail:** real time makes the world feel *alive* (warmth, texture, rhythm) — it is **never a
 punishment clock.** No missable-forever events, no "you're late." Recurrence + comeback warmth keep
 it cozy. This is the most natural superpower a *watch* pet has over a phone pet, and nearly free to

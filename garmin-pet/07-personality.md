@@ -51,7 +51,7 @@ Don't go infinite (paralysis — `05`). Two legible axes:
 
 The game fires the **same keyed events** regardless of persona:
 `COLD_OPEN`, `SET_DONE{reps,exercise,confidence}`, `LOW_CONFIDENCE`, `MOTION_BLIND_GASSED`,
-`STREAK_BROKEN{days}`, `GOAL_HIT`, `IDLE_NUDGE`, ...
+`STREAK_BROKEN{days}`, `GOAL_HIT`, `IDLE_NUDGE`, `HIGH_STRESS{score}`, ...
 
 A persona is just a **lookup**: `event-key → pool of canned lines` + a few numeric weights
 (nag frequency, praise threshold, roast level). Pick a line from the pool, varying by index so
@@ -72,6 +72,7 @@ it doesn't repeat. **Adding or swapping a persona = swap the line table**, not n
 | **Motion-blind, gassed** (pull-ups) | "Wrist barely moved but you're gassed. Good shit." | "Your heart is POUNDING, you beast — so proud!" | "Can't see it. Heart says you tried. OK." | "Couldn't read the move, but your body worked. Good." |
 | **Streak broken (3 days off)** | "Oh, look who remembered I exist. 0 for 3." | "I missed you!! No worries — fresh start today!" | "Three days. Bold." | "Welcome back. No guilt. Let's just start." |
 | **Goal hit** | "...Fine. That was actually good. Don't let it go to your head." | "YOU DID IT!!! I'm so, so proud of you!!" | "Goal hit. Cool." | "You reached it. Breathe. Well done." |
+| **High stress** (during the readiness ritual, or passive) | "Numbers are garbage today. Sit down. You can't pour from an empty canteen — that's not soft, it's logistics." | "Hey — you're running hot. Some of that list? Not important today. Fill your cup first; everything's easier from full. I've got you." | "Readiness's in the gutter. Radical idea: do less. World survives." | "Your system's asking for rest, not effort. Self-care isn't indulgence — it's maintenance. Stay here a minute." |
 
 ## Content guardrail: tough-love, not abuse
 
