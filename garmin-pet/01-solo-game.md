@@ -174,11 +174,14 @@ storage caps — verify). Shape sketch:
 ## Rendering & input
 
 - **Sprites:** frame bitmaps in resources; animate by swapping frames on a `Timer`.
-  **Bitmaps eat app memory** — limited palette, reuse frames, lazy-load. **Design to
-  the VA6 device-app heap of 256–512 KB**, not FR265's 1 MB (VA6 is the tighter
-  target). ⚠️ *These heap figures are disputed — community `compiler.json` reads say
-  768 KB uniform; verify against local SDK. See README + `open-questions.md §B2`.*
-  See `common/memory/MEM_PART1..3` and `common/graphics/DC_PART3_RESOURCES_AND_PERFORMANCE.md`.
+  **Bitmaps eat app memory** — limited palette, reuse frames, lazy-load. The device-app heap is
+  **768 KB on all three targets** (FR265 / FR265S / VA6) — confirmed from the installed SDK 9.1.0
+  `compiler.json`; there is **no** FR265 heap advantage (the old "256–512 KB VA6 / 1 MB FR265"
+  figure was wrong). So the sprite/animation budget is **uniform**: size the frame catalog to
+  768 KB shared across the whole game, and let the *resolution* differences below (not a smaller
+  VA6 heap) drive per-device resource sets. Background services remain the tight box at **64 KB**.
+  Resolved in `open-questions.md §B2`; see also `common/memory/MEM_PART1..3` and
+  `common/graphics/DC_PART3_RESOURCES_AND_PERFORMANCE.md`.
 - **Three resolutions:** FR265 416×416, FR265S 360×360, VA6 390×390 → relative/scaled
   layouts + per-device resource sets. Strategy: `common/workflow/MULTI_DEVICE_STRATEGY.md`.
 - **Input stance:** behavior-first, not touch-first. Use `WatchUi.BehaviorDelegate` for

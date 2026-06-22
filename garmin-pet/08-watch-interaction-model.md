@@ -29,6 +29,9 @@ not because the watch has many clickable controls.
 - **One primary action.** Select/tap/Start means yes, start, continue, accept, or mark.
 - **Full-screen choices.** One visible card or action at a time.
 - **VA6-class input is the baseline.** FR265's 5 buttons are shortcuts, not requirements.
+- **One app, never a per-device fork.** There is exactly one codebase across FR265 / FR265S /
+  VA6. FR265's buttons accelerate the *shared* behaviors; they never justify a second app or a
+  divergent FR265-only UX. See §One app, not two.
 - **Live sensing is foreground.** High-rate movement sensing is for an open buddy session,
   not silent all-day background classification.
 
@@ -52,6 +55,34 @@ Recommended behavior mapping:
 
 FR265 can expose extra buttons as accelerators. Vivoactive 6 style devices need the
 app to work with effectively one primary action plus Back and page navigation.
+
+## One app, not two — FR265 buttons accelerate, they never fork the game
+
+**Decision (locked 2026-06-22, John):** ship **one** app and **one** codebase across
+FR265 / FR265S / VA6. The FR265's extra physical buttons are **accelerators** for behaviors
+that already exist — never a richer, separate control scheme, and never a reason to maintain a
+second app. The explicit goal: use the buttons where they help, *without the headache of keeping
+two apps.*
+
+Why this is safe (and nearly free): the game is written against the **five device-independent
+behaviors** (`onSelect` / `onBack` / `onNextPage` / `onPreviousPage` / `onActionMenu`), not
+against physical buttons. `WatchUi.BehaviorDelegate` is the abstraction that lets one piece of
+code receive *"the user wants the primary action"* without caring **how** the user expressed it:
+
+- On **VA6** (the baseline): tap = Select, swipe up/down = page, the Back gesture = Back, the
+  Action Notch (or a dedicated card, per §Open implementation questions) = the action sheet.
+- On **FR265**: the Start/Select button = the same Select, the Up/Down buttons = the same paging,
+  the Back button = the same Back. The buttons just make the **same five behaviors** faster and
+  more tactile — a shortcut layer, not a new menu.
+
+So FR265 feels snappier and more physical *for free*, **without** a second UX to design, test, or
+keep in sync. Designing to the VA6 baseline guarantees FR265 is a strict **superset**, never a
+divergent twin — if it works one-button on VA6, the FR265 buttons can only make it quicker.
+
+**Not in scope:** a FR265-only feature set, a FR265-only screen-flow, or any logic that branches
+the *game* on device. Device branching is allowed only for capability/hardware gating unrelated to
+input — `has :Barometer`, screen resolution, per-device resource sets (`01-solo-game.md §Rendering`,
+`common/workflow/MULTI_DEVICE_STRATEGY.md`). Input is shared; only *capabilities* gate.
 
 ## The watch can support these verbs
 
@@ -291,3 +322,7 @@ The product stance is now:
 
 > Behavior-first, one-primary-action, full-screen-card pet companion. The activity buddy
 > is the heart of the game; the care menu is secondary.
+>
+> **One app, one codebase across FR265 / FR265S / VA6.** Designed to the VA6 input baseline;
+> FR265 buttons are accelerators for the same five behaviors, never a separate control scheme or
+> a second app to maintain. (Locked 2026-06-22 — see §One app, not two.)
