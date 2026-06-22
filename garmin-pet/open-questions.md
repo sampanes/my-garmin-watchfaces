@@ -133,6 +133,11 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
       "rot". Still open: # of evolution bands, gates, and whether branches differ by
       power/verb vs cosmetic-only (lean: a signature verb + a look — horizontal, not vertical).
       MVP still starts single-species (see `01` MVP scope).
+      - 🥫 **KICKED CAN (2026-06-22).** Band *count*, *pacing*, and *what unlocks at each band*
+        are **deferred — design continues blind to this decision.** The `pet-sandbox` now has a
+        dev XP scrubber (`progression.js` ladder + slider/±) to *feel out* the curve, but the
+        ladder there is **illustrative placeholder pacing, not a committed economy.** Resolve by
+        playing the scrubber on real hardware at home, then write the real bands back into `05`.
 - [x] **Activity sensing — live vs after-the-fact RESOLVED.** Only one app is foreground, so
       the pet **can't ride along during Garmin's *native* Run/Walk** (and no live IPC between
       them). Mat reps run **live** in the pet's own session (`04`); walks/runs feed it **after

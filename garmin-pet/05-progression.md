@@ -196,6 +196,47 @@ loss/threat) + **Abundance** + **Softness**:
 
 ---
 
+## Momentum & consistency — reward the *gain*, never weaponize the *loss*
+
+(2026-06-22) "Momentum" = the feeling that showing up regularly makes effort matter more.
+Powerful — but the obvious implementation is **the one this doc already vetoed**: a hidden
+effort multiplier ("effort counts 1.3×", see §"What 'power' means" — invisible *and* grind-y).
+And the most *engaging* version in the wild is the **loss-framed streak** (don't-break-the-chain),
+which loss aversion makes ~2× as potent (Kahneman-Tversky, §Sources) — and which is exactly the
+**FOMO / punishment spiral the cozy guardrails forbid.** So the stance:
+
+> **Momentum is a visible, gently-decaying *state* that brings good things *sooner* — never a
+> hidden number, and never something you're punished for losing.** Harness its gain; refuse its
+> loss frame. Optimize for *durable, guilt-free return*, not raw engagement (the dark-pattern target).
+
+Four mechanisms, all reusing systems already specced — no new subsystems:
+
+1. **Warmed-up / "in the zone" state.** Consecutive active days visibly raise the pet's energy
+   (posture, more emotes, sharper banter); a lapse drifts it to "rusty but fine," decaying to a
+   **floor** — never below, never a guilt bar. This is **mood-as-weather** applied to the `fit`
+   track. The payoff is *expression + pacing* (the next unlock comes sooner when consistent), not a %.
+2. **Daily-first bonus + soft diminishing returns.** The *first* effort each day pays the juiciest
+   reward; extra reps that day taper. This is the legitimate, **visible** form of "daily counts for
+   more" — the bonus is on **cadence**, shown to the user, so daily beats binge *without* a streak
+   cliff. (Goal-gradient effect, gain-framed.)
+3. **Streak-shields = forgiveness built in.** One miss never shatters momentum; the pet coasts or
+   spends an earned shield (already a planned *functional power*, §"What 'power' means"). Removes the
+   anxiety cliff structurally.
+4. **Comeback warmth.** Returning after a gap = warm reunion + a small catch-up payoff (the
+   **idle-return story**, `01`), not "0/3" shaming. The Drill persona may *roast* the gap — that's
+   **character/flavor** (`07` `STREAK_BROKEN`), never a mechanic that costs you anything.
+
+**The deepest driver — cozier *and* stickier than any of the above — is identity/competence**
+(SDT/PENS, §Sources). Momentum framed as the pet **embodying your consistency** — who it *is*, not a
+number it *holds* — is identity reinforcement: "I'm becoming someone who trains, and my buddy is the
+proof." It can't be lost punitively, which is exactly why it fits.
+
+> ⏳ **Numbers are a kicked can** (like the evolution bands): decay rate / floor, the daily-first
+> curve, the shield economy — all TBD on hardware. Capture the *principle* (gain-framed, visible,
+> forgiven); tune the *curve* in the `pet-sandbox` scrubber later. → `open-questions.md §C`.
+
+---
+
 ## How it plugs into the foundation
 
 This layers cleanly onto the track/tier/currency model from README + `01-solo-game.md`:
@@ -241,6 +282,10 @@ EVOLUTIONS = [
 - [x] **Evolution = the one real fork + the meta-track** (infinite height, no dead end), sampled
       across lives so it never "rots."
 - [x] **Cozy guardrails are hard rules** — no death/neglect spiral, no FOMO, gentle decay.
+- [x] **Momentum is gain-framed, visible, and forgiven** — never a hidden effort multiplier
+      (already vetoed) and never a loss-framed streak (FOMO). It's a warmed-up *state* + a
+      daily-first bonus + shield forgiveness + comeback warmth, with identity/competence as the
+      deepest driver. Curve numbers TBD (kicked can). See §"Momentum & consistency".
 
 ### Still open (product calls, see also `open-questions.md §C`)
 - [ ] How many evolution **bands** total, and what gates each (track-tier? age? a quest?).

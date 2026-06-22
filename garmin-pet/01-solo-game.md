@@ -98,6 +98,62 @@ A background task (confirmed limits: ≥5 min interval, ~30 s run, **32 KB heap*
 then only needed for *proactive* nudges (glance update, "you have mail"), not for the
 simulation itself — which is good, because 32 KB can't hold the game anyway.
 
+## The watch knows the real day — lean on it (the ACNH "alive" feeling)
+
+**John's idea (via *Animal Crossing: New Horizons*):** ACNH feels *alive* because it runs on the
+**real-world calendar** — real time of day, real seasons, holidays on their actual dates, and a
+town that kept living while you were gone. A watch pet gets this more intimately than any phone
+game, because **the watch *is* the clock on your wrist** — it already knows the true date and time
+for free, with no sensor and no battery cost (`Toybox.Time` / `System.getClockTime()`).
+
+Time isn't only the decay input (§Time model) — it's the cheapest source of *world texture*:
+
+- **Time of day.** Morning greeting → midday → evening wind-down; lighting/energy follow real local
+  time (the `pet-sandbox` already tints the scene by hour). The pet gets drowsy at night.
+- **Day of week.** Weekend energy vs Monday; rhythms like "leg day." A **Wednesday**
+  "halfway through the week" nod fits here too — but **sprinkled, not scripted** (see the
+  moderation guardrail below): the charm dies the moment every day has a forced line.
+- **Seasons & holidays.** Seasonal palette/mood; holidays land on their **real** dates. **Cozy
+  guardrail:** all seasonal content **recurs** — never miss-it-forever (no FOMO; Stardew's "next
+  year"). → `05-progression.md §Cozy guardrails`.
+- **"It lived while you were away."** The real-timestamp gap powers the **idle-return story** and
+  gentle decay (already the §Time model spine): "you've been gone since Tuesday" is true, felt, and
+  framed as a warm reunion — never a guilt clock (→ `05-progression.md §Momentum`, comeback warmth).
+- **Anchored moments.** Birthday (from `born` epoch), care-streak anniversaries.
+
+### Daily check-in arc — *morning hello → evening recap* (let biometrics do the talking)
+
+John's framing: the pet **bookends the day.** **Morning** — a warm, forward-looking hello on the
+first open after wake (or past a local-morning threshold): *"morning — gonna be a good one."*
+**Evening/night** — a reflective beat: *"how'd today go?"*
+
+The twist that keeps this *alive* rather than scripted: **the pet usually already knows.** It has
+been on your wrist all day, so before it *asks* how the day went it checks what it can already
+sense — steps, active minutes, HR / stress trend, Body Battery, goals hit (all free, already
+feeding the pet per §differentiator). So the evening beat **branches on biometrics**:
+
+- **Biometrics tell the story → it reacts, it doesn't ask.** *"rough one, huh — stress was up all
+  afternoon. let's wind down."* / *"you crushed it today, I felt it."* **Knowing without being
+  told is the alive feeling** — this is the §differentiator ("feed the pet with your body") and the
+  real-day texture closing into one loop.
+- **Biometrics are quiet / ambiguous → then it asks.** *"quiet day on my end — how'd it actually
+  go?"* The literal question is the **fallback**, not the default.
+
+Persona colors the wording (`07`): Drill Sergeant *"good shit, I felt that"* vs Zen Buddy *"you
+carried a lot today — rest."*
+
+**Moderation guardrail (important):** these beats are **occasional and earned**, never a daily
+checklist of forced chatter. Morning hello + an evening reaction *when there's something real to
+react to*; the Wednesday / holiday / anniversary lines are **rare seasoning**, not a script.
+Over-talking turns texture into nagging and trips the cozy guardrails (no guilt clock, no
+chore-board → `05-progression.md §Cozy guardrails`). Exact cadence / frequency = **kicked can**
+(feel it out in `pet-sandbox`), consistent with the §Momentum and `open-questions.md §C` deferrals.
+
+**Guardrail:** real time makes the world feel *alive* (warmth, texture, rhythm) — it is **never a
+punishment clock.** No missable-forever events, no "you're late." Recurrence + comeback warmth keep
+it cozy. This is the most natural superpower a *watch* pet has over a phone pet, and nearly free to
+build.
+
 ## Save state
 
 Use `Application.Storage` (key→value, JSON-able dicts). Keep it small (per-device
