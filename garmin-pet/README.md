@@ -36,6 +36,19 @@ What's now confirmed vs still open: [open-questions.md](open-questions.md).
 the behavior-first, one-primary-action control model. This is the current answer to
 "what can the user do on the watch?" and it supersedes older touch-first thinking.
 
+**Appearance & transfer spine:** [09-appearance-and-transfer.md](09-appearance-and-transfer.md) —
+the composable-sprite layer model (additive heap cost, multiplicative variety) and how a pet
+— a tiny versioned integer blob, not image data — moves between watches: a personal/no-backend
+export vs a deferrable paid backend.
+
+**Power catalog:** [10-power-roster.md](10-power-roster.md) — the concrete menu of unlockable
+*capabilities* (sense / do / connect) behind `05`'s power philosophy, grounded in the real CIQ
+API surface, with device gating (🔵 FR265 / 🟢 VA6) and confidence tags.
+
+**Hardware test plan:** [11-hardware-test-plan.md](11-hardware-test-plan.md) — a battery of tiny
+stub-app probes to spam at a computer to resolve every ⚠️ VERIFY (does it beep / does Body Battery
+read / does the walk hit Connect with a map / does ANT pair). Self-reporting or eyeball-and-record.
+
 ## Build stance (2026-06-16 sanity pass)
 
 The watch-native core is the product: **Track 1 + the activity buddy**. Build the

@@ -112,6 +112,19 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
 - [~] **Re-confirm against local repo** — specs/SDK half **done** (read directly from the installed
       SDK 9.1.0 on this PC: heap, background, glance, storage all corrected). Code-salvage half still
       pending (see Reconcile TODO below).
+- [ ] **Power-roster hardware unknowns (2026-06-22) — consolidated into `11-hardware-test-plan.md`.**
+      The API research behind `10-power-roster.md` surfaced a batch of facts the **simulator can't
+      settle** — each now has a stub-app probe (T-number) in `11`. Highest-stakes:
+      - **T5** — does `Notifications.showNotification` fire from a **background** service with the app
+        closed (and buzz)? → may loosen the locked "proactive nag needs the phone" stance (`06`).
+      - **T19** — does a pet-recorded `ActivityRecording`+GPS FIT land in Garmin Connect **with a map**?
+        (the "Walk with me" flagship, `01`.)
+      - **T23/T24** — ANT generic-channel TX on FR265/VA6 + two-watch payload exchange (the encounter
+        power; extends `03 §Spike B`).
+      - **T7/T11/T15** — can a **device app** read Body Battery / DIY-HRV beat-intervals / subscribe to
+        Complications (or is subscribe watchface-only)? Decides the richest sense powers.
+      - **Device-split** — T16 🟢 sleep-score (API 6.0.2, VA6-only), T17 🔵 barometer, T1 tones (FR265),
+        T2 vibration patterns, T18 🟢 QR. Promote each to ✅ here as its probe resolves.
 
 ## C. Product decisions
 

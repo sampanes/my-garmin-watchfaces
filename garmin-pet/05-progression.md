@@ -329,4 +329,6 @@ EVOLUTIONS = [
 - `README.md` — track/tier/currency foundation + tier-index wire format
 - `01-solo-game.md` — the daily loop these layers sit on; decay model
 - `02-async-social.md` — why identity+arrangement is the shareable snapshot
+- `09-appearance-and-transfer.md` — how Layers A/B/C map onto the composable-sprite render stack + the save blob that transfers
+- `10-power-roster.md` — the concrete catalog of real CIQ capabilities behind this doc's functional/expressive power philosophy
 - `open-questions.md §C` — the product decisions this doc resolves / leaves open

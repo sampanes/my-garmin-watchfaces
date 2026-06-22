@@ -49,6 +49,18 @@ This is non-cosmetic and serves the goal directly. From the platform research
 
 So if/when a companion is built, **its first job is the scheduled nag**, not graphics.
 
+> ⚠️ **OPEN FINDING (2026-06-22) — this stance may loosen.** API research turned up that
+> `Toybox.Notifications.showNotification` is documented as **callable from a background
+> service** (distinct from `requestApplicationWake`, which always shows a confirm dialog, and
+> from background vibrate, which is disallowed). If that holds on real hardware, the watch
+> could post a proactive *"haven't moved in 2 hrs"* nudge from a ≥5-min background temporal
+> event **with no companion app at all** — meaning the watch-only build might ship a (throttled,
+> maybe non-buzzing) proactive nag, not just reactive roasting. This does **not** make the phone
+> useless (it's still better at rich, frequent, server-driven nags), but it may move the
+> *minimum* proactive nag on-wrist. **Unverified** — gated on test **T5** in
+> `11-hardware-test-plan.md` (does it appear / buzz with the app closed?). Don't rewrite the
+> decisions below until T5 passes.
+
 ## Tier-2 perks (nice, not the soul)
 
 - The gorgeous big-screen **diorama / social hub** (the rich visuals from the look talk —
@@ -67,3 +79,6 @@ So if/when a companion is built, **its first job is the scheduled nag**, not gra
 - `02-async-social.md` — the Mobile SDK / BLE bridge, canned-vs-free-text
 - `04-activity-sensing.md` — what the gremlin senses and how he narrates it
 - `open-questions.md §B` — no server→watch push; app-wake is prompt-only
+- `09-appearance-and-transfer.md` — a paid ad-hoc "transfer my pet" backend (Fork B) could front through this Tier-2 companion
+- `10-power-roster.md` — the proactive-nag power + what the watch can/can't do without this companion
+- `11-hardware-test-plan.md §T5` — the probe that decides whether background `showNotification` loosens the stance above

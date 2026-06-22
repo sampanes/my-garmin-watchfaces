@@ -65,13 +65,22 @@ session**, and no live IPC between the native activity and the pet.
   STEPS subscription (battery-cheap, OS-pushed) + `ActivityMonitor`. So *"you ran today —
   good shit"* works **retroactively**. No route, no live presence, but the cardio still
   feeds the pet.
-- **Stretch — "Run with [pet]" mode (later):** to have the pet actually *present* during a
-  run (live pace + a saved GPS map), the pet must **be the recorder** — its own
-  `ActivityRecording` session with `Position`/GPS, which saves a real activity to Garmin
-  Connect and hands the pet live `Activity.Info`. Cost: it **replaces** the native Run UI
-  and burns GPS battery (`SENSORS_AND_GPS.md`: GPS drains an FR265 in hours) — you can't
-  foreground both. Deliberately a **separate mode**, and it slots into the `05` power ladder
-  as an *earned functional power*, not a rework.
+- **Stretch — "Walk/Run with [pet]" mode (an *unlock*, later):** to have the pet actually
+  *present* during a walk/run (live pace + a saved GPS map), the pet must **be the recorder** —
+  its own `ActivityRecording` session with `Position`/GPS, which hands the pet live
+  `Activity.Info`. Cost: it **replaces** the native Run UI and burns GPS battery
+  (`SENSORS_AND_GPS.md`: GPS drains an FR265 in hours) — you can't foreground both. Deliberately
+  a **separate mode**, framed as an **earned functional power** in the `05` power ladder, not a
+  rework.
+  - ⭐ **The payoff (2026-06-22): the recorded walk lands in Garmin Connect with a full map —
+    indistinguishable from a native activity — with NO backend and NO partner API.** This is the
+    clean inversion of the "we can't ride Garmin's pipeline" limitation (§above, `09`/`06`): we
+    can't *read* native activities, but because the pet wrote the **FIT** itself, Garmin's
+    **ordinary first-party BLE sync** uploads it and renders the map for free. The "data ready to
+    view" + map experience the native walking app gives you is suddenly *ours* — earned, pet-
+    branded, and it even shows up in your Connect activity feed. The Garmin **Health/Activity
+    partner API is explicitly NOT used** (rejected — too heavy / approval-gated); this gets the
+    same result purely on-device.
 
 **Default (MVP): mat = live, cardio = after-the-fact.** The "run with pet" GPS mode is a
 clean later add, not day-one.
@@ -171,6 +180,10 @@ storage caps — verify). Shape sketch:
 
 `Properties` for user prefs (notifications on/off, difficulty, sound/vibe).
 
+The full identity/appearance schema (Layers A/B/C as a **composable-sprite vector** — species
++ palette + equipped slots) lives in `09-appearance-and-transfer.md`; that same tiny versioned
+blob is also what **transfers between watches**.
+
 ## Rendering & input
 
 - **Sprites:** frame bitmaps in resources; animate by swapping frames on a `Timer`.
@@ -181,7 +194,8 @@ storage caps — verify). Shape sketch:
   768 KB shared across the whole game, and let the *resolution* differences below (not a smaller
   VA6 heap) drive per-device resource sets. Background services remain the tight box at **64 KB**.
   Resolved in `open-questions.md §B2`; see also `common/memory/MEM_PART1..3` and
-  `common/graphics/DC_PART3_RESOURCES_AND_PERFORMANCE.md`.
+  `common/graphics/DC_PART3_RESOURCES_AND_PERFORMANCE.md`. **Composable layers** (parts ×
+  palette swap — additive heap, multiplicative variety) are specced in `09-appearance-and-transfer.md`.
 - **Three resolutions:** FR265 416×416, FR265S 360×360, VA6 390×390 → relative/scaled
   layouts + per-device resource sets. Strategy: `common/workflow/MULTI_DEVICE_STRATEGY.md`.
 - **Input stance:** behavior-first, not touch-first. Use `WatchUi.BehaviorDelegate` for
