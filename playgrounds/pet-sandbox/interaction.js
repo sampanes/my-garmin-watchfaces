@@ -112,7 +112,12 @@ export function initInteraction(api) {
     else if (b === "select") {
       if (card.onSelect === "buddy") startBuddy();
       else if (card.onSelect === "sheet") openSheet();
-      else if (card.onSelect === "progress") api.say("Effort → unlock. Keep going.");
+      else if (card.onSelect === "progress") {
+        const p = api.progress ? api.progress() : null;
+        api.say(p && p.next
+          ? `${p.next.xp - p.xp} XP to ${p.next.name}. Keep going.`
+          : "Maxed out. Show-off.");
+      }
     }
     render();
   }
@@ -176,6 +181,7 @@ export function initInteraction(api) {
       snack: Math.max(1, Math.round(s.reps * 1.5 + s.effort * 6)),
       xp: Math.max(5, Math.round(s.seconds * 0.8 + s.reps * 3)),
     };
+    if (api.gainXp) api.gainXp(ui.reward.xp); // effort feeds the progression ladder
     api.say(pick(BUDDY_LINES[api.persona()].end));
     ui.screen = "reward";
   }
@@ -205,7 +211,8 @@ export function initInteraction(api) {
       elTop.textContent = ui.cardIndex === 0 ? cachedContext : "";
       if (card.kind === "card") {
         elCard.innerHTML =
-          `<div class="card-panel"><h2>${card.title}</h2><p>${card.body}</p>` +
+          `<div class="card-panel"><h2>${card.title}</h2>` +
+          (card.id === "progress" ? progressCardBody() : `<p>${card.body}</p>`) +
           (card.skippable ? `<span class="card-skip">swipe ← to skip</span>` : "") +
           `</div>`;
       }
@@ -245,6 +252,20 @@ export function initInteraction(api) {
         `</ul>`;
       setLabel("Choose");
     }
+  }
+
+  // Live XP bar for the Home "Progress" card — reads the shared accumulator.
+  function progressCardBody() {
+    const p = api.progress ? api.progress() : null;
+    if (!p) return `<p>Effort feeds the next unlock. Keep showing up.</p>`;
+    const span = p.next ? p.next.xp - p.band.xp : 1;
+    const fill = p.next ? Math.round(((p.xp - p.band.xp) / span) * 100) : 100;
+    const line = p.next
+      ? `${p.next.xp - p.xp} XP → ${p.next.name}`
+      : `Maxed — fully evolved`;
+    return `<p class="prog-band">${p.band.name}</p>` +
+      `<div class="effort-bar prog-bar"><span style="width:${fill}%"></span></div>` +
+      `<p class="prog-next">${line}</p>`;
   }
 
   function renderDots(n, active) {

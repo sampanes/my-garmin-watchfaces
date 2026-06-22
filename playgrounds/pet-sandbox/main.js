@@ -1,5 +1,8 @@
 import { getCreature, getCreatureNames } from "./creatures.js";
 import { initInteraction } from "./interaction.js";
+import {
+  XP_MAX, bandForXp, nextBand, unlocksForXp, xpForStage,
+} from "./progression.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CANVAS SETUP
@@ -45,6 +48,7 @@ function resize(r) {
 const state = {
   creature: "ditto",
   stage: "adult",
+  xp: 500,            // progression accumulator; drives stage + unlocks (see progression.js)
   mood: 0.7,
   animSpeed: 1,
   persona: "drill",
@@ -688,7 +692,57 @@ function updateControlMeta() {
   if (!controlMeta) return;
 
   const creature = getCreature(state.creature);
-  controlMeta.textContent = `${creature.name} - ${formatStage(state.stage)}`;
+  const band = bandForXp(state.xp);
+  controlMeta.textContent = `${creature.name} · ${band.name}`;
+}
+
+// ── Progression scrubber (dev mock; see progression.js) ──────────────────────────
+// Single source of truth for "how grown up is the pet right now". Sets XP, then
+// derives the life stage + unlock list from it so the creature visibly evolves.
+function setXp(xp, { fromStageRadio = false } = {}) {
+  state.xp = Math.max(0, Math.min(XP_MAX, Math.round(xp)));
+  const band = bandForXp(state.xp);
+  state.stage = band.stage;
+
+  // Reflect into the other controls so nothing drifts out of sync.
+  const slider = document.getElementById("xp-slider");
+  const value = document.getElementById("xp-value");
+  if (slider) slider.value = String(state.xp);
+  if (value) value.textContent = `${state.xp} XP`;
+  if (!fromStageRadio) {
+    const radio = document.querySelector(`input[name="stage"][value="${state.stage}"]`);
+    if (radio) radio.checked = true;
+  }
+
+  renderProgressReadout();
+  updateControlMeta();
+}
+
+function renderProgressReadout() {
+  const el = document.getElementById("progress-readout");
+  if (!el) return;
+
+  const band = bandForXp(state.xp);
+  const next = nextBand(state.xp);
+  const unlocks = unlocksForXp(state.xp);
+
+  // Progress toward the next band, as a bar.
+  const fillPct = next
+    ? Math.round(((state.xp - band.xp) / (next.xp - band.xp)) * 100)
+    : 100;
+  const nextLine = next
+    ? `${next.xp - state.xp} XP → ${next.name}: ${next.unlock.label}`
+    : "Maxed — every capability unlocked.";
+
+  const chips = unlocks.length
+    ? unlocks.map(u => `<span class="unlock-chip unlock-chip--${u.kind}">${u.label}</span>`).join("")
+    : `<span class="unlock-chip unlock-chip--empty">Nothing yet — just hatched.</span>`;
+
+  el.innerHTML =
+    `<div class="progress-head"><b>${band.name}</b><span>${formatStage(state.stage)}</span></div>` +
+    `<div class="progress-bar"><span style="width:${fillPct}%"></span></div>` +
+    `<div class="progress-next">${nextLine}</div>` +
+    `<div class="unlock-list">${chips}</div>`;
 }
 
 function syncControlSheetForViewport() {
@@ -728,13 +782,20 @@ function initControls() {
     resize(RES);
   });
 
-  // Stage
+  // Stage radios jump the progression scrubber to that stage's first band, so the
+  // two controls stay consistent (radios = coarse, the XP slider = fine).
   document.querySelectorAll('input[name="stage"]').forEach(radio => {
     radio.addEventListener("change", () => {
-      state.stage = radio.value;
-      updateControlMeta();
+      setXp(xpForStage(radio.value), { fromStageRadio: true });
     });
   });
+
+  // Progress (dev) — slider scrubs, +/- step by ~a session's worth of effort.
+  const XP_STEP = 60;
+  const xpSlider = document.getElementById("xp-slider");
+  xpSlider.addEventListener("input", () => setXp(Number.parseInt(xpSlider.value, 10)));
+  document.getElementById("xp-plus").addEventListener("click", () => setXp(state.xp + XP_STEP));
+  document.getElementById("xp-minus").addEventListener("click", () => setXp(state.xp - XP_STEP));
 
   // Mood
   const moodSlider = document.getElementById("mood-slider");
@@ -764,7 +825,7 @@ function initControls() {
   // Speak
   document.getElementById("speak-btn").addEventListener("click", triggerSpeak);
 
-  updateControlMeta();
+  setXp(state.xp); // seed stage / readout / meta from the starting XP
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -785,6 +846,10 @@ initInteraction({
   say: (text) => { state.speechText = text; state.speechTimer = 3; },
   triggerCare: (id) => triggerAction(id),
   setBuddyActive: (on) => { state.buddyActive = on; },
+  // Real earn loop: a finished Buddy session feeds the SAME accumulator the dev
+  // slider scrubs, so the slider is just fast-forwarding real play.
+  gainXp: (n) => setXp(state.xp + n),
+  progress: () => ({ xp: state.xp, band: bandForXp(state.xp), next: nextBand(state.xp) }),
 });
 
 requestAnimationFrame(frame);

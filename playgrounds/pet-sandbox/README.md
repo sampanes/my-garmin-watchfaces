@@ -26,7 +26,20 @@ Screens: **Home** (card carousel: status · nudge · care · progress) → **Bud
 snack + XP) → **Action sheet**. Mirrors the MVP interaction spec in `08`.
 
 The control panel below the watch is a **dev / look-and-feel knob set** (creature, stage,
-resolution, mood, persona, anim speed) — not the game UI.
+**progress**, resolution, mood, persona, anim speed) — not the game UI.
+
+### Progress (dev) — fast-forward evolution
+
+One XP track drives the pet's life stage **and** its unlocks (emotes / powers / phrases /
+look), per `garmin-pet/05-progression.md`. The **Progress (dev)** slider + `−`/`+` buttons
+scrub that track so you can watch the pet evolve in seconds instead of earning it over real
+days — no shaking the phone daily. The `+` button simulates a session's worth of effort;
+`−` is a **dev rewind only** (you never lose progression IRL). The ladder lives in
+`progression.js` (illustrative pacing, not a balanced economy).
+
+The same accumulator is fed by real play: finishing a **Buddy Mode** session calls
+`gainXp()` with the session reward, so the dev slider is just fast-forwarding what actual
+effort would earn. The Home **Progress** card shows the live XP bar and next unlock.
 
 > The phone is the truth test. Open it on a handset and play it with your thumb before
 > trusting that the one-button model feels right.

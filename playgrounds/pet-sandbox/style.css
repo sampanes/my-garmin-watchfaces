@@ -375,6 +375,91 @@ input[type="range"]::-moz-range-thumb {
   justify-content: center;
 }
 
+/* Progress (dev) scrubber */
+.xp-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.xp-step {
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.progress-readout {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.92rem;
+}
+
+.progress-head b { font-weight: 800; }
+
+.progress-head span {
+  color: var(--text-dim);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  transition: width 0.2s ease;
+}
+
+.progress-next {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.unlock-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.unlock-chip {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.unlock-chip--power  { border-color: #40a0f0; color: #9fd0ff; }
+.unlock-chip--emote  { border-color: #f0c040; color: #f6dd95; }
+.unlock-chip--phrase { border-color: var(--accent); color: var(--accent); }
+.unlock-chip--look   { border-color: #c084e0; color: #dcb6ee; }
+.unlock-chip--empty  { color: var(--text-dim); }
+
 .control-sheet::-webkit-scrollbar,
 .controls-content::-webkit-scrollbar {
   width: 8px;
@@ -533,6 +618,22 @@ input[type="range"]::-moz-range-thumb {
 
 .card-panel.reward {
   border-color: rgba(240, 200, 80, 0.4);
+}
+
+/* Live progression on the Home "Progress" card */
+.prog-band {
+  margin: 0 0 2.5cqmin;
+  font-size: 5cqmin;
+  font-weight: 800;
+}
+
+.prog-bar { margin: 0 0 2.5cqmin; }
+
+.prog-next {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 3.6cqmin;
+  font-variant-numeric: tabular-nums;
 }
 
 .card-skip {

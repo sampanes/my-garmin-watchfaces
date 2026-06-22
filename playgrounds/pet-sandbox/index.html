@@ -55,6 +55,20 @@
             </div>
           </div>
 
+          <div class="control-group control-group--wide">
+            <label class="control-label" for="xp-slider">
+              Progress (dev)
+              <span id="xp-value" class="slider-value">500 XP</span>
+            </label>
+            <div class="xp-row">
+              <button class="btn xp-step" id="xp-minus" aria-label="Rewind XP (dev only)">−</button>
+              <input type="range" id="xp-slider" min="0" max="1000" value="500" step="5" />
+              <button class="btn xp-step" id="xp-plus" aria-label="Earn XP (simulate a session)">+</button>
+            </div>
+            <div class="progress-readout" id="progress-readout"></div>
+            <span class="hint">Fast-forwards evolution &amp; unlocks. + simulates a session; − is a dev rewind (never happens IRL).</span>
+          </div>
+
           <div class="control-group control-group--half">
             <label class="control-label" for="res-select">Resolution</label>
             <select id="res-select">
