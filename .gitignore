@@ -1,5 +1,6 @@
 ROOT_*
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 bin/
 watch-faces/japanese-ink-heartrate/art/references/
 watch-faces/japanese-ink-heartrate/art/checkpoints/

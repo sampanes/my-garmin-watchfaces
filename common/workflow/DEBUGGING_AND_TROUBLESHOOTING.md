@@ -11,7 +11,7 @@ When you see the **IQ!** icon on your watch, the app has crashed.
 
 ### How to Find the Root Cause:
 1. Connect your watch to your PC via USB.
-2. Navigate to `/GARMIN/APPS/LOGS/`.
+2. Navigate to `/GARMIN/Apps/LOGS/`.
 3. Open **`CIQ_LOG.yml`** (or `.txt`).
 4. **Common Error Codes**:
    - `Symbol Not Found Error`: You called a function or variable that doesn't exist on this specific firmware. (Check your `has` capability checks!)
@@ -27,7 +27,7 @@ When you see the **IQ!** icon on your watch, the app has crashed.
 ### The "Text File" Trick:
 1. Find your app's filename (e.g., `MYFACE.PRG`).
 2. Create an empty text file with the **exact same name**: `MYFACE.TXT`.
-3. Place this `.txt` file in `/GARMIN/APPS/LOGS/` on the watch.
+3. Place this `.txt` file in `/GARMIN/Apps/LOGS/` on the watch.
 4. Run your watchface. Now, all `println` statements will be written to that text file for you to read later.
 
 ---

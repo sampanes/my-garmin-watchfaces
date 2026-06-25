@@ -15,6 +15,25 @@ open items in `open-questions.md §B2` map to a row below.
 
 ## The harness (build once, reuse for every AUTO probe)
 
+Turnkey first pass now lives at `garmin-pet/probes/hardware/`.
+
+- In VS Code: open `garmin-pet/probes/hardware/monkey.jungle` first and leave it
+  active, then `Ctrl+Shift+P` -> `Tasks: Run Task` -> `Pet probe: build FR265`
+  or `Pet probe: build VA6`. The active jungle matters because this repo also has
+  a root watch-face jungle.
+- In a terminal: `.\scripts\build-pet-hardware-probe.ps1 -Device fr265 -OpenFolders`
+  or `.\scripts\build-pet-hardware-probe.ps1 -Device vivoactive6 -OpenFolders`.
+- It builds `bin/hardware-probes/pet-hardware-probe-<device>.prg`, then you copy
+  that file into the watch's `GARMIN/Apps/` folder over MTP.
+
+The runner currently covers the cheap first-pass probes: T0/T1/T2/T7/T8/T14/T17.
+Rows that need background services, GPS walks, ANT pairing, web callbacks, or
+Garmin Connect inspection still need specialized one-off probe bodies.
+
+The runner saves the last displayed result for each probe in `Application.Storage`
+and shows it again when you return to that T-number. It does not export a text
+log over MTP; MAN probes still require you to write down what happened.
+
 On real hardware there's **no `System.println` console** — so AUTO probes must surface their
 result **on the watch screen** (and/or stash it in `Storage` to dump). Minimal skeleton:
 
@@ -43,7 +62,7 @@ class ProbeDelegate extends WatchUi.BehaviorDelegate {
 
 - **AUTO probe** = inside `probe()`, call the API, `try/catch`, and `report(...)` the value /
   `"null"` / exception / error code. Read it off the watch face.
-- **Accumulate** multiple readings by appending to `Application.Storage` under `"log"` and
+- **Accumulate** multiple readings by appending to `Application.Storage` under a probe key and
   rendering the last N lines — handy for sensors that update over time.
 - **Background probes** (T5, T25-bg) need a `ServiceDelegate` with `onTemporalEvent()` +
   `Background.registerForTemporalEvent(...)`; then **close the app and wait** (≥5 min floor).
@@ -54,7 +73,7 @@ class ProbeDelegate extends WatchUi.BehaviorDelegate {
   SensorLogging Communications Background Ant UserProfile Complications PersistedContent
   Notifications`. (Some need a paired phone in BT range — flagged per row.)
 - Build/sideload: `monkeyc -d fr265 ...` / `-d vivoactive6 ...` → copy the `.prg`/`.iq` to
-  `GARMIN/APPS/`. Run on each device as the row's "Dev" column says.
+  `GARMIN/Apps/`. Run on each device as the row's "Dev" column says.
 
 ---
 
@@ -132,6 +151,8 @@ resolves, update the matching ⚠️ VERIFY in `10-power-roster.md` and/or `open
 | ID | Date | Device / fw | Result | Notes |
 |----|------|-------------|--------|-------|
 | _e.g. T1_ | _2026-0x-xx_ | _FR265 / 19.xx_ | _PASS — beeped_ | _melody played fine_ |
+| T1 | 2026-06-25 | FR265 / SW 28.05 / CIQ VM 5.2.0 | FAIL — no audible beep | `Attention.playTone(Attention.TONE_SUCCESS)` produced no audible tone on hardware. Custom `ToneProfile` not yet separately tested. |
+| T2 | 2026-06-25 | FR265 / SW 28.05 / CIQ VM 5.2.0 | CONFIRMED — flat buzz, no pattern | 25/100/25 `VibeProfile` sequence collapsed to one flat vibration. |
 |  |  |  |  |  |
 
 ### Priority order if time is short

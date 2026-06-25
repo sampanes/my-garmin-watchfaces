@@ -47,7 +47,9 @@ API surface, with device gating (🔵 FR265 / 🟢 VA6) and confidence tags.
 
 **Hardware test plan:** [11-hardware-test-plan.md](11-hardware-test-plan.md) — a battery of tiny
 stub-app probes to spam at a computer to resolve every ⚠️ VERIFY (does it beep / does Body Battery
-read / does the walk hit Connect with a map / does ANT pair). Self-reporting or eyeball-and-record.
+read / does the walk hit Connect with a map / does ANT pair). The first turnkey runner is in
+[`probes/hardware/`](probes/hardware/): build it from the VS Code `Pet probe` tasks or
+`scripts/build-pet-hardware-probe.ps1`.
 
 ## Build stance (2026-06-16 sanity pass)
 

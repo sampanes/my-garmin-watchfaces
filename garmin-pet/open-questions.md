@@ -123,8 +123,10 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
         power; extends `03 §Spike B`).
       - **T7/T11/T15** — can a **device app** read Body Battery / DIY-HRV beat-intervals / subscribe to
         Complications (or is subscribe watchface-only)? Decides the richest sense powers.
-      - **Device-split** — T16 🟢 sleep-score (API 6.0.2, VA6-only), T17 🔵 barometer, T1 tones (FR265),
-        T2 vibration patterns, T18 🟢 QR. Promote each to ✅ here as its probe resolves.
+      - **Device-split** — T2 FR265 vibration resolved: flat single buzz / no pattern on
+        SW 28.05. T1 FR265 `TONE_SUCCESS` produced no audible beep on SW 28.05; retest
+        sound settings + custom `ToneProfile` before relying on tones. Remaining:
+        T16 🟢 sleep-score, T17 🔵 barometer, T18 🟢 QR, and VA6-side T2.
 
 ## C. Product decisions
 

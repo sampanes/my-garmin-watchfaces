@@ -1,0 +1,37 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Pet probe: build FR265",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\scripts\\build-pet-hardware-probe.ps1",
+                "-Device",
+                "fr265",
+                "-OpenFolders"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Pet probe: build VA6",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\scripts\\build-pet-hardware-probe.ps1",
+                "-Device",
+                "vivoactive6",
+                "-OpenFolders"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
