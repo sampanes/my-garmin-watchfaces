@@ -10,19 +10,22 @@ which trails your unpushed local — re-confirm against the local repo.
 - [x] **Device specs** — FR265 416×416 / FR265S 360×360 / VA6 390×390, all AMOLED
       round, 16-bit. FR265 = 5 buttons + barometer; VA6 = 2 buttons + Action Notch,
       **no barometer**. → `common/architecture/SPEC_FORERUNNER_265.md`, `SPEC_VIVOACTIVE_6.md`
-- [x] **App memory budget** — device-app heap: FR265/265S **1 MB**, VA6 **256–512 KB**
-      (design to VA6). Background **32 KB** on all. Glance 64 KB (VA6). → same SPEC docs,
-      `common/memory/MEM_PART1..3`
-- [x] **API floor / SDK** — common floor API **5.2**; FR265 System 7 (API 5.0.0+),
+- [x] ~~**App memory budget** — device-app heap: FR265/265S **1 MB**, VA6 **256–512 KB**
+      (design to VA6). Background **32 KB** on all. Glance 64 KB (VA6).~~
+      **⚠️ SUPERSEDED — these SPEC-doc figures were wrong.** Actual (from installed SDK
+      `compiler.json`): **768 KB app / 64 KB background, uniform** — see §B2 + README §Memory budget.
+- [x] ~~**API floor / SDK** — common floor API **5.2**; FR265 System 7 (API 5.0.0+),
       VA6 System 8 (API 5.2.0+). Build with **SDK 8.1.1**, gate System-8 features with
-      `has`. → SPEC docs, `common/workflow/WEB_RESEARCH_BRIEF_FORERUNNER265_VIVOACTIVE6.md`
+      `has`.~~ **⚠️ SUPERSEDED:** FR265 min CIQ **5.2.0**, VA6 min CIQ **6.0.0**; build with
+      **SDK 9.1.0** — see §B2 + README §"SDK / API target".
 - [x] **Multi-resolution strategy** — jungle `resourcePath` per device + scale factor
       vs FR265's 416, or a JSON "configurator" layout. → `common/workflow/MULTI_DEVICE_STRATEGY.md`
 - [x] **makeWebRequest basics** — **HTTPS mandatory** (newer firmware blocks non-SSL);
       **works in background**; needs phone BT connection; **battery-saver disables**
       background. → `beyond_faces/WEB_AND_BACKGROUND.md`, `LIVE_DATA_AND_IOT.md`
 - [x] **Background limits** — min interval **5 min** (`registerForTemporalEvent`),
-      **~30 s** max run (incl. web-request lag), **32 KB** heap; mark code `(:background)`;
+      **~30 s** max run (incl. web-request lag), **64 KB** heap (was mis-noted 32 KB —
+      see §B2); mark code `(:background)`;
       needs `Communications` + `Background` permissions. → `beyond_faces/WEB_AND_BACKGROUND.md`
 - [x] **No real-time server→watch push** — confirmed; use store-and-forward + pull.
       → `beyond_faces/WEB_AND_BACKGROUND.md`

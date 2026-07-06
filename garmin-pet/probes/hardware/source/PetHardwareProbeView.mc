@@ -6,6 +6,7 @@ using Toybox.Lang;
 using Toybox.Sensor;
 using Toybox.SensorHistory;
 using Toybox.System;
+using Toybox.Time;
 using Toybox.UserProfile;
 using Toybox.WatchUi;
 
@@ -190,12 +191,20 @@ class PetHardwareProbeView extends WatchUi.View {
         }
     }
 
+    // Tones are silently suppressed when the system sound setting is off, so a
+    // "no beep" observation is only meaningful alongside the tonesOn state.
     function probeTone() as Void {
         try {
+            var settings = System.getDeviceSettings();
+            var sysTones = (settings has :tonesOn) && settings.tonesOn;
+            if (!(Attention has :playTone)) {
+                setResult([ "NO API", "SND " + yesNo(sysTones) ] as Lang.Array<Lang.String>);
+                return;
+            }
             Attention.playTone(Attention.TONE_SUCCESS);
             setResult([
-                "BEEP?",
-                "Y/N"
+                "SND " + yesNo(sysTones),
+                "BEEP?"
             ] as Lang.Array<Lang.String>);
         } catch (e) {
             setResult([ "ERROR", shortText(e.getErrorMessage(), 16) ] as Lang.Array<Lang.String>);
@@ -204,23 +213,39 @@ class PetHardwareProbeView extends WatchUi.View {
 
     function probeVibe() as Void {
         try {
+            var settings = System.getDeviceSettings();
+            var sysVibe = (settings has :vibrateOn) && settings.vibrateOn;
+            if (!(Attention has :vibrate)) {
+                setResult([ "NO API", "VIB " + yesNo(sysVibe) ] as Lang.Array<Lang.String>);
+                return;
+            }
             Attention.vibrate([
                 new Attention.VibeProfile(25, 200),
                 new Attention.VibeProfile(100, 200),
                 new Attention.VibeProfile(25, 200)
             ]);
             setResult([
-                "PAT?",
-                "FLAT?"
+                "VIB " + yesNo(sysVibe),
+                "PAT?"
             ] as Lang.Array<Lang.String>);
         } catch (e) {
             setResult([ "ERROR", shortText(e.getErrorMessage(), 16) ] as Lang.Array<Lang.String>);
         }
     }
 
+    // Distinguish "module/method absent" from "iterator null" from "no samples":
+    // that three-way split is the datum T7 exists to capture.
     function probeBodyBattery() as Void {
         try {
+            if (!((Toybox has :SensorHistory) && (Toybox.SensorHistory has :getBodyBatteryHistory))) {
+                setResult([ "NO API" ] as Lang.Array<Lang.String>);
+                return;
+            }
             var history = SensorHistory.getBodyBatteryHistory({});
+            if (history == null) {
+                setResult([ "NO ITER" ] as Lang.Array<Lang.String>);
+                return;
+            }
             var sample = history.next();
             if (sample == null) {
                 setResult([ "NULL" ] as Lang.Array<Lang.String>);
@@ -242,16 +267,29 @@ class PetHardwareProbeView extends WatchUi.View {
                 stress = "" + info.stressScore;
             }
 
-            var history = SensorHistory.getStressHistory({});
-            var sample = history.next();
-            var sampleText = "null";
-            if (sample != null) {
-                sampleText = "" + sample.data;
+            var sampleText = "NO API";
+            var ageText = "AGE n/a";
+            if ((Toybox has :SensorHistory) && (Toybox.SensorHistory has :getStressHistory)) {
+                var history = SensorHistory.getStressHistory({});
+                if (history == null) {
+                    sampleText = "NO ITER";
+                } else {
+                    var sample = history.next();
+                    sampleText = (sample == null) ? "null" : ("" + sample.data);
+                    // T8 asks whether the history timestamps are sane: report the
+                    // newest sample's age in minutes.
+                    var newest = history.getNewestSampleTime();
+                    if (newest != null) {
+                        var ageMin = (Time.now().value() - newest.value()) / 60;
+                        ageText = "AGE " + ageMin + "m";
+                    }
+                }
             }
 
             setResult([
                 "N " + stress,
-                "H " + sampleText
+                "H " + sampleText,
+                ageText
             ] as Lang.Array<Lang.String>);
         } catch (e) {
             setResult([ "ERROR", shortText(e.getErrorMessage(), 16) ] as Lang.Array<Lang.String>);
@@ -283,11 +321,13 @@ class PetHardwareProbeView extends WatchUi.View {
             var sensorInfo = Sensor.getInfo();
             var pressure = "n/a";
             var altitude = "n/a";
-            if ((sensorInfo != null) && (sensorInfo has :pressure)) {
-                pressure = "" + sensorInfo.pressure;
+            // Format floats compactly: raw Float toString overflows the 8-char
+            // display clip (e.g. "101325.123456") and hides the reading.
+            if ((sensorInfo != null) && (sensorInfo has :pressure) && (sensorInfo.pressure != null)) {
+                pressure = sensorInfo.pressure.format("%.0f");
             }
-            if ((sensorInfo != null) && (sensorInfo has :altitude)) {
-                altitude = "" + sensorInfo.altitude;
+            if ((sensorInfo != null) && (sensorInfo has :altitude) && (sensorInfo.altitude != null)) {
+                altitude = sensorInfo.altitude.format("%.1f");
             }
 
             var activityInfo = ActivityMonitor.getInfo();

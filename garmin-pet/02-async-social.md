@@ -32,7 +32,7 @@ phone. So the natural, reliable design is **store-and-forward**:
 - **Sync strategy:** pull-on-open is the backbone (cheap, reliable). Optional
   background fetch only to light up a "you have mail" glance.
 - **⚠️ Background sync is brutally constrained:** ≥5 min interval, ~30 s run (incl.
-  request lag), **32 KB heap** — the JSON parser can *crash* on a large response. So
+  request lag), **64 KB heap** (README §Memory budget) — the JSON parser can *crash* on a large response. So
   the background path must fetch a **tiny** "have mail / counts" payload; pull the real
   contents in the foreground on open. Mark background code `(:background)`; request
   `Communications` + `Background` permissions.

@@ -11,7 +11,7 @@ There are three levels, and only the middle one is both realistic and pleasant:
 | Level | "Pet just knows, nothing running" | **"One-tap, then auto-count"** ⭐ | "Fully manual: I type reps" |
 |-------|-----------------------------------|----------------------------------|------------------------------|
 | Feasible? | ❌ Not really | ✅ Yes | ✅ Yes (but tedious) |
-| Why | CIQ can't stream high-freq accel **in the background / all day** — battery + the 32 KB background heap kill it. Passive all-day movement classification isn't exposed to apps. | App is open in a "workout buddy" mode → reads 25 Hz accel → counts reps live. You only tell it *which* exercise (one tap); it counts the *reps* for you. | Watch text/number entry is miserable; defeats the point. |
+| Why | CIQ can't stream high-freq accel **in the background / all day** — battery + the 64 KB background heap kill it. Passive all-day movement classification isn't exposed to apps. | App is open in a "workout buddy" mode → reads 25 Hz accel → counts reps live. You only tell it *which* exercise (one tap); it counts the *reps* for you. | Watch text/number entry is miserable; defeats the point. |
 
 So the design target is **Level 2**: one primary action starts a foreground buddy session
 (or, if needed, a single full-screen card picks "Push-ups" / "Squats" / "Generic"), and

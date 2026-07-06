@@ -135,7 +135,7 @@ The watch has **no independent internet** — only via the paired phone:
 Two hard truths that recur below:
 1. **No Connect IQ API to your Garmin Connect friends.** Any "friends" feature is
    *your own* network (friend codes, your accounts, your server). Garmin = device + pipe.
-2. **No real-time server→watch push.** You poll (on open, or background ≥5 min, 32 KB,
+2. **No real-time server→watch push.** You poll (on open, or background ≥5 min, 64 KB,
    30 s). Social = asynchronous. Track 3 explores the one exception: direct radio in person.
 
 ## Reference docs in this repo (cross-links)
@@ -157,7 +157,7 @@ Two hard truths that recur below:
 - **CIQ / Connect IQ** — Garmin's app platform; **Monkey C** — the language.
 - **Device app** — full-screen interactive app from the app list (what we're building).
 - **Glance / Complication** — at-a-glance surfaces; candidates for "pet mood" peek.
-- **Background service** (`Toybox.Background`) — throttled periodic code (sync); 32 KB, 5 min, 30 s.
+- **Background service** (`Toybox.Background`) — throttled periodic code (sync); 64 KB, 5 min, 30 s.
 - **`Communications.makeWebRequest` / `makeOAuthRequest`** — HTTP / OAuth via the phone bridge.
 - **`Application.Storage` / `Properties`** — persistent save state / settings.
 - **`Toybox.Sensor` / `SensorHistory` / `ActivityMonitor` / `Complications`** — body-data inputs.

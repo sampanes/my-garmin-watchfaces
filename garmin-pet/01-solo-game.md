@@ -11,8 +11,9 @@ foundation; build it fully standalone before any networking. The watch angle
     memory, no rich input.
   - Optional companions: a **glance** ("pet is hungry 🍗") and/or a
     **complication** for at-a-glance mood without opening the app.
-- **Min API level:** common floor is **API 5.2**; build with **SDK 8.1.1** and gate
-  System-8 features with `has` (confirmed — see README + `SPEC_*` docs).
+- **Min API level:** FR265 min CIQ **5.2.0**, VA6 min CIQ **6.0.0** — gate
+  System-8-only features with `has`; build with **SDK 9.1.0** (reconciled — see
+  README §"SDK / API target"; the earlier "common floor 5.2 / SDK 8.1.1" is superseded).
 
 ## Core loop
 
@@ -103,9 +104,10 @@ hunger  = clamp(state.hunger - HUNGER_RATE * elapsed, 0, MAX)
 state.lastUpdate = now
 ```
 
-A background task (confirmed limits: ≥5 min interval, ~30 s run, **32 KB heap**) is
-then only needed for *proactive* nudges (glance update, "you have mail"), not for the
-simulation itself — which is good, because 32 KB can't hold the game anyway.
+A background task (confirmed limits: ≥5 min interval, ~30 s run, **64 KB heap** —
+README §Memory budget) is then only needed for *proactive* nudges (glance update,
+"you have mail"), not for the simulation itself — which is good, because 64 KB can't
+hold the game anyway.
 
 ## The watch knows the real day — lean on it (the ACNH "alive" feeling)
 

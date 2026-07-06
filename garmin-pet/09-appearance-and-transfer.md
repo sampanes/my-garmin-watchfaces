@@ -73,7 +73,7 @@ PALETTES = [ [c0…cN], … ]                        // color tables — applied
 HEAD = [null, {sprite,anchor}, …]                // index 0 = none
 FACE = […]   BODYACC = […]   HOLD = […]
 EMOTES   = [ {frames|transform}, … ]
-EVOS     = [ {band, branches:[{morph, look}]}, … ]   // from 05
+EVOS     = [ {band, branches:[{morph, look}]}, … ]   // from 05 (`morph` here = 05's branch `id`; one schema, two sketches)
 ```
 
 ### Render = composite a z-ordered stack (back → front)

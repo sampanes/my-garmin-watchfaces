@@ -9,6 +9,7 @@
         minApiLevel="5.2.0">
         <iq:products>
             <iq:product id="fr265"/>
+            <iq:product id="fr265s"/>
             <iq:product id="vivoactive6"/>
         </iq:products>
         <iq:permissions>

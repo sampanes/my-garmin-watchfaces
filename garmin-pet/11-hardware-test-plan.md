@@ -82,6 +82,11 @@ class ProbeDelegate extends WatchUi.BehaviorDelegate {
 Priority: ⭐ = high-value (resolves a locked decision or a flagship power) · ▫ = nice-to-have.
 Cap: **AUTO** = stub self-reports · **MAN** = you observe & record.
 
+### 0 — Harness sanity / device identity (AUTO)
+| ID | Resolves | Stub calls | Observe / record | Dev |
+|----|----------|-----------|------------------|-----|
+| ▫ T0 | Harness works at all + device identity | `System.getDeviceSettings()` → screenWidth×Height, `requiresBurnInProtection`, `is24Hour` | Values render? Dims match SPEC (FR265 416 / 265S 360 / VA6 390)? | 🔵🟢 |
+
 ### A — Haptics & tones (MAN)
 | ID | Resolves | Stub calls | Observe / record | Dev |
 |----|----------|-----------|------------------|-----|
@@ -154,6 +159,14 @@ resolves, update the matching ⚠️ VERIFY in `10-power-roster.md` and/or `open
 | T1 | 2026-06-25 | FR265 / SW 28.05 / CIQ VM 5.2.0 | FAIL — no audible beep | `Attention.playTone(Attention.TONE_SUCCESS)` produced no audible tone on hardware. Custom `ToneProfile` not yet separately tested. |
 | T2 | 2026-06-25 | FR265 / SW 28.05 / CIQ VM 5.2.0 | CONFIRMED — flat buzz, no pattern | 25/100/25 `VibeProfile` sequence collapsed to one flat vibration. |
 |  |  |  |  |  |
+
+> ⚠️ **T1 needs a re-test.** The 2026-06-25 FAIL was logged before the runner reported the
+> **system sound setting** — `Attention.playTone` is *silently suppressed* when the watch's
+> Sound & Vibe → tones are off, so "no beep" alone can't distinguish "muted" from "no tone
+> support". The runner now shows `SND YES/NO` (`DeviceSettings.tonesOn`) next to the beep
+> prompt; re-run T1 and log both. T2 likewise now shows `VIB YES/NO` (`vibrateOn`), though
+> the flat-buzz finding is probably real (FR-series motors are widely reported as
+> single-intensity).
 
 ### Priority order if time is short
 1. **T19** (Walk-with-me → Connect map) — the flagship power's core proof.

@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("fr265", "vivoactive6")]
+    [ValidateSet("fr265", "fr265s", "vivoactive6")]
     [string]$Device = "fr265",
 
     [string]$SdkPath,

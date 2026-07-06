@@ -5,10 +5,13 @@ This is the turnkey first pass for `11-hardware-test-plan.md`: one small watch a
 It currently covers:
 
 - T0 device info: screen and burn-in flags
-- T1 tone
-- T2 vibration pattern
-- T7 Body Battery history
-- T8 stress live/history
+- T1 tone — also shows `SND YES/NO` (the system tones setting): `playTone` is
+  silently suppressed when tones are off, so "no beep" alone is ambiguous
+- T2 vibration pattern — also shows `VIB YES/NO` (`vibrateOn`)
+- T7 Body Battery history — distinguishes `NO API` (module/method absent) /
+  `NO ITER` (getter returned null) / `NULL` (no samples) / value
+- T8 stress live/history — same guards, plus the newest sample's age in minutes
+  (the timestamp-sanity half of T8)
 - T14 VO2max profile values
 - T17 barometer / floors split
 
