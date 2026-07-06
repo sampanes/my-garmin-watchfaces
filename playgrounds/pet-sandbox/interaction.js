@@ -43,6 +43,10 @@ const BUDDY_LINES = {
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+// Persona keys live in three places (index.html <select>, main.js LINES, here) —
+// degrade to drill instead of throwing if they ever drift.
+function buddyLines(persona) { return BUDDY_LINES[persona] || BUDDY_LINES.drill; }
+
 // ── HOME card stack (the carousel) ───────────────────────────────────────────────
 const HOME_CARDS = [
   { id: "status",   kind: "status",   actionLabel: "Start",   onSelect: "buddy" },
@@ -139,8 +143,12 @@ export function initInteraction(api) {
     else if (b === "prev") { ui.sheetIndex = (ui.sheetIndex - 1 + SHEET_ITEMS.length) % SHEET_ITEMS.length; }
     else if (b === "back") { ui.screen = "home"; }
     else if (b === "select") {
-      api.triggerCare(SHEET_ITEMS[ui.sheetIndex].id);
-      ui.screen = "home";
+      if (api.triggerCare(SHEET_ITEMS[ui.sheetIndex].id) === false) {
+        // The pet is mid-action; without feedback this select is a silent no-op.
+        api.say(pick(["Busy. One thing at a time.", "Hold on — mid-move.", "Let me finish this first."]));
+      } else {
+        ui.screen = "home";
+      }
     }
     render();
   }
@@ -148,10 +156,10 @@ export function initInteraction(api) {
   // ── Buddy Mode (relative-effort demo, per 04-activity-sensing.md) ───────────────
   function startBuddy() {
     ui.screen = "buddy";
-    ui.buddy = { baseline: 64 + Math.floor(Math.random() * 8), hr: 66, reps: 0, effort: 0, seconds: 0, timer: null };
-    ui.buddy.hr = ui.buddy.baseline + 2;
+    const baseline = 64 + Math.floor(Math.random() * 8);
+    ui.buddy = { baseline, hr: baseline + 2, reps: 0, effort: 0, seconds: 0, timer: null };
     api.setBuddyActive(true);
-    api.say(pick(BUDDY_LINES[api.persona()].start));
+    api.say(pick(buddyLines(api.persona()).start));
     ui.buddy.timer = setInterval(tickBuddy, 250);
   }
 
@@ -169,7 +177,7 @@ export function initInteraction(api) {
     const s = ui.buddy;
     s.reps += 1;
     s.hr += 4; // a set spikes HR
-    api.say(pick(BUDDY_LINES[api.persona()].mark));
+    api.say(pick(buddyLines(api.persona()).mark));
   }
 
   function endBuddy() {
@@ -182,20 +190,21 @@ export function initInteraction(api) {
       xp: Math.max(5, Math.round(s.seconds * 0.8 + s.reps * 3)),
     };
     if (api.gainXp) api.gainXp(ui.reward.xp); // effort feeds the progression ladder
-    api.say(pick(BUDDY_LINES[api.persona()].end));
+    api.say(pick(buddyLines(api.persona()).end));
     ui.screen = "reward";
   }
 
   function openSheet() { ui.screen = "sheet"; ui.sheetIndex = 0; }
 
   // ── Contextual top line for Home/status ─────────────────────────────────────────
+  // Fake steps stay fixed per session (jitter would look broken), but the
+  // time-of-day label is computed per render so it can't go stale.
+  const fakeSteps = 3000 + Math.floor(Math.random() * 6000);
   function statusContext() {
     const hour = new Date().getHours();
-    const steps = 3000 + Math.floor(Math.random() * 6000);
     const tod = hour < 11 ? "morning" : hour < 17 ? "afternoon" : "evening";
-    return `${steps.toLocaleString()} steps · calm this ${tod}`;
+    return `${fakeSteps.toLocaleString()} steps · calm this ${tod}`;
   }
-  let cachedContext = statusContext();
 
   // ═════════════════════════════════════════════════════════════════════════════
   // RENDER the HTML overlay for the current screen
@@ -208,7 +217,7 @@ export function initInteraction(api) {
 
     if (ui.screen === "home") {
       const card = HOME_CARDS[ui.cardIndex];
-      elTop.textContent = ui.cardIndex === 0 ? cachedContext : "";
+      elTop.textContent = ui.cardIndex === 0 ? statusContext() : "";
       if (card.kind === "card") {
         elCard.innerHTML =
           `<div class="card-panel"><h2>${card.title}</h2>` +

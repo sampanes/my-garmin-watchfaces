@@ -545,7 +545,7 @@ function render(dt) {
 
   // ── Pet ──
   const scale = RES / 416;
-  const stageSize = { baby: 32, child: 42, adult: 52 }[state.stage] * scale;
+  const stageSize = ({ baby: 32, child: 42, adult: 52 }[state.stage] ?? 52) * scale;
   const groundY = RES * 0.67;
   const petScreenX = RES / 2 + state.petX * RES * 0.2;
   const petScreenY = groundY - stageSize * 0.5;
@@ -645,7 +645,7 @@ function updateSpeech(dt) {
 }
 
 function triggerAction(actionId) {
-  if (state.action) return;
+  if (state.action) return false; // busy — caller decides how to surface it
 
   state.action = actionId;
   state.actionTime = 0;
@@ -655,6 +655,7 @@ function triggerAction(actionId) {
   // Trigger speech for the action
   state.speechText = getLine(state.persona, actionId);
   state.speechTimer = 3;
+  return true;
 }
 
 function triggerSpeak() {

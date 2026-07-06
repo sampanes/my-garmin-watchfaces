@@ -64,3 +64,6 @@ show a generic Vite listener when this sandbox is running.
   listener if the title changed.
 
 The scripts default to port `5173`, matching Vite's first-choice dev port.
+`vite.config.js` pins `port: 5173` with `strictPort: true`, so if another playground
+already holds 5173 the start fails loudly instead of silently coming up on 5174
+where `status`/`stop` would not find it.
