@@ -225,7 +225,7 @@ creatures.kirb = {
   color: "#ff8faf",
 
   draw(ctx, x, y, size, anim) {
-    const { t, mood, action, actionProgress, blink, stage } = anim;
+    const { t, mood, action, actionProgress, blink } = anim;
     const s = size;
 
     let offY = 0, scaleX = 1, scaleY = 1, rot = 0;
@@ -738,7 +738,7 @@ creatures.sprout = {
   color: "#60c040",
 
   draw(ctx, x, y, size, anim) {
-    const { t, mood, action, actionProgress, blink, stage } = anim;
+    const { t, mood, action, actionProgress, blink } = anim;
     const s = size;
 
     let offY = 0, rot = 0, scaleX = 1, scaleY = 1;
