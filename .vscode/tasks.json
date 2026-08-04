@@ -2,6 +2,20 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Wrist diary: build FR265",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\scripts\\build-wrist-diary.ps1",
+                "-OpenFolders"
+            ],
+            "problemMatcher": []
+        },
+        {
             "label": "Pet probe: build FR265",
             "type": "shell",
             "command": "powershell",
