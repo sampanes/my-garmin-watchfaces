@@ -16,35 +16,58 @@ OUT = os.path.join(FACE, "art", "kit_preview.png")
 
 W = H = 416
 
-# ---- mock HR -> peaks (same math as the Monkey C pipeline) ----------------
+# ---- mock HR history (same binning and landmark model as Monkey C) --------
 MOCK = [72, 74, 76, 78, 82, 88, 95, 105, 112, 108, 100, 92, 85, 80, 77, 75,
         73, 72, 74, 78, 84, 92, 102, 115, 128, 135, 130, 120, 108, 95, 85, 78,
         74, 72, 70, 71, 73, 76, 79, 82, 85, 90, 96, 102, 108, 110, 105, 98]
 
 
-def smooth(data, win=7):
-    out = []
-    half = win // 2
-    for i in range(len(data)):
-        lo, hi = max(0, i - half), min(len(data) - 1, i + half)
-        seg = data[lo:hi + 1]
-        out.append(sum(seg) / len(seg))
-    return out
-
-
-def hr_to_peaks(data, count=3):
-    peaks = []
-    for i in range(count):
-        t = (i + 0.5) / count
-        idx = int(t * (len(data) - 1))
-        raw = min(max(data[idx], 45.0), 160.0)
-        hn = (raw - 45.0) / 115.0
-        peaks.append((t, 0.35 + hn * 0.65))
-    return sorted(peaks, key=lambda p: -p[1])
-
-
 def peak_x(nx):
     return 0.20 + min(max(nx, 0.0), 1.0) * 0.60
+
+
+def bucket_history(data, count=16):
+    """Resample the full oldest-to-newest window into fixed time bins."""
+    bins = []
+    for i in range(count):
+        lo = int(i * len(data) / count)
+        hi = max(lo + 1, int((i + 1) * len(data) / count))
+        bins.append(sum(data[lo:hi]) / len(data[lo:hi]))
+    return bins
+
+
+def top_landmarks(history, count=2):
+    """Return strong, separated temporal landmarks as (time, height)."""
+    candidates = sorted(range(len(history)), key=lambda i: history[i], reverse=True)
+    chosen = []
+    for idx in candidates:
+        if all(abs(idx - old) >= 4 for old in chosen):
+            chosen.append(idx)
+        if len(chosen) == count:
+            break
+    while len(chosen) < count:
+        chosen.append(0 if not chosen else len(history) - 1)
+    peaks = []
+    for idx in chosen:
+        norm = min(max((history[idx] - 45.0) / 115.0, 0.0), 1.0)
+        peaks.append((idx / (len(history) - 1), 0.35 + norm * 0.65))
+    return peaks
+
+
+def draw_memory_ridge(base, history):
+    """Paint all four hours as a quiet, time-ordered distant range."""
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer, "RGBA")
+    left, right = 22, W - 18
+    base_y = 327
+    points = []
+    for i, hr in enumerate(history):
+        x = left + (right - left) * i / (len(history) - 1)
+        norm = min(max((hr - 45.0) / 115.0, 0.0), 1.0)
+        y = base_y - (10 + 44 * norm)
+        points.append((int(x), int(y)))
+    d.line(points, fill=(112, 106, 96, 82), width=1, joint="curve")
+    return Image.alpha_composite(base, layer)
 
 
 # ---- compose ----------------------------------------------------------------
@@ -62,13 +85,13 @@ def paste_scaled(base, img, x, y, w, h, alpha=1.0):
 def main():
     host = Image.open(os.path.join(DRAW, "host_mountain.png")).convert("RGBA")
     guest = Image.open(os.path.join(DRAW, "guest_mountain.png")).convert("RGBA")
-    far = Image.open(os.path.join(DRAW, "far_range.png")).convert("RGBA")
     mist = Image.open(os.path.join(DRAW, "mist_band.png")).convert("RGBA")
     shore = Image.open(os.path.join(DRAW, "shore_foreground.png")).convert("RGBA")
     grain_p = os.path.join(DRAW, "paper_grain.png")
     grain = Image.open(grain_p).convert("RGBA") if os.path.exists(grain_p) else None
 
-    peaks = hr_to_peaks(smooth(MOCK), 3)
+    history = bucket_history(MOCK, 16)
+    peaks = top_landmarks(history, 2)
     (host_nx, h0), (guest_nx, h1) = peaks[0], peaks[1]
     hx = 0.36 + peak_x(host_nx) * 0.40       # host stays mid-right of center
     gx = peak_x(guest_nx)
@@ -79,8 +102,8 @@ def main():
     # paper
     base = Image.new("RGBA", (W, H), (242, 238, 230, 255))
 
-    # 1. far range — sits high, pale atmosphere
-    base = paste_scaled(base, far, -10, 128, 436, 112, alpha=1.0)
+    # 1. full four-hour memory ridge: oldest left, newest right.
+    base = draw_memory_ridge(base, history)
 
     # 2. guest mountain — recessed mid-ground hint beyond the mist, NOT a
     # competing tower. Small, pale, low.
@@ -133,7 +156,9 @@ def main():
     # red seal with current HR
     seal = (176, 52, 38, 235)
     d.rounded_rectangle([90, 186, 118, 214], radius=4, fill=seal)
-    d.text((104, 200), "64", font=f_s, fill=(244, 238, 226, 255), anchor="mm")
+    d.text((104, 200), str(round(history[-1])), font=f_s,
+           fill=(244, 238, 226, 255), anchor="mm")
+    d.text((104, 224), "4h", font=f_s, fill=(104, 98, 89, 190), anchor="mm")
 
     # circular mask + dark surround (sim look)
     mask = Image.new("L", (W, H), 0)

@@ -27,7 +27,6 @@ class JapaneseInkHeartrateScene {
 
     var mHost;
     var mGuest;
-    var mFarRange;
     var mMist;
     var mMistLite;
     var mShore;
@@ -37,9 +36,15 @@ class JapaneseInkHeartrateScene {
     // position, normalized height, spread. Sorted descending by h so
     // index 0 = host (dominant), index 1 = guest.
     var mPeaks as Lang.Array<Lang.Array<Lang.Float>>?;
+    // Sixteen 15-minute averages, oldest to newest. Zero means that portion
+    // of the four-hour window was unavailable (for example after a reboot).
+    var mHistory as Lang.Array<Lang.Float>?;
+    var mLatestHr as Lang.Number?;
 
     const HR_MIN = 45.0;
     const HR_MAX = 160.0;
+    const HISTORY_BUCKETS = 16;
+    const HISTORY_SECONDS = 4 * 3600;
 
     // Asset native dimensions (must match gen_sumie_kit.py outputs).
     const HOST_W = 320.0;
@@ -53,13 +58,12 @@ class JapaneseInkHeartrateScene {
         if (WatchUi has :loadResource) {
             mHost = WatchUi.loadResource(Rez.Drawables.HostMountainTuned);
             mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainTuned);
-            mFarRange = WatchUi.loadResource(Rez.Drawables.FarRangeTuned);
             mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned);
             mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned);
             mShore = WatchUi.loadResource(Rez.Drawables.ShoreForegroundTuned);
             mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned);
         }
-        mPeaks = computePeaks();
+        refreshHistory();
     }
 
     // ------------------------------------------------------------- HR data
@@ -77,103 +81,126 @@ class JapaneseInkHeartrateScene {
         ] as Lang.Array<Lang.Float>;
     }
 
-    function smoothHR(data as Lang.Array<Lang.Float>, windowSize as Lang.Number) as Lang.Array<Lang.Float> {
+    function emptyBuckets() as Lang.Array<Lang.Float> {
         var out = [] as Lang.Array<Lang.Float>;
-        var half = windowSize / 2;
-        var n = data.size();
-        for (var i = 0; i < n; i++) {
-            var lo = i - half;
-            if (lo < 0) { lo = 0; }
-            var hi = i + half;
-            if (hi >= n) { hi = n - 1; }
+        for (var i = 0; i < HISTORY_BUCKETS; i++) { out.add(0.0); }
+        return out;
+    }
+
+    // The fallback uses the same 16-bin contract as real history. It keeps
+    // the simulator attractive but never supplies a fake number to the seal.
+    function mockBuckets() as Lang.Array<Lang.Float> {
+        var source = generateMockHR();
+        var out = [] as Lang.Array<Lang.Float>;
+        var perBucket = source.size() / HISTORY_BUCKETS;
+        for (var i = 0; i < HISTORY_BUCKETS; i++) {
             var sum = 0.0;
-            var count = 0;
-            for (var j = lo; j <= hi; j++) {
-                sum += data[j];
-                count++;
+            for (var j = 0; j < perBucket; j++) {
+                sum += source[i * perBucket + j];
             }
-            out.add(sum / count.toFloat());
+            out.add(sum / perBucket.toFloat());
         }
         return out;
     }
 
-    function hrToPeaks(data as Lang.Array<Lang.Float>, count as Lang.Number) as Lang.Array<Lang.Array<Lang.Float>> {
-        var peaks = [] as Lang.Array<Lang.Array<Lang.Float>>;
-        var size = data.size();
-        for (var i = 0; i < count; i++) {
-            var t = (i + 0.5) / count.toFloat();
-            var idx = (t * (size - 1).toFloat()).toNumber();
-            if (idx < 0) { idx = 0; }
-            if (idx >= size) { idx = size - 1; }
-            var raw = data[idx];
-            if (raw < HR_MIN) { raw = HR_MIN; }
-            if (raw > HR_MAX) { raw = HR_MAX; }
-            var hrNorm = (raw - HR_MIN) / (HR_MAX - HR_MIN);
-            var h = 0.35 + hrNorm * 0.65;
-            peaks.add([t, h, 0.15] as Lang.Array<Lang.Float>);
-        }
-        return peaks;
-    }
-
-    function sortPeaksByHeight(peaks as Lang.Array<Lang.Array<Lang.Float>>) as Lang.Array<Lang.Array<Lang.Float>> {
-        var out = [] as Lang.Array<Lang.Array<Lang.Float>>;
-        for (var i = 0; i < peaks.size(); i++) { out.add(peaks[i]); }
-        for (var i = 0; i < out.size() - 1; i++) {
-            var maxIdx = i;
-            for (var j = i + 1; j < out.size(); j++) {
-                if (out[j][1] > out[maxIdx][1]) { maxIdx = j; }
-            }
-            if (maxIdx != i) {
-                var tmp = out[i];
-                out[i] = out[maxIdx];
-                out[maxIdx] = tmp;
+    function fillInternalGaps(history as Lang.Array<Lang.Float>) as Void {
+        for (var i = 1; i < history.size() - 1; i++) {
+            if (history[i] > 0.0) { continue; }
+            var left = i - 1;
+            var right = i + 1;
+            while (left >= 0 && history[left] <= 0.0) { left--; }
+            while (right < history.size() && history[right] <= 0.0) { right++; }
+            if (left >= 0 && right < history.size()) {
+                var t = (i - left).toFloat() / (right - left).toFloat();
+                history[i] = history[left] + (history[right] - history[left]) * t;
             }
         }
-        return out;
     }
 
-    function fetchRealHR() as Lang.Array<Lang.Float>? {
-        if (!(Toybox has :ActivityMonitor)) {
-            return null;
-        }
-        if (!(ActivityMonitor has :getHeartRateHistory)) {
-            return null;
-        }
+    function heightForHr(hr as Lang.Float) as Lang.Float {
+        var value = hr;
+        if (value < HR_MIN) { value = HR_MIN; }
+        if (value > HR_MAX) { value = HR_MAX; }
+        return 0.35 + ((value - HR_MIN) / (HR_MAX - HR_MIN)) * 0.65;
+    }
 
-        var period = new Time.Duration(4 * 3600);
-        var iterator = null;
-        try {
-            iterator = ActivityMonitor.getHeartRateHistory(period, false);
-        } catch (ex) {
-            return null;
+    // Pick the strongest two 15-minute landmarks, separated by at least one
+    // hour. Their x positions remain their true locations in the window.
+    function landmarkPeaks(history as Lang.Array<Lang.Float>) as Lang.Array<Lang.Array<Lang.Float>> {
+        var host = 0;
+        for (var i = 1; i < history.size(); i++) {
+            if (history[i] > history[host]) { host = i; }
         }
-        if (iterator == null) {
-            return null;
-        }
-
-        var samples = [] as Lang.Array<Lang.Float>;
-        var sample = iterator.next();
-        while (sample != null) {
-            var hr = sample.heartRate;
-            if (hr != ActivityMonitor.INVALID_HR_SAMPLE && hr > 0) {
-                samples.add(hr.toFloat());
+        var guest = -1;
+        var guestHr = -1.0;
+        for (var i = 0; i < history.size(); i++) {
+            var distance = i - host;
+            if (distance < 0) { distance = -distance; }
+            if (distance >= 4 && history[i] > guestHr) {
+                guest = i;
+                guestHr = history[i];
             }
-            sample = iterator.next();
         }
-        if (samples.size() < 8) {
-            return null;
-        }
-        return samples;
+        if (guest < 0) { guest = (host < HISTORY_BUCKETS / 2) ? HISTORY_BUCKETS - 1 : 0; }
+        var denom = (HISTORY_BUCKETS - 1).toFloat();
+        return [
+            [host.toFloat() / denom, heightForHr(history[host]), 0.15] as Lang.Array<Lang.Float>,
+            [guest.toFloat() / denom, heightForHr(history[guest]), 0.15] as Lang.Array<Lang.Float>
+        ] as Lang.Array<Lang.Array<Lang.Float>>;
     }
 
-    function computePeaks() as Lang.Array<Lang.Array<Lang.Float>> {
-        var hr = fetchRealHR();
-        if (hr == null) {
-            hr = generateMockHR();
+    function refreshHistory() as Void {
+        var sums = emptyBuckets();
+        var counts = emptyBuckets();
+        var valid = 0;
+        mLatestHr = null;
+
+        if ((Toybox has :ActivityMonitor) && (ActivityMonitor has :getHeartRateHistory)) {
+            var iterator = null;
+            try {
+                iterator = ActivityMonitor.getHeartRateHistory(new Time.Duration(HISTORY_SECONDS), false);
+            } catch (ex) {
+                iterator = null;
+            }
+            if (iterator != null) {
+                var start = Time.now().value() - HISTORY_SECONDS;
+                var sample = iterator.next();
+                while (sample != null) {
+                    var hr = sample.heartRate;
+                    var when = sample.when;
+                    if (hr != null && when != null &&
+                        hr != ActivityMonitor.INVALID_HR_SAMPLE && hr > 0) {
+                        var elapsed = when.value() - start;
+                        var bucket = (elapsed * HISTORY_BUCKETS / HISTORY_SECONDS).toNumber();
+                        if (bucket < 0) { bucket = 0; }
+                        if (bucket >= HISTORY_BUCKETS) { bucket = HISTORY_BUCKETS - 1; }
+                        sums[bucket] += hr.toFloat();
+                        counts[bucket] += 1.0;
+                        mLatestHr = hr.toNumber();
+                        valid++;
+                    }
+                    sample = iterator.next();
+                }
+            }
         }
-        var smoothed = smoothHR(hr, 7);
-        var raw = hrToPeaks(smoothed, 3);
-        return sortPeaksByHeight(raw);
+
+        if (valid < 8) {
+            mHistory = mockBuckets();
+        } else {
+            var history = emptyBuckets();
+            for (var i = 0; i < HISTORY_BUCKETS; i++) {
+                if (counts[i] > 0.0) { history[i] = sums[i] / counts[i]; }
+            }
+            // Only internal holes are interpolated. Leading/trailing missing
+            // time remains blank in the distant ridge rather than invented.
+            fillInternalGaps(history);
+            mHistory = history;
+        }
+        mPeaks = landmarkPeaks(mHistory as Lang.Array<Lang.Float>);
+    }
+
+    function latestHeartRateText() as Lang.String? {
+        return (mLatestHr == null) ? null : mLatestHr.format("%d");
     }
 
     function peakX(nx as Lang.Float) as Lang.Float {
@@ -211,7 +238,7 @@ class JapaneseInkHeartrateScene {
     function getSceneKey() as Lang.Number {
         var clockTime = System.getClockTime();
         var minuteOfDay = (clockTime.hour * 60) + clockTime.min;
-        return minuteOfDay / 20;
+        return minuteOfDay / 5;
     }
 
     function ensureBuffer(width as Lang.Number, height as Lang.Number) as Void {
@@ -239,9 +266,9 @@ class JapaneseInkHeartrateScene {
             return;
         }
 
-        // Refresh the HR descriptor each scene rebuild (every 20 min) so the
-        // landscape tracks the wearer's last 4 hours.
-        mPeaks = computePeaks();
+        // Five-minute refresh tracks new history samples without doing the
+        // iterator and buffered painting work on every one-second update.
+        refreshHistory();
         renderScene(buffer.getDc(), mBufferWidth, mBufferHeight);
         mLastSceneKey = sceneKey;
     }
@@ -280,10 +307,9 @@ class JapaneseInkHeartrateScene {
         drawPaper(dc);
         drawCelestial(dc, width, height);
 
-        // 1. far range — pale atmosphere high on the paper
-        if (mFarRange != null) {
-            dc.drawScaledBitmap(-(w * 0.024), h * 0.308, w * 1.048, h * 0.269, mFarRange);
-        }
+        // 1. memory ridge — every 15-minute average in temporal order.
+        // Its construction baseline extends beneath the later mist pass.
+        drawMemoryRidge(dc, width, height);
 
         // 2. guest mountain — recessed beyond the mist
         if (mGuest != null) {
@@ -321,6 +347,52 @@ class JapaneseInkHeartrateScene {
         // 7. paper grain over everything: converts "screen" to "paper"
         if (mPaperGrain != null) {
             dc.drawScaledBitmap(0, 0, width, height, mPaperGrain);
+        }
+    }
+
+    function drawMemoryRidge(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
+        var history = mHistory;
+        if (history == null || history.size() < 2) { return; }
+
+        var first = -1;
+        var last = -1;
+        for (var i = 0; i < history.size(); i++) {
+            if (history[i] > 0.0) {
+                if (first < 0) { first = i; }
+                last = i;
+            }
+        }
+        if (first < 0 || last <= first) { return; }
+
+        var left = width * 53 / 1000;
+        var right = width * 957 / 1000;
+        var baseY = height * 785 / 1000;
+        var span = (HISTORY_BUCKETS - 1).toFloat();
+        // Keep the complete trace low in the mist plane. The large painted
+        // mountains already embody the two strongest hour-separated peaks;
+        // this hairline supplies the precise chronology without reading as a
+        // dashboard graph or, for steady HR, an intrusive horizontal bar.
+        dc.setPenWidth(1);
+        dc.setColor(Graphics.createColor(0x52, 112, 106, 96), Graphics.COLOR_TRANSPARENT);
+        var previousX = -1;
+        var previousY = -1;
+        for (var i = first; i <= last; i++) {
+            if (history[i] <= 0.0) {
+                previousX = -1;
+                previousY = -1;
+                continue;
+            }
+            var x = left + (((right - left).toFloat() * i.toFloat()) / span).toNumber();
+            var norm = (history[i] - HR_MIN) / (HR_MAX - HR_MIN);
+            if (norm < 0.0) { norm = 0.0; }
+            if (norm > 1.0) { norm = 1.0; }
+            var lift = height.toFloat() * (0.025 + 0.105 * norm);
+            var y = baseY - lift.toNumber();
+            if (previousX >= 0) {
+                dc.drawLine(previousX, previousY, x, y);
+            }
+            previousX = x;
+            previousY = y;
         }
     }
 

@@ -1,4 +1,3 @@
-using Toybox.Activity;
 using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.System;
@@ -126,21 +125,19 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             dc.drawText(colX, sealY + (sealSize / 2), Graphics.FONT_XTINY, hrText,
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
+
+        // The tiny caption makes the landscape's temporal meaning explicit
+        // without turning the painting into a dashboard.
+        dc.setColor(0x686259, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(colX, (height * 525) / 1000, Graphics.FONT_XTINY, "4h",
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     function currentHeartRateText() as Lang.String? {
-        if (!(Toybox has :Activity)) {
-            return null;
-        }
-        var info = Activity.getActivityInfo();
-        if (info == null) {
-            return null;
-        }
-        var hr = info.currentHeartRate;
-        if (hr == null) {
-            return null;
-        }
-        return hr.format("%d");
+        // Watch faces are guaranteed ActivityMonitor history access with the
+        // SensorHistory permission; Activity.currentHeartRate is primarily an
+        // activity/data-field API and may be null in a watch-face context.
+        return mScene.latestHeartRateText();
     }
 
 }
