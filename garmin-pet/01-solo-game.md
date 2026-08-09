@@ -86,6 +86,16 @@ session**, and no live IPC between the native activity and the pet.
 **Default (MVP): mat = live, cardio = after-the-fact.** The "run with pet" GPS mode is a
 clean later add, not day-one.
 
+For mat work, **opening the friend is the whole setup**. It begins observing foreground HR and
+motion immediately; the wearer can put the wrist back on the bar and ignore the display. There is
+no exercise declaration or pull-ups/push-ups chooser. Generic effort is the reliable promise;
+exercise names, rep counts, and set boundaries are welcome only when confidence supports them.
+
+Likewise, check-ins are evidence, not chores. One reading lets the friend respond to right now;
+several readings let it notice change; skipping a reading or a day gets a warm return, not a
+penalty. Customization and upgrade choices belong in a separate, intentional sit-down flow—not
+between opening the friend and starting a workout.
+
 ## Time model — compute decay from timestamps, do NOT tick
 
 The single most important design decision for battery + correctness:
@@ -224,8 +234,8 @@ blob is also what **transfers between watches**.
   Back is sacred; up/down pages through big cards; any touch target must be whole-screen
   or large-row. VA6 has only **2 buttons + an Action Notch**, so never require 5 buttons
   or four distinct swipe directions. Full model: `08-watch-interaction-model.md`.
-- **Power / AMOLED:** foreground animation drains AMOLED; keep sessions short, throttle
-  redraws, idle when no interaction. Burn-in guidance: `common/architecture/AMOLED_BURN_IN.md`,
+- **Power / AMOLED:** foreground animation drains AMOLED; support workout-length observation by
+  throttling redraws and sensor intensity whenever the signal is quiet. Burn-in guidance: `common/architecture/AMOLED_BURN_IN.md`,
   `APP_LIFECYCLE_AND_POWER.md`.
 
 ## MVP scope (Track 1 only)

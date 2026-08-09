@@ -1,6 +1,6 @@
 # Track 1 add-on — Activity sensing: "the pet knows I'm lifting / doing push-ups"
 
-Verbal-ideation capture (2026-06-15). Goal: our characters react to strength work
+Verbal-ideation capture (2026-06-15), interaction clarified 2026-08-09. Goal: our characters react to strength work
 (weights, push-ups) **without** the clunky native Garmin "Strength" activity flow.
 This feeds Track 1 (the pet eats your effort); it's a *capability*, not a 4th track.
 
@@ -8,16 +8,16 @@ This feeds Track 1 (the pet eats your effort); it's a *capability*, not a 4th tr
 
 There are three levels, and only the middle one is both realistic and pleasant:
 
-| Level | "Pet just knows, nothing running" | **"One-tap, then auto-count"** ⭐ | "Fully manual: I type reps" |
+| Level | "Pet just knows, nothing running" | **"Open friend, then just work"** ⭐ | "Fully manual: I type reps" |
 |-------|-----------------------------------|----------------------------------|------------------------------|
 | Feasible? | ❌ Not really | ✅ Yes | ✅ Yes (but tedious) |
-| Why | CIQ can't stream high-freq accel **in the background / all day** — battery + the 64 KB background heap kill it. Passive all-day movement classification isn't exposed to apps. | App is open in a "workout buddy" mode → reads 25 Hz accel → counts reps live. You only tell it *which* exercise (one tap); it counts the *reps* for you. | Watch text/number entry is miserable; defeats the point. |
+| Why | CIQ can't stream high-freq accel **in the background / all day** — battery + the 64 KB background heap kill it. Passive all-day movement classification isn't exposed to apps. | Opening the friend is enough: while it remains foreground it reads HR + motion, recognizes generic effort first, and only names/counts a move when confidence supports it. No workout declaration or start button. | Watch text/number entry is miserable; defeats the point. |
 
-So the design target is **Level 2**: one primary action starts a foreground buddy session
-(or, if needed, a single full-screen card picks "Push-ups" / "Squats" / "Generic"), and
-from then on the watch **counts reps automatically** off the accelerometer. That directly
-fixes your complaint — the native Strength activity makes you fight the UI; here the only
-input is a single coarse commitment. The control grammar lives in `08-watch-interaction-model.md`.
+So the design target is **Level 2**: **launching the friend starts foreground observation.**
+The wearer can put the wrist back on the bar and ignore the screen. The dependable outcome is
+automatic **effort recognition**; rep counts and exercise names are confidence-gated bonuses.
+There is no "Push-ups / Squats / Generic" chooser in the normal workout path. The control grammar
+lives in `08-watch-interaction-model.md`.
 
 ## The dream UX: "press GO, he figures it out" (and roasts you)
 
@@ -28,10 +28,10 @@ the signal and guesses out loud*, e.g.:
 - "**left-hand curl**... long pause... **right-hand curl?**... left again. make up your mind."
 - "wrist barely moved but your **HR and breathing spiked** — good shit, bruh."
 
-This is one notch more ambitious than Level 2: you don't even pick the move (still a
-foreground "buddy" session — *not* the impossible fully-passive Level 1). The pet
-**auto-classifies**. But §"Telling push-ups from curls" already warned auto-classification
-is the finicky part — so here's the trick that makes it shippable instead of frustrating:
+This is the target Level 2 experience: you don't pick the move (still a foreground friend —
+*not* the impossible fully-passive Level 1). The pet **auto-classifies when it can**. But
+§"Telling push-ups from curls" already warned auto-classification is the finicky part — so
+here's the trick that makes it shippable instead of frustrating:
 
 ## ⭐ Confidence becomes character (the key insight)
 
@@ -99,8 +99,11 @@ routine (`02`). Full split + quadrant: `05`.
 - The "asshole friend" is **canned dialogue with attitude**, keyed by
   `(exercise-guess × confidence × performance × streak × time-of-day)`. Cheap, watch-native,
   on-brand with the locked canned-messaging model (`02`).
-- **He doesn't care what you're about to do** — no tiny menu, no setup maze. Press → "sup,
+- **He doesn't care what you're about to do** — no tiny menu, no setup maze. Open → "sup,
   let's go" → he reacts to whatever happens. *The absence of a setup screen IS the personality.*
+- **Upgrades and customization are sit-down interactions, not workout setup.** The wearer can
+  deliberately browse perception powers, personality, appearance, or care later; none of those
+  choices interrupt opening the friend in a weight room.
 - Tone scales with the relationship/streak: more roast when you slack, grudging respect when
   you deliver. **The lines above are the *Drill Sergeant* voice specifically** — temperament is
   now a **permanent identity trait** (asshole vs cheerleader vs deadpan vs zen), so every persona
@@ -160,16 +163,15 @@ and none of them require classification. This is the most robust sensing the pet
 and you have the wearer's recent resting baseline for **zero storage cost** — the watch already
 keeps it.
 
-So when the user taps **"starting a light workout"** and live HR (`Sensor.getInfo().heartRate`)
-reads **89** while the trailing ~4-hour baseline sat at **69**, the buddy *knows* — with no
+So when the friend has been left open and live HR (`Sensor.getInfo().heartRate`) reads **89**
+while the trailing ~4-hour baseline sat at **69**, the buddy *knows* — with no
 accelerometer, no rep-counting, no idea what the move even is — that **effort is up ~20 bpm over
-this person's own recent normal.** The declared intent ("light workout") plus the HR delta vs
-baseline is enough to react honestly:
+this person's own recent normal.** The HR delta alone is enough to react honestly:
 
 | Signal | What he says |
 |---|---|
 | HR ~20 over 4h baseline | "Eighty-nine. Twenty over where you've been sitting. I see you." |
-| Declared "light," HR says otherwise | "You said *light*. Your heart disagrees — that's twenty up. Good." |
+| Wrist still, HR rising | "Can't see the reps. Heart says you're working. It counts." |
 | HR ≈ baseline | "Heart says you haven't started yet. Whenever you're ready." |
 
 This is **relative-effort detection**, and it's the dependable floor under everything in
@@ -212,9 +214,24 @@ negative steps), and background firing is **best-effort ≥5 min**, not exact.
 Together these give the buddy a sense of **rhythm and change** — not "you have 8000 steps" but
 "you were still all morning and then moved"; not "your HR is 89" but "your HR is 20 over your own
 baseline." That's the difference between a step counter and a companion that *notices*. None of
-it requires classifying the exercise, and all of it is cheap. Cross-ref: the declared-intent
-entry point ("starting a light workout") is a Buddy-Mode launch action — control grammar in
-`08-watch-interaction-model.md §Buddy Mode`.
+it requires classifying the exercise, and all of it is cheap. Cross-ref: opening the app is the
+foreground-observation entry point — control grammar in `08-watch-interaction-model.md §Buddy Mode`.
+
+## Check-ins improve the friendship; they do not unlock it
+
+The friend remains useful after a missed day or with only one measurement. Measurement cadence
+controls **specificity**, never access, affection, survival, or progression:
+
+| Evidence available | Honest friend behavior |
+|---|---|
+| No recent snapshot | Warm return; use current totals and ask nothing compulsory. |
+| One snapshot | React to the present without inventing a trend. |
+| A few snapshots that day | Notice real change: steps rose, Body Battery fell, HR shifted. |
+| Friend left open during training | Fuse live HR + motion; recognize effort even if the move is unreadable. |
+
+The friend may make a light invitation — *"check back tonight and I'll tell you what changed"* —
+but no streak breaks, stats decay, rewards disappear, or scolding occurs when the wearer does not.
+The reward for checking in is a more perceptive conversation.
 
 ## Caveats / constraints
 
@@ -235,10 +252,11 @@ entry point ("starting a light workout") is a Buddy-Mode launch action — contr
 
 ## MVP for this capability
 
-1. "Workout buddy" mode in the pet app: pick **Push-ups / Squats / Generic**.
-2. Live **rep count** via 25 Hz accel + peak detection (exercise-agnostic counter).
-3. Reps feed the pet (STR/happiness); pet animates/cheers per set.
-4. Stretch: heuristic auto-classify curls vs push-ups; auto start/stop of a set.
+1. Open the friend: save a snapshot and begin foreground HR/motion observation automatically.
+2. Detect **relative effort** first (live HR vs personal baseline), including low-motion strength work.
+3. Escalate to 25 Hz accel while activity is suspected; recognize generic effort without setup.
+4. Rep/set guesses feed reactions only when confidence is adequate; a manual set marker is optional.
+5. Stretch: heuristic auto-classify curls vs push-ups and auto-detect set boundaries.
 
 Cross-ref: `beyond_faces/SENSORS_AND_GPS.md` (sensor access), `01-solo-game.md`
 (how reps feed the pet), `common/memory/MEM_PART3_OPTIMIZATION_AND_TOOLS.md` (keeping

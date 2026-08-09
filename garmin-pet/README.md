@@ -23,8 +23,13 @@ This is a notes folder (markdown), **not code yet** — snippets are illustrativ
 | 3 | **Live co-presence** — pets "meet" when physically together | Low — **direct BLE ruled out**; ANT unproven; plan for phone-bridged | [03-ble-live.md](03-ble-live.md) |
 
 Track 1 add-on capability: [04-activity-sensing.md](04-activity-sensing.md) — the pet
-reacts to lifting / push-ups via accelerometer rep-counting (sidesteps Garmin's clunky
-Strength activity).
+reacts to lifting / push-ups through relative HR and accelerometer evidence, with rep counting
+only when confidence supports it (sidesteps Garmin's clunky Strength activity).
+
+**Workout-room rule:** open the friend and get back to work. Foreground HR + motion observation
+starts without an exercise declaration, start confirmation, or workout chooser; generic effort
+is the required result, while exercise names and rep counts are confidence-based bonuses.
+Check-ins are useful but optional, and customization/upgrades live in a separate sit-down flow.
 
 **Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer
 progression/ownership model (how the pet "scales up" without becoming a paralyzing

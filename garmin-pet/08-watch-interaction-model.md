@@ -1,6 +1,7 @@
 # Watch interaction model - one-primary-action pet
 
-Status: design decision captured after the 2026-06-18 watch-input review.
+Status: design decision captured after the 2026-06-18 watch-input review; workout-room
+behavior clarified 2026-08-09.
 
 ## Verdict
 
@@ -8,13 +9,15 @@ Do not build this like a tiny touchscreen Tamagotchi menu.
 
 Build it as a **one-primary-action companion**:
 
-1. The app opens with the pet centered and alive.
-2. The pet reads current/recent body context.
-3. The pet asks one useful question: "Are we doing something?"
-4. One select/tap/start action begins the foreground buddy session.
+1. The app opens with the pet centered, alive, and already observing.
+2. The pet reads current/recent body context without asking what exercise is happening.
+3. During a workout, the wearer can leave it open and ignore the screen.
+4. One select/tap/start action is available for optional engagement or a set marker; it is
+   not required to begin sensing.
 5. Back always backs out.
 6. Up/down pages through big cards.
-7. Any care/menu actions happen through full-screen cards or an action sheet.
+7. Care, customization, and upgrades happen through full-screen cards or an action sheet
+   when the wearer intentionally sits down to interact.
 
 The game should be engaging because the pet reacts to the wearer's real body signals,
 not because the watch has many clickable controls.
@@ -34,6 +37,12 @@ not because the watch has many clickable controls.
   divergent FR265-only UX. See §One app, not two.
 - **Live sensing is foreground.** High-rate movement sensing is for an open buddy session,
   not silent all-day background classification.
+- **Open means observe.** Launching the friend begins the foreground observation window. No
+  "start workout" confirmation and no exercise chooser stand between launch and sensing.
+- **Check-ins are invited, never owed.** More readings improve the friend's context, but
+  skipped readings or days never block rewards, decay stats, or trigger guilt.
+- **Configuration is separate from presence.** Customization and upgrade choices are an
+  intentional sit-down flow, not workout setup.
 
 ## Garmin input reality
 
@@ -89,9 +98,9 @@ input — `has :Barometer`, screen resolution, per-device resource sets (`01-sol
 The user should be able to do this without hunting on the touchscreen:
 
 1. **Open the app.** The pet is centered and reacts to today's state.
-2. **Start Buddy Mode.** One primary press answers "yes, we're active."
-3. **Move.** The app reads movement and heart rate while foregrounded.
-4. **Mark a moment.** One primary press can mean "that was a set," "continue," or
+2. **Leave it open.** The app reads movement and heart rate while the wearer gets back to work.
+3. **Move.** Generic effort recognition works without naming the exercise.
+4. **Optionally mark a moment.** One primary press can mean "that was a set," "continue," or
    "feed this effort."
 5. **Accept the reward.** Effort becomes food, mood, XP, a line of dialogue, or an unlock.
 6. **Check today's nudge.** A single full-screen card offers one suggested action.
@@ -115,24 +124,26 @@ Default first screen.
 The pet can comment on recent steps, live HR, time of day, prior sessions, and whether
 motion/HR suggests the user is about to be active.
 
-### 2. Launch nudge
+### 2. Optional engagement nudge
 
-If current signals suggest activity, the pet asks a binary question:
+Sensing is already active. If current signals suggest activity, the pet may offer a binary
+engagement prompt without making it a gate:
 
 > "Are we moving?"
 
 Controls:
 
-- Select/tap/Start: begin Buddy Mode.
+- Select/tap/Start: react, encourage, or mark the moment.
 - Back: not now / exit.
 - Up/down: browse other cards if the user does not want the prompt.
 
-Do not put a grid of workout choices here. The absence of setup friction is part of
-the personality.
+Ignoring the prompt changes nothing about sensing. Do not put a grid of workout choices here.
+The absence of setup friction is part of the personality.
 
 ### 3. Buddy Mode
 
-Foreground live session. The pet watches the body.
+Foreground live session. It begins when the friend opens; the pet watches the body while the
+wearer can ignore the display.
 
 Inputs:
 
@@ -141,7 +152,6 @@ Inputs:
   the move. See `04-activity-sensing.md §Relative effort & baselines`.
 - Accelerometer / motion samples.
 - Elapsed time.
-- Optional declared intent ("starting a light workout") as the launch action.
 - Optional one-press set marker.
 
 Outputs:
@@ -214,14 +224,19 @@ The robust model is page navigation plus one primary action.
 The sticky loop should be simple:
 
 1. Notice body context.
-2. Ask for a tiny active commitment.
-3. Watch effort live.
+2. Watch effort live whenever the friend is left open.
+3. Offer one optional interaction when it would add value.
 4. React with personality.
 5. Convert effort into visible pet progress.
 6. Unlock a new capability, expression, or line type.
 
 The watch is not strong at complex UI. It is strong at being present on the body.
 Use that.
+
+Measurement cadence changes the specificity of what the friend can say, not whether the
+friendship works: one reading supports a present-tense check-in, several reveal changes, and an
+open workout session supports live effort reactions. Invite another check-in when useful, but
+never turn that invitation into a task, streak, or prerequisite.
 
 ### Mechanics worth building
 
@@ -243,8 +258,8 @@ Use that.
 - A to-do list that makes the pet feel like another obligation.
 - Overclaiming all-day automatic exercise detection.
 - Free-text watch input.
-- Making the user choose workout type before every session unless the classifier really
-  needs it.
+- Any workout-type chooser in the normal launch flow. Generic effort recognition is the required
+  floor; exercise names and rep counts are confidence-based bonuses.
 
 ## MVP interaction spec
 
@@ -252,8 +267,8 @@ Prototype this first:
 
 | Screen | Select | Back | Up/down | Action menu |
 |---|---|---|---|---|
-| Home | Start Buddy / primary card action | Exit app | Change card | Open action sheet |
-| Buddy | Mark set / continue | End session prompt | Cycle session lens if needed | Pause/end options |
+| Companion | Already observing; optional primary card action | Exit app | Change card | Open action sheet |
+| Buddy / effort detected | Optional mark set / react | End/exit prompt | Cycle reaction card | Pause/end options |
 | Reward | Accept / continue | Exit | Previous/next summary card | N/A |
 | Card carousel | Do card action | Home/exit | Browse cards | Open action sheet |
 | Action sheet | Choose row | Close sheet | Move row | Close sheet |
@@ -283,7 +298,9 @@ whether the game is actually playable with one primary action.
 - Start with `WatchUi.BehaviorDelegate`.
 - Add raw `InputDelegate` handlers only for optional shortcuts.
 - Treat `onBack()` as untouchable navigation.
-- Keep foreground buddy sessions short to protect battery and AMOLED.
+- Start with a low-cost foreground read, then temporarily raise sensor/redraw intensity when
+  time-open, HR, or motion suggests activity; throttle again during rests to protect battery and
+  AMOLED without requiring a start button.
 - Use `Toybox.Sensor` during active sessions for live HR/motion.
 - Use aggregate sources on app open for "you moved today" rewards.
 - Store decay/progression by timestamp, not ticking timers.
@@ -298,8 +315,8 @@ whether the game is actually playable with one primary action.
   on real hardware — needs a device test).
 - How much raw swipe behavior survives after `BehaviorDelegate` consumes page/back actions.
 - The first three card types for MVP.
-- Whether the first buddy mode starts fully generic or asks for one coarse lens:
-  Generic / Push-ups / Squats.
+- Thresholds for escalating from the low-cost foreground read to workout-rate sensing, and for
+  throttling back during rests.
 
 ## Research sources
 
