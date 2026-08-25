@@ -31,6 +31,13 @@ starts without an exercise declaration, start confirmation, or workout chooser; 
 is the required result, while exercise names and rep counts are confidence-based bonuses.
 Check-ins are useful but optional, and customization/upgrades live in a separate sit-down flow.
 
+**Current dogfood build:** [probes/wrist-diary/README.md](probes/wrist-diary/README.md) is now the
+plain `Friend` MVP. It deliberately reuses Wrist Diary's app identity, observes immediately when
+opened, retains roughly four hours of detailed HR/motion evidence plus longer-lived session
+summaries, and exports local CSV sections for inspection before any art or progression investment.
+Version 0.3 adds automatic, neutral effort chapters: the friend notices sustained evidence,
+excludes a later quiet desk tail, and keeps a forgiving visual memory without requiring daily care.
+
 **Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer
 progression/ownership model (how the pet "scales up" without becoming a paralyzing
 skill-tree *or* an ownerless treadmill). Underpins both Track 1 and Track 2.
