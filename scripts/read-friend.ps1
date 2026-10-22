@@ -40,6 +40,15 @@ foreach ($extension in @("bak", "txt")) {
     if ($item) { $destination.CopyHere($item, 16) }
 }
 
+# Garmin's own crash log. Friend has no entry unless it crashed; .BAK is the
+# copy Garmin has already uploaded.
+foreach ($name in @("CIQ_LOG.YML", "CIQ_LOG.BAK")) {
+    $item = $logs.GetFolder.Items() |
+        Where-Object { $_.ExtendedProperty("System.FileName") -ieq $name } |
+        Select-Object -First 1
+    if ($item) { $destination.CopyHere($item, 16) }
+}
+
 $txtPath = Join-Path $outDir ($selectedBase + ".txt")
 for ($i = 0; $i -lt 20 -and -not (Test-Path -LiteralPath $txtPath); $i += 1) {
     Start-Sleep -Milliseconds 500
@@ -107,8 +116,15 @@ if ($snapshots.Count -gt 0) {
 }
 if ($sessions.Count -gt 0) {
     Write-Host "`nRecent sessions"
-    $sessions | Select-Object -Last 8 start_epoch,duration_s,hr4h_avg,hr_avg,hr_max,
-        motion_avg,motion_peak,moving_pct,steps_start,steps_end | Format-Table -AutoSize
+    # exit_reason: 1 Back, 2 the watch closed it, 0 or blank = before v0.4.0.
+    $sessions | Select-Object -Last 8 start_epoch,duration_s,exit_reason,
+        @{ Name = "idle_s"; Expression = {
+            if ($_.last_input_s -and [int]$_.last_input_s -ge 0) {
+                [int]$_.duration_s - [int]$_.last_input_s
+            } }
+        },
+        inputs,hr4h_avg,hr_avg,hr_max,motion_avg,moving_pct,steps_start,steps_end |
+        Format-Table -AutoSize
 }
 if ($chapters.Count -gt 0) {
     Write-Host "`nRecent effort chapters"

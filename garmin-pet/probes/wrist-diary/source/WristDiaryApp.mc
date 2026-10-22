@@ -17,7 +17,7 @@ class WristDiaryApp extends Application.AppBase {
     function onStop(state as Lang.Dictionary?) as Void {
         var view = mView;
         if (view != null) {
-            view.stopSession();
+            view.stopSession(WristDiaryView.EXIT_OTHER);
         }
     }
 }

@@ -5,9 +5,10 @@ installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.3.0`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.4.0`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
-dogfood build is treated as `0.1.0`. Increase the patch number for fixes, minor for compatible
+dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
+build that never reached git, and `0.4.0` is built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
 data/features, and major if stored data or behavior is intentionally broken or replaced.
 
 ## What it does
@@ -25,8 +26,14 @@ data/features, and major if stored data or behavior is intentionally broken or r
 - During a chapter the friend says `WITH YOU`. Afterward it says `I SAW N MIN`, remembers the
   chapter at the next check-in, and adds a small persistent memory mark below its face. Memories
   never decay and skipped days carry no penalty.
-- Back exits immediately after saving a compact session summary. Pressing Select performs the
-  larger text export on demand; ordinary open/close use does not serialize the whole history.
+- Back exits immediately after saving a compact session summary, even if that save fails.
+  Pressing Select (the top-right START button on the FR265) performs the larger text export on
+  demand; ordinary open/close use does not serialize the whole history.
+- Every session summary records how it ended (`exit_reason` `1` Back, `2` the watch closed the
+  app), the elapsed second of the last button press (`last_input_s`, `-1` for none) and the
+  number of presses (`inputs`). Each exit also prints one `FRIEND_EXIT,reason,elapsed,last_input,
+  inputs` log line. A launch with no session summary at all means Friend crashed; the reader
+  copies Garmin's `CIQ_LOG.YML`/`.BAK` crash log next to the export to confirm it.
 - Makes no web requests and sends nothing off the watch.
 
 The export contains four CSV sections: the 8 newest check-in snapshots, the 8 newest session

@@ -12,7 +12,7 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.3.0";
+    const APP_VERSION = "0.4.0";
     const SCHEMA = 3;
     const LIVE_INTERVAL_SECONDS = 20;
     const MAX_LIVE = 700;       // Just under four hours of foreground detail.
@@ -26,6 +26,13 @@ class WristDiaryView extends WatchUi.View {
 
     const CHAPTER_IDLE = 0;
     const CHAPTER_ACTIVE = 1;
+
+    // Why the session ended. OTHER means onStop arrived without Back: the watch
+    // closed the app (timeout, wrist-off, a native activity, ...). A crash never
+    // reaches stopSession, so it leaves no session summary at all.
+    const EXIT_UNKNOWN = 0;
+    const EXIT_BACK = 1;
+    const EXIT_OTHER = 2;
 
     const L_EPOCH = 0;
     const L_SESSION = 1;
@@ -45,6 +52,9 @@ class WristDiaryView extends WatchUi.View {
     var mSessionId as Lang.Number = 0;
     var mStartedAt as Lang.Number = 0;
     var mElapsed as Lang.Number = 0;
+    var mExitReason as Lang.Number = EXIT_UNKNOWN;
+    var mInputCount as Lang.Number = 0;
+    var mLastInputElapsed as Lang.Number = -1;
 
     var mBaselineMin as Lang.Number = -1;
     var mBaselineAvg as Lang.Number = -1;
@@ -150,7 +160,7 @@ class WristDiaryView extends WatchUi.View {
                     "MEM " + mLifetimeChapters + "   " + elapsedText(),
                     Graphics.TEXT_JUSTIFY_CENTER);
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_BLACK);
-        dc.drawText(centerX, 342, Graphics.FONT_XTINY, "BACK EXIT   SEL EXPORT",
+        dc.drawText(centerX, 342, Graphics.FONT_XTINY, "BACK EXIT  START EXPORT",
                     Graphics.TEXT_JUSTIFY_CENTER);
     }
 
@@ -203,9 +213,19 @@ class WristDiaryView extends WatchUi.View {
         WatchUi.requestUpdate();
     }
 
-    function stopSession() as Void {
+    // Every behavior the delegate sees counts, so a session summary can show how
+    // long the app sat untouched before it ended.
+    function noteInput() as Void {
+        mInputCount += 1;
+        mLastInputElapsed = mElapsed;
+    }
+
+    function stopSession(reason as Lang.Number) as Void {
         if (mStopped) { return; }
         mStopped = true;
+        mExitReason = reason;
+        System.println("FRIEND_EXIT," + reason + "," + mElapsed + "," +
+                       mLastInputElapsed + "," + mInputCount);
         var timer = mTimer;
         if (timer != null) { timer.stop(); }
         try { Sensor.unregisterSensorDataListener(); } catch (e) { }
@@ -509,7 +529,8 @@ class WristDiaryView extends WatchUi.View {
             percentage(mSessionMovingSamples, mSessionMotionSamples),
             mStartSteps, mSteps, mStartStress, mStress,
             mStartBodyBattery, mBodyBattery,
-            mSessionChapters, mLastChapterDuration, mLifetimeChapters
+            mSessionChapters, mLastChapterDuration, mLifetimeChapters,
+            mExitReason, mLastInputElapsed, mInputCount
         ] as Lang.Array<Lang.Number>);
     }
 
@@ -530,7 +551,7 @@ class WristDiaryView extends WatchUi.View {
         exportRecentRing("snap", MAX_SNAPSHOTS, EXPORT_SNAPSHOTS,
             "epoch,steps,calories,moderate,vigorous,stress,hr4h_min,hr4h_avg,hr4h_max,body_battery,distance_cm,floors");
         exportRecentRing("session3", MAX_SESSIONS, EXPORT_SESSIONS,
-            "start_epoch,end_epoch,duration_s,hr4h_min,hr4h_avg,hr4h_max,hr_min,hr_avg,hr_max,motion_avg,motion_peak,moving_pct,steps_start,steps_end,stress_start,stress_end,bb_start,bb_end,chapters,last_chapter_s,lifetime_chapters");
+            "start_epoch,end_epoch,duration_s,hr4h_min,hr4h_avg,hr4h_max,hr_min,hr_avg,hr_max,motion_avg,motion_peak,moving_pct,steps_start,steps_end,stress_start,stress_end,bb_start,bb_end,chapters,last_chapter_s,lifetime_chapters,exit_reason,last_input_s,inputs");
         exportRecentRing("chapter3", MAX_CHAPTERS, EXPORT_CHAPTERS,
             "start_epoch,end_epoch,duration_s,partial,baseline_hr,hr_min,hr_avg,hr_max,hr_delta_peak,motion_avg,motion_peak,moving_pct,steps_start,steps_end,reason");
         exportSampledRing("live3", MAX_LIVE, EXPORT_LIVE,
