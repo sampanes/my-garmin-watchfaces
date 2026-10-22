@@ -35,8 +35,11 @@ Check-ins are useful but optional, and customization/upgrades live in a separate
 plain `Friend` MVP. It deliberately reuses Wrist Diary's app identity, observes immediately when
 opened, retains roughly four hours of detailed HR/motion evidence plus longer-lived session
 summaries, and exports local CSV sections for inspection before any art or progression investment.
-Version 0.3 adds automatic, neutral effort chapters: the friend notices sustained evidence,
+Version 0.3 added automatic, neutral effort chapters: the friend notices sustained evidence,
 excludes a later quiet desk tail, and keeps a forgiving visual memory without requiring daily care.
+Version 0.4 records how each session ends, fits its export inside Garmin's ~5 KB log file, logs
+battery and memory cost, answers several hardware-test questions on every check-in, and draws a
+round-screen layout with three moods.
 
 **Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer
 progression/ownership model (how the pet "scales up" without becoming a paralyzing

@@ -87,9 +87,9 @@ for ($i = 0; $i -lt $records.Count; $i += 1) {
 
 # Size: a full export at the device's export counts with realistic magnitudes
 # must stay under the ~5 KB Garmin log file, with room for a few later lines.
-$exportLines = @("FRIEND_EXPORT_BEGIN,4,0.4.0", "FRIEND_DEVICE,006-B4257-00,27.09,5.2.0")
+$exportLines = @("FRIEND_EXPORT_BEGIN,4,0.4.0", "FRIEND_DEVICE,006-B4257-00,27.09,5.2.0,1,1")
 $exportLines += "FRIEND_snap_BEGIN,4"
-$exportLines += @(1..4 | ForEach-Object { "1792172519,11949,1052,22,11,51,57,77,131,74,1155182,12" })
+$exportLines += @(1..4 | ForEach-Object { "1792172519,11949,1052,22,11,51,57,77,131,74,1155182,12,16,72,98,101325,180" })
 $exportLines += @("FRIEND_snap_END", "FRIEND_session3_BEGIN,8")
 $exportLines += @(1..8 | ForEach-Object {
     "1792169060,1792170899,11838,53,69,94,66,109,141,253,17351,59,10998,11705,100,100,74,100,12,1838,125,2,1838,14,100,97,312,3"

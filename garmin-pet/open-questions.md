@@ -130,6 +130,21 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
         SW 28.05. T1 FR265 `TONE_SUCCESS` produced no audible beep on SW 28.05; retest
         sound settings + custom `ToneProfile` before relying on tones. Remaining:
         T16 🟢 sleep-score, T17 🔵 barometer, T18 🟢 QR, and VA6-side T2.
+      - **Answered by the Friend dogfood build (FR265):** a device app reads Body Battery history
+        (T7, history half) and live stress (T8, live half); see the `11` results log. Friend 0.4.0
+        also logs respiration, time-to-recovery, SpO2, pressure and stress-history age on every
+        check-in (T9, T10, T12, T17 values, T8 timestamp half), so those resolve on the next read.
+- [ ] **Watch closes a foreground app on its own (2026-10-22, FR265).** Friend sessions ended
+      cleanly (no crash log entry) at 1840 s and 1839 s wall time on 09-22 and 10-16, both mid-effort,
+      while other sessions ran 81–132 min. Hypothesis: an inactivity timeout of about 30 min without
+      input for a non-recording app. Friend 0.4.0 records `exit_reason`, `last_input_s`, `inputs` and
+      `hides` per session to confirm or rule it out. Matters for the "leave it open" workout loop
+      (`04`): if confirmed, a long session needs input, an `ActivityRecording`, or acceptance.
+- [x] **App debug log is about 5 KB per file (measured, FR265, 2026-10-22).** Garmin rotates
+      `LOGS/<app>.TXT` to `.BAK` at about 5 KB (observed `.BAK` sizes 5150 and 5160 bytes), so at
+      most about 10 KB of `System.println` output survives and only a block under 5 KB is always
+      retrieved whole. Friend's export format 4 is sized to it; raw sensor capture cannot go out
+      this way.
 
 ## C. Product decisions
 

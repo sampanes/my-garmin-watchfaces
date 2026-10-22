@@ -41,16 +41,20 @@ data/features, and major if stored data or behavior is intentionally broken or r
 
 Garmin rotates the app log at about 5 KB and keeps one older file (measured on the FR265:
 `.BAK` files of 5150 and 5160 bytes), so only an export under 5 KB is always retrieved whole; a
-7.3 KB export on 2026-10-22 lost its start. Export format 4 is therefore sized to about 4.3 KB at
+7.3 KB export on 2026-10-22 lost its start. Export format 4 is therefore sized to about 4.4 KB at
 most:
 
-- `FRIEND_DEVICE`: part number, firmware and Connect IQ version.
+- `FRIEND_DEVICE`: part number, firmware, Connect IQ version, and whether tones and vibration
+  are switched on (`1`/`0`).
 - CSV rows without header lines (the column names live in `scripts/friend-export.ps1`): the 4
   newest check-in snapshots, the 8 newest session summaries and the 10 newest effort chapters.
 - The 90 newest 20-second live records (the last 30 minutes Friend was open) in a compact
   fixed-width base-36 form, 22 characters a row instead of about 65.
 
-Session summaries also carry battery % at start and end (`battery_start`, `battery_end`), peak
+Each check-in snapshot also answers open hardware questions: respiration rate, time to recovery
+(hours), SpO2, barometric pressure (Pa) and the age of the newest stress-history sample (s).
+There `-1` means the watch answered null, `-2` that this firmware lacks the field, and `-3` that
+the call threw. Session summaries also carry battery % at start and end (`battery_start`, `battery_end`), peak
 app memory in KB (`mem_peak_kb`) and how many times the screen went away (`hides`; a close by the
 watch usually adds one). Chapter summaries include duration, HR range and peak delta, motion, step
 change, whether Back ended the chapter early, and a numeric evidence reason (`1` motion, `2` HR,

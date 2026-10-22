@@ -22,7 +22,7 @@ class WristDiaryView extends WatchUi.View {
     const MAX_SESSIONS = 60;
     const MAX_CHAPTERS = 60;
     // Garmin rotates the app log at about 5 KB and keeps one older file, so only an
-    // export under 5 KB always survives whole. These counts keep it near 4.6 KB.
+    // export under 5 KB always survives whole. These counts keep it under 4.5 KB.
     const EXPORT_LIVE = 90;     // Newest 30 minutes at full 20-second resolution.
     const EXPORT_SNAPSHOTS = 4;
     const EXPORT_SESSIONS = 8;
@@ -183,7 +183,8 @@ class WristDiaryView extends WatchUi.View {
         drawHeartLine(dc, centerX, height * 69 / 100);
 
         y = height * 80 / 100;
-        var info = mLifetimeChapters + ((mLifetimeChapters == 1) ? " memory   " : " memories   ") +
+        var info = mLifetimeChapters.toString() +
+                   ((mLifetimeChapters == 1) ? " memory   " : " memories   ") +
                    elapsedText();
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(centerX, y, fitFont(dc, info, [Graphics.FONT_XTINY], y),
@@ -484,8 +485,61 @@ class WristDiaryView extends WatchUi.View {
         saveRing("snap", MAX_SNAPSHOTS, [
             Time.now().value(), mSteps, numberOrMissing(info.calories), moderate, vigorous,
             mStress, mBaselineMin, mBaselineAvg, mBaselineMax, mBodyBattery,
-            numberOrMissing(info.distance), numberOrMissing(info.floorsClimbed)
+            numberOrMissing(info.distance), numberOrMissing(info.floorsClimbed),
+            respirationRate(info), timeToRecovery(info), oxygenSaturation(),
+            pressurePascals(), stressSampleAge()
         ] as Lang.Array<Lang.Number>);
+    }
+
+    // Open hardware questions answered on every check-in (test plan T8-T12, T17).
+    // Codes: -1 the watch answered null, -2 this firmware lacks the field, -3 it threw.
+    function respirationRate(info as ActivityMonitor.Info) as Lang.Number {
+        try {
+            if (!(info has :respirationRate)) { return -2; }
+            return numberOrMissing(info.respirationRate);
+        } catch (e) { }
+        return -3;
+    }
+
+    function timeToRecovery(info as ActivityMonitor.Info) as Lang.Number {
+        try {
+            if (!(info has :timeToRecovery)) { return -2; }
+            return numberOrMissing(info.timeToRecovery);
+        } catch (e) { }
+        return -3;
+    }
+
+    function oxygenSaturation() as Lang.Number {
+        try {
+            var info = Sensor.getInfo();
+            if (!(info has :oxygenSaturation)) { return -2; }
+            return numberOrMissing(info.oxygenSaturation);
+        } catch (e) { }
+        return -3;
+    }
+
+    function pressurePascals() as Lang.Number {
+        try {
+            var info = Sensor.getInfo();
+            if (!(info has :pressure)) { return -2; }
+            var pressure = info.pressure;
+            return (pressure == null) ? -1 : pressure.toNumber();
+        } catch (e) { }
+        return -3;
+    }
+
+    // Seconds since the newest stress-history sample: how fresh history is in an app.
+    function stressSampleAge() as Lang.Number {
+        try {
+            if (!(SensorHistory has :getStressHistory)) { return -2; }
+            var sample = SensorHistory.getStressHistory({
+                :period => 1,
+                :order => SensorHistory.ORDER_NEWEST_FIRST
+            }).next();
+            if (sample == null) { return -1; }
+            return Time.now().value() - sample.when.value();
+        } catch (e) { }
+        return -3;
     }
 
     function captureLive() as Void {
@@ -699,7 +753,8 @@ class WristDiaryView extends WatchUi.View {
             var ciq = settings.monkeyVersion;
             System.println("FRIEND_DEVICE," + settings.partNumber + "," +
                            firmware[0] + "." + firmware[1].format("%02d") + "," +
-                           ciq[0] + "." + ciq[1] + "." + ciq[2]);
+                           ciq[0] + "." + ciq[1] + "." + ciq[2] + "," +
+                           (settings.tonesOn ? 1 : 0) + "," + (settings.vibrateOn ? 1 : 0));
         } catch (e) { }
     }
 

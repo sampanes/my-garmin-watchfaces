@@ -81,6 +81,8 @@ $deviceParts = if ($deviceLine) { $deviceLine -split "," } else { @() }
     part_number = if ($deviceParts.Count -ge 2) { $deviceParts[1] } else { $null }
     firmware = if ($deviceParts.Count -ge 3) { $deviceParts[2] } else { $null }
     connect_iq = if ($deviceParts.Count -ge 4) { $deviceParts[3] } else { $null }
+    tones_on = if ($deviceParts.Count -ge 5) { $deviceParts[4] } else { $null }
+    vibrate_on = if ($deviceParts.Count -ge 6) { $deviceParts[5] } else { $null }
 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outDir "export-metadata.json")
 
 $snapshots = @(Read-FriendCsvSection $block "snap")
