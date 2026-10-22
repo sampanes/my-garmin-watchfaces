@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <iq:application
+        id="62950690-bd96-4462-b62c-cccd045c3cb4"
+        type="watch-app"
+        name="@Strings.AppName"
+        entry="WalkProbeApp"
+        launcherIcon="@Drawables.LauncherIcon"
+        minApiLevel="5.2.0">
+        <iq:products>
+            <iq:product id="fr265"/>
+            <iq:product id="fr265s"/>
+            <iq:product id="vivoactive6"/>
+        </iq:products>
+        <!-- Garmin's permission table lists Fit as covering both Toybox.ActivityRecording
+             and Toybox.FitContributor, so there is no separate FitContributor entry. If the
+             compiler or the watch reports a FitContributor permission error, add
+             <iq:uses-permission id="FitContributor"/> (the FitContributor API page names it). -->
+        <iq:permissions>
+            <iq:uses-permission id="Fit"/>
+            <iq:uses-permission id="Positioning"/>
+            <iq:uses-permission id="Sensor"/>
+        </iq:permissions>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+        <iq:barrels/>
+    </iq:application>
+</iq:manifest>

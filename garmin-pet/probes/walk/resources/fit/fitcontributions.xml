@@ -1,0 +1,12 @@
+<resources>
+    <!-- Display metadata for the custom FIT field. The id must match MOOD_FIELD_ID in
+         WalkProbeView.mc. Attributes follow Garmin's Activity Recording article; the
+         <resources> wrapper is the usual resource-file root but is not shown in that article.
+         Garmin Connect reads this metadata from the store's .iq package, so a sideloaded
+         .prg may record the field without Connect drawing its chart (see README). -->
+    <fitContributions>
+        <fitField id="0" displayInChart="true" sortOrder="0" precision="0"
+            chartTitle="@Strings.MoodChartTitle" dataLabel="@Strings.MoodLabel"
+            unitLabel="@Strings.MoodUnits" fillColor="#6ED6A8" />
+    </fitContributions>
+</resources>

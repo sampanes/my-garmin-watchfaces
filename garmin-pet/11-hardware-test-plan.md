@@ -127,6 +127,8 @@ Cap: **AUTO** = stub self-reports · **MAN** = you observe & record.
 | ⭐ T19 | **"Walk with me" lands in Connect with a map + HR** | `createSession({:sport=>SPORT_WALKING})`; `Position.enableLocationEvents(LOCATION_CONTINUOUS,cb)`; `Sensor.setEnabledSensors([SENSOR_HEARTRATE])`; add a `FitContributor` field; walk ~3 min; `save()` | After sync: activity in Garmin Connect **with a route map**? HR graph present? Custom field visible? | 🔵🟢 |
 | ▫ T20 | GPS track stops when app backgrounds | start T19, then background the app mid-walk | Straight-line gap in the route where it backgrounded? (confirms FG-only) | 🔵🟢 |
 
+Probe app for T19/T20: [`probes/walk/`](probes/walk/README.md) (build with `scripts/build-walk-probe.ps1`; outdoor procedure, Connect checklist and results table in its README).
+
 ### F — Navigation (MAN — app exits)
 | ID | Resolves | Stub | Observe / record | Dev |
 |----|----------|------|------------------|-----|
