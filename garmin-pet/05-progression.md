@@ -234,6 +234,7 @@ proof." It can't be lost punitively, which is exactly why it fits.
 > ⏳ **Numbers are a kicked can** (like the evolution bands): decay rate / floor, the daily-first
 > curve, the shield economy — all TBD on hardware. Capture the *principle* (gain-framed, visible,
 > forgiven); tune the *curve* in the `pet-sandbox` scrubber later. → `open-questions.md §C`.
+> → Proposed numbers (floor, taper, shields), with tests and a 120-day sim: `12-pet-state-and-economy.md` §3-§5.
 
 ---
 
@@ -286,15 +287,18 @@ EVOLUTIONS = [
       (already vetoed) and never a loss-framed streak (FOMO). It's a warmed-up *state* + a
       daily-first bonus + shield forgiveness + comeback warmth, with identity/competence as the
       deepest driver. Curve numbers TBD (kicked can). See §"Momentum & consistency".
+      → Proposed curve: `12-pet-state-and-economy.md` §4-§5.
 
 ### Still open (product calls, see also `open-questions.md §C`)
 - [ ] How many evolution **bands** total, and what gates each (track-tier? age? a quest?).
+      → Proposed bands, gates and ladder: `12-pet-state-and-economy.md` §6 and §8.
 - [ ] Do evolution branches differ in **powers/verbs**, **cosmetics only**, or both? (Lean, now
       that "power" = a capability-verb: a branch grants **one signature *functional* power + a
       look** — horizontal, not power-superior. The Layer-B power track is the broad menu everyone
       eventually unlocks; the evolution branch is the one *permanent signature* capability. —
       firming up next.)
 - [ ] Exact **decay forgiveness** curve (how gentle; does it pause when away?).
+      → Proposed: floor 35, 24 h half-life, pause after 48 h, warm reunion: `12-pet-state-and-economy.md` §3.
 
 ---
 
