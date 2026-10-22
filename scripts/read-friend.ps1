@@ -54,7 +54,7 @@ for ($i = 0; $i -lt 20 -and -not (Test-Path -LiteralPath $txtPath); $i += 1) {
     Start-Sleep -Milliseconds 500
 }
 if (-not (Test-Path -LiteralPath $txtPath)) {
-    throw "Friend's log was not found. Open Friend once, press Select, then reconnect."
+    throw "Friend's log was not found. Open Friend once, press START, then reconnect."
 }
 
 $allLines = @()
@@ -69,7 +69,7 @@ for ($i = 0; $i -lt $allLines.Count; $i += 1) {
     elseif ($begin -ge 0 -and $allLines[$i] -eq "FRIEND_EXPORT_END") { $end = $i }
 }
 if ($begin -lt 0 -or $end -le $begin) {
-    throw "No complete Friend export was found. Open Friend, press Select, and reconnect."
+    throw "No complete Friend export was found. Open Friend, press START, and reconnect."
 }
 
 $block = $allLines[$begin..$end]

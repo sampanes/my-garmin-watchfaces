@@ -2,6 +2,7 @@ using Toybox.ActivityMonitor;
 using Toybox.Application;
 using Toybox.Graphics;
 using Toybox.Lang;
+using Toybox.Math;
 using Toybox.Sensor;
 using Toybox.SensorHistory;
 using Toybox.System;
@@ -33,6 +34,10 @@ class WristDiaryView extends WatchUi.View {
     const EXIT_UNKNOWN = 0;
     const EXIT_BACK = 1;
     const EXIT_OTHER = 2;
+
+    const MOOD_CALM = 0;
+    const MOOD_EFFORT = 1;
+    const MOOD_REMEMBER = 2;
 
     const L_EPOCH = 0;
     const L_SESSION = 1;
@@ -141,55 +146,160 @@ class WristDiaryView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var width = dc.getWidth();
-        var centerX = width / 2;
-        dc.setColor(0x6ED6A8, Graphics.COLOR_BLACK);
-        dc.drawText(centerX, 22, Graphics.FONT_SMALL, "FRIEND v" + APP_VERSION,
-                    Graphics.TEXT_JUSTIFY_CENTER);
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        var mood = moodNow();
 
-        drawFace(dc, centerX, 128);
-        drawMemoryMarks(dc, centerX, 205);
+        // Every line is placed as a share of the screen and sized to the chord of
+        // the round display where it sits, so nothing runs off the bezel.
+        var y = height * 10 / 100;
+        var title = "FRIEND " + APP_VERSION;
+        dc.setColor(0x3E7A62, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(centerX, y, fitFont(dc, title, [Graphics.FONT_XTINY], y),
+                    title, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-        dc.drawText(centerX, 228, Graphics.FONT_MEDIUM, statusText(),
-                    Graphics.TEXT_JUSTIFY_CENTER);
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_BLACK);
-        dc.drawText(centerX, 276, Graphics.FONT_SMALL, heartText(),
-                    Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(centerX, 313, Graphics.FONT_XTINY,
-                    "MEM " + mLifetimeChapters + "   " + elapsedText(),
-                    Graphics.TEXT_JUSTIFY_CENTER);
-        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_BLACK);
-        dc.drawText(centerX, 342, Graphics.FONT_XTINY, "BACK EXIT  START EXPORT",
-                    Graphics.TEXT_JUSTIFY_CENTER);
+        drawFace(dc, centerX, height * 30 / 100, height * 13 / 100, mood);
+        drawMemoryMarks(dc, centerX, height * 46 / 100);
+
+        y = height * 56 / 100;
+        var status = statusText();
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(centerX, y, fitFont(dc, status,
+                    [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL, Graphics.FONT_TINY], y),
+                    status, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        drawHeartLine(dc, centerX, height * 69 / 100);
+
+        y = height * 80 / 100;
+        var info = mLifetimeChapters + ((mLifetimeChapters == 1) ? " memory   " : " memories   ") +
+                   elapsedText();
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(centerX, y, fitFont(dc, info, [Graphics.FONT_XTINY], y),
+                    info, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        drawStartHint(dc);
     }
 
-    function drawFace(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number) as Void {
-        var effort = effortScore();
-        var color = (mChapterState == CHAPTER_ACTIVE || effort > 35) ?
-                    0xFFB15C : 0x6ED6A8;
-        dc.setColor(color, Graphics.COLOR_BLACK);
-        dc.setPenWidth(6);
-        dc.drawCircle(x, y, 67);
-        dc.fillCircle(x - 23, y - 13, 7);
-        dc.fillCircle(x + 23, y - 13, 7);
+    function moodNow() as Lang.Number {
+        if (mChapterState == CHAPTER_ACTIVE || effortScore() > 35) { return MOOD_EFFORT; }
+        if (recentlyRemembered()) { return MOOD_REMEMBER; }
+        return MOOD_CALM;
+    }
+
+    function moodColor(mood as Lang.Number) as Lang.Number {
+        if (mood == MOOD_EFFORT) { return 0xFFB15C; }
+        if (mood == MOOD_REMEMBER) { return 0xE8CF70; }
+        return 0x6ED6A8;
+    }
+
+    function drawFace(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number,
+                      radius as Lang.Number, mood as Lang.Number) as Void {
+        dc.setColor(0x10241C, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(x, y, radius);
+        dc.setColor(moodColor(mood), Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(5);
-        if (effort > 35) {
-            dc.drawArc(x, y + 17, 25, Graphics.ARC_COUNTER_CLOCKWISE, 200, 340);
+        dc.drawCircle(x, y, radius);
+
+        if (mood == MOOD_EFFORT) {
+            // Open, laughing mouth: a disc with its top half painted back out.
+            var mouth = radius * 30 / 100;
+            var mouthY = y + radius * 16 / 100;
+            dc.fillCircle(x, mouthY, mouth);
+            dc.setColor(0x10241C, Graphics.COLOR_TRANSPARENT);
+            dc.fillRectangle(x - mouth - 1, mouthY - mouth - 1, mouth * 2 + 2, mouth + 1);
+            dc.setColor(moodColor(mood), Graphics.COLOR_TRANSPARENT);
         } else {
-            dc.drawLine(x - 22, y + 25, x + 22, y + 25);
+            dc.drawArc(x, y - radius * 18 / 100, radius * 58 / 100,
+                       Graphics.ARC_COUNTER_CLOCKWISE, 240, 300);
+        }
+
+        // Eyes go on top: the open mouth paints over its own top half.
+        var eyeX = radius * 36 / 100;
+        var eyeY = y - radius * 16 / 100;
+        var eye = radius * 11 / 100;
+        if (mood == MOOD_REMEMBER) {
+            // Happy closed eyes: two small upturned arcs.
+            dc.setPenWidth(4);
+            dc.drawArc(x - eyeX, eyeY + eye, eye + 2, Graphics.ARC_COUNTER_CLOCKWISE, 20, 160);
+            dc.drawArc(x + eyeX, eyeY + eye, eye + 2, Graphics.ARC_COUNTER_CLOCKWISE, 20, 160);
+        } else {
+            dc.fillEllipse(x - eyeX, eyeY, eye, eye * 14 / 10);
+            dc.fillEllipse(x + eyeX, eyeY, eye, eye * 14 / 10);
         }
     }
 
     function drawMemoryMarks(dc as Graphics.Dc, x as Lang.Number,
                              y as Lang.Number) as Void {
-        var count = (mLifetimeChapters < 8) ? mLifetimeChapters : 8;
-        var startX = x - ((count - 1) * 9 / 2);
-        dc.setColor(0xE8CF70, Graphics.COLOR_BLACK);
+        var count = (mLifetimeChapters < 10) ? mLifetimeChapters : 10;
+        if (count == 0) { return; }
+        var gap = 16;
+        var startX = x - ((count - 1) * gap / 2);
+        dc.setColor(0xE8CF70, Graphics.COLOR_TRANSPARENT);
         for (var i = 0; i < count; i += 1) {
-            var radius = ((i + mLifetimeChapters) % 3 == 0) ? 4 : 3;
-            dc.fillCircle(startX + i * 9, y, radius);
+            dc.fillCircle(startX + i * gap, y, 5);
         }
+    }
+
+    function drawHeartLine(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number) as Void {
+        var text = "--";
+        if (mHeartRate >= 0) {
+            text = mHeartRate.toString();
+            if (mBaselineAvg >= 0) {
+                var delta = heartDelta();
+                text += (delta >= 0) ? ("   +" + delta) : ("   " + delta);
+            }
+        }
+        // "MM " reserves room for the drawn heart while choosing the font.
+        var font = fitFont(dc, "MM " + text,
+                           [Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY], y);
+        var size = dc.getFontHeight(font) * 30 / 100;
+        var total = size * 3 + dc.getTextWidthInPixels(text, font);
+        var heartX = x - total / 2 + size;
+
+        // A drawn heart, so it never depends on a font having the glyph.
+        dc.setColor(0xFF6B6B, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(heartX - size / 2, y - size / 3, size / 2 + 1);
+        dc.fillCircle(heartX + size / 2, y - size / 3, size / 2 + 1);
+        dc.fillPolygon([[heartX - size - 1, y - size / 4], [heartX + size + 1, y - size / 4],
+                        [heartX, y + size]]);
+
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(heartX + size * 2, y, font, text,
+                    Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    // Garmin's own convention: a short arc on the rim beside the START button
+    // (top right on the FR265) marks the press that saves the export.
+    function drawStartHint(dc as Graphics.Dc) as Void {
+        var center = dc.getWidth() / 2;
+        dc.setColor(0x6ED6A8, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(8);
+        dc.drawArc(center, dc.getHeight() / 2, center - 6,
+                   Graphics.ARC_COUNTER_CLOCKWISE, 22, 42);
+    }
+
+    // The largest font in the list whose text fits the round screen at this height.
+    function fitFont(dc as Graphics.Dc, text as Lang.String,
+                     fonts as Lang.Array<Graphics.FontDefinition>,
+                     y as Lang.Number) as Graphics.FontDefinition {
+        for (var i = 0; i < fonts.size(); i += 1) {
+            var font = fonts[i];
+            if (dc.getTextWidthInPixels(text, font) <=
+                chordWidth(dc, y, dc.getFontHeight(font))) {
+                return font;
+            }
+        }
+        return fonts[fonts.size() - 1];
+    }
+
+    function chordWidth(dc as Graphics.Dc, y as Lang.Number,
+                        lineHeight as Lang.Number) as Lang.Number {
+        var radius = dc.getWidth() / 2;
+        var top = absolute(y - lineHeight / 2 - radius);
+        var bottom = absolute(y + lineHeight / 2 - radius);
+        var far = (top > bottom) ? top : bottom;
+        if (far >= radius) { return 0; }
+        return (Math.sqrt(radius * radius - far * far) * 2).toNumber() - 24;
     }
 
     function startSession() as Void {
@@ -612,7 +722,7 @@ class WristDiaryView extends WatchUi.View {
     function exportNow() as Void {
         captureLive();
         exportAllRecords();
-        mStatus = "DATA READY";
+        mStatus = "SAVED";
         WatchUi.requestUpdate();
     }
 
@@ -624,10 +734,9 @@ class WristDiaryView extends WatchUi.View {
     }
 
     function statusText() as Lang.String {
-        if (mStatus == "DATA READY") { return mStatus; }
+        if (mStatus == "SAVED") { return mStatus; }
         if (mChapterState == CHAPTER_ACTIVE) { return "WITH YOU"; }
-        if (mLastChapterDuration > 0 &&
-            ((Time.now().value() - mLastChapterEpoch) <= 300 || mElapsed <= 30)) {
+        if (recentlyRemembered()) {
             var minutes = (mLastChapterDuration + 30) / 60;
             if (minutes < 1) { minutes = 1; }
             return "I SAW " + minutes + " MIN";
@@ -637,11 +746,11 @@ class WristDiaryView extends WatchUi.View {
         return "I'M HERE";
     }
 
-    function heartText() as Lang.String {
-        if (mHeartRate < 0) { return "HR --"; }
-        var delta = heartDelta();
-        if (delta >= 0) { return "HR " + mHeartRate + "   +" + delta; }
-        return "HR " + mHeartRate + "   " + delta;
+    // For a few minutes after a chapter (and the first 30 s of a visit) the
+    // friend talks about what it saw.
+    function recentlyRemembered() as Lang.Boolean {
+        return mLastChapterDuration > 0 &&
+               ((Time.now().value() - mLastChapterEpoch) <= 300 || mElapsed <= 30);
     }
 
     function heartDelta() as Lang.Number {

@@ -27,8 +27,11 @@ data/features, and major if stored data or behavior is intentionally broken or r
   chapter at the next check-in, and adds a small persistent memory mark below its face. Memories
   never decay and skipped days carry no penalty.
 - Back exits immediately after saving a compact session summary, even if that save fails.
-  Pressing Select (the top-right START button on the FR265) performs the larger text export on
-  demand; ordinary open/close use does not serialize the whole history.
+  Pressing Select (the top-right START button on the FR265, marked by a short green arc on the
+  rim) performs the larger text export on demand and shows `SAVED`; ordinary open/close use does
+  not serialize the whole history.
+- The face has three moods: calm (green, small smile), effort (orange, open mouth) and remember
+  (gold, happy closed eyes). Every text line is sized to fit the round screen at its height.
 - Every session summary records how it ended (`exit_reason` `1` Back, `2` the watch closed the
   app), the elapsed second of the last button press (`last_input_s`, `-1` for none) and the
   number of presses (`inputs`). Each exit also prints one `FRIEND_EXIT,reason,elapsed,last_input,
@@ -81,6 +84,6 @@ Reconnect the watch and run:
 .\scripts\read-friend.ps1
 ```
 
-Before reconnecting, open Friend and press Select once so the newest complete export is in the
+Before reconnecting, open Friend and press START once so the newest complete export is in the
 log. The reader copies both the live log and rotated backup, writes parsed CSV files under the
 ignored `bin/friend/downloads/` directory, and leaves on-watch data untouched.
