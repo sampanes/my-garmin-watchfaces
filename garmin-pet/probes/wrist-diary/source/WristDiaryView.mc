@@ -14,16 +14,19 @@ using Toybox.WatchUi;
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
     const APP_VERSION = "0.4.0";
-    const SCHEMA = 3;
+    const SCHEMA = 3;           // On-watch storage layout.
+    const EXPORT_FORMAT = 4;    // Log export layout; read-friend.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;
     const MAX_LIVE = 700;       // Just under four hours of foreground detail.
     const MAX_SNAPSHOTS = 60;   // Roughly a month at two opens per day.
     const MAX_SESSIONS = 60;
     const MAX_CHAPTERS = 60;
-    const EXPORT_LIVE = 48;     // Chapters preserve detail; this trace preserves four-hour shape.
-    const EXPORT_SNAPSHOTS = 8;
+    // Garmin rotates the app log at about 5 KB and keeps one older file, so only an
+    // export under 5 KB always survives whole. These counts keep it near 4.6 KB.
+    const EXPORT_LIVE = 90;     // Newest 30 minutes at full 20-second resolution.
+    const EXPORT_SNAPSHOTS = 4;
     const EXPORT_SESSIONS = 8;
-    const EXPORT_CHAPTERS = 12;
+    const EXPORT_CHAPTERS = 10;
 
     const CHAPTER_IDLE = 0;
     const CHAPTER_ACTIVE = 1;
@@ -60,6 +63,9 @@ class WristDiaryView extends WatchUi.View {
     var mExitReason as Lang.Number = EXIT_UNKNOWN;
     var mInputCount as Lang.Number = 0;
     var mLastInputElapsed as Lang.Number = -1;
+    var mBatteryStart as Lang.Number = -1;
+    var mMemoryPeak as Lang.Number = 0;
+    var mHideCount as Lang.Number = 0;
 
     var mBaselineMin as Lang.Number = -1;
     var mBaselineAvg as Lang.Number = -1;
@@ -129,6 +135,7 @@ class WristDiaryView extends WatchUi.View {
         mStartSteps = mSteps;
         mStartStress = mStress;
         mStartBodyBattery = mBodyBattery;
+        mBatteryStart = batteryPercent();
         mLifetimeChapters = readNumber("chapter_total", 0);
         mLastChapterDuration = readNumber("chapter_last_duration", 0);
         mLastChapterEpoch = readNumber("chapter_last_epoch", 0);
@@ -140,6 +147,11 @@ class WristDiaryView extends WatchUi.View {
 
     function onShow() as Void {
         startSession();
+    }
+
+    // The screen went away (a notification, another app, or the app closing).
+    function onHide() as Void {
+        mHideCount += 1;
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
@@ -478,6 +490,7 @@ class WristDiaryView extends WatchUi.View {
 
     function captureLive() as Void {
         refreshSlowSignals();
+        notePeakMemory();
         var hrAvg = (mWindowHrCount > 0) ? (mWindowHrSum / mWindowHrCount) : -1;
         var hrMin = (mWindowHrCount > 0) ? mWindowHrMin : -1;
         var hrMax = (mWindowHrCount > 0) ? mWindowHrMax : -1;
@@ -640,8 +653,21 @@ class WristDiaryView extends WatchUi.View {
             mStartSteps, mSteps, mStartStress, mStress,
             mStartBodyBattery, mBodyBattery,
             mSessionChapters, mLastChapterDuration, mLifetimeChapters,
-            mExitReason, mLastInputElapsed, mInputCount
+            mExitReason, mLastInputElapsed, mInputCount,
+            mBatteryStart, batteryPercent(), mMemoryPeak / 1024, mHideCount
         ] as Lang.Array<Lang.Number>);
+    }
+
+    function batteryPercent() as Lang.Number {
+        try {
+            return System.getSystemStats().battery.toNumber();
+        } catch (e) { }
+        return -1;
+    }
+
+    function notePeakMemory() as Void {
+        var used = System.getSystemStats().usedMemory;
+        if (used > mMemoryPeak) { mMemoryPeak = used; }
     }
 
     function saveRing(prefix as Lang.String, maximum as Lang.Number,
@@ -657,26 +683,32 @@ class WristDiaryView extends WatchUi.View {
     }
 
     function exportAllRecords() as Void {
-        System.println("FRIEND_EXPORT_BEGIN," + SCHEMA + "," + APP_VERSION);
-        exportRecentRing("snap", MAX_SNAPSHOTS, EXPORT_SNAPSHOTS,
-            "epoch,steps,calories,moderate,vigorous,stress,hr4h_min,hr4h_avg,hr4h_max,body_battery,distance_cm,floors");
-        exportRecentRing("session3", MAX_SESSIONS, EXPORT_SESSIONS,
-            "start_epoch,end_epoch,duration_s,hr4h_min,hr4h_avg,hr4h_max,hr_min,hr_avg,hr_max,motion_avg,motion_peak,moving_pct,steps_start,steps_end,stress_start,stress_end,bb_start,bb_end,chapters,last_chapter_s,lifetime_chapters,exit_reason,last_input_s,inputs");
-        exportRecentRing("chapter3", MAX_CHAPTERS, EXPORT_CHAPTERS,
-            "start_epoch,end_epoch,duration_s,partial,baseline_hr,hr_min,hr_avg,hr_max,hr_delta_peak,motion_avg,motion_peak,moving_pct,steps_start,steps_end,reason");
-        exportSampledRing("live3", MAX_LIVE, EXPORT_LIVE,
-            "epoch,session_epoch,elapsed_s,hr_last,hr_min,hr_avg,hr_max,hr_delta_avg,motion_avg,motion_peak,moving_pct,steps,stress,body_battery,chapter_state");
+        System.println("FRIEND_EXPORT_BEGIN," + EXPORT_FORMAT + "," + APP_VERSION);
+        exportDevice();
+        exportRecentRing("snap", MAX_SNAPSHOTS, EXPORT_SNAPSHOTS);
+        exportRecentRing("session3", MAX_SESSIONS, EXPORT_SESSIONS);
+        exportRecentRing("chapter3", MAX_CHAPTERS, EXPORT_CHAPTERS);
+        exportCompactLive();
         System.println("FRIEND_EXPORT_END");
     }
 
+    function exportDevice() as Void {
+        try {
+            var settings = System.getDeviceSettings();
+            var firmware = settings.firmwareVersion;
+            var ciq = settings.monkeyVersion;
+            System.println("FRIEND_DEVICE," + settings.partNumber + "," +
+                           firmware[0] + "." + firmware[1].format("%02d") + "," +
+                           ciq[0] + "." + ciq[1] + "." + ciq[2]);
+        } catch (e) { }
+    }
+
     function exportRecentRing(prefix as Lang.String, maximum as Lang.Number,
-                              exportMaximum as Lang.Number,
-                              header as Lang.String) as Void {
+                              exportMaximum as Lang.Number) as Void {
         var count = readNumber(prefix + "_count", 0);
         var next = readNumber(prefix + "_next", 0);
         var exportCount = (count < exportMaximum) ? count : exportMaximum;
         System.println("FRIEND_" + prefix + "_BEGIN," + exportCount);
-        System.println(header);
         var start = next - exportCount;
         while (start < 0) { start += maximum; }
         for (var i = 0; i < exportCount; i += 1) {
@@ -688,28 +720,69 @@ class WristDiaryView extends WatchUi.View {
         System.println("FRIEND_" + prefix + "_END");
     }
 
-    function exportSampledRing(prefix as Lang.String, maximum as Lang.Number,
-                               exportMaximum as Lang.Number,
-                               header as Lang.String) as Void {
-        var count = readNumber(prefix + "_count", 0);
-        var next = readNumber(prefix + "_next", 0);
-        var exportCount = (count < exportMaximum) ? count : exportMaximum;
-        System.println("FRIEND_" + prefix + "_BEGIN," + exportCount);
-        System.println(header);
-        var start = next - count;
-        while (start < 0) { start += maximum; }
+    // The newest live records, oldest first, 22 characters each instead of ~65.
+    // "S,session_epoch,epoch,steps" sets the base for the rows after it; each row is
+    // fixed-width base 36: seconds since the previous row (2), hr min/avg/max (2 each),
+    // motion avg (2), motion peak (3), moving % (2), steps since the previous row (2),
+    // stress (2), body battery (2), chapter state (1). All z's means missing.
+    function exportCompactLive() as Void {
+        var digits = "0123456789abcdefghijklmnopqrstuvwxyz".toCharArray();
+        var count = readNumber("live3_count", 0);
+        var next = readNumber("live3_next", 0);
+        var exportCount = (count < EXPORT_LIVE) ? count : EXPORT_LIVE;
+        System.println("FRIEND_live4_BEGIN," + exportCount);
+        var start = next - exportCount;
+        while (start < 0) { start += MAX_LIVE; }
+        var session = -1;
+        var lastEpoch = 0;
+        var lastSteps = -1;
         for (var i = 0; i < exportCount; i += 1) {
-            var logicalIndex = i;
-            if (count > exportCount && exportCount > 1) {
-                logicalIndex = i * (count - 1) / (exportCount - 1);
+            var value = Application.Storage.getValue("live3_" + ((start + i) % MAX_LIVE));
+            if (!(value instanceof Lang.Array)) { continue; }
+            var record = value as Lang.Array<Lang.Number>;
+            if (record.size() < 15) { continue; }
+            var steps = record[11];
+            // A new base whenever a delta would not fit: new session, a long gap, or
+            // steps that went backwards (midnight) or jumped.
+            if (record[1] != session || record[0] - lastEpoch > 1294 ||
+                (steps >= 0 && (lastSteps < 0 || steps < lastSteps ||
+                                steps - lastSteps > 1294))) {
+                session = record[1];
+                lastEpoch = record[0];
+                lastSteps = steps;
+                System.println("S," + session + "," + lastEpoch + "," + lastSteps);
             }
-            var value = Application.Storage.getValue(
-                prefix + "_" + ((start + logicalIndex) % maximum));
-            if (value instanceof Lang.Array) {
-                System.println(csvLine(value as Lang.Array<Lang.Number>));
-            }
+            var stepsDelta = (steps >= 0) ? (steps - lastSteps) : -1;
+            System.println(base36(record[0] - lastEpoch, 2, digits) +
+                           base36(record[4], 2, digits) + base36(record[5], 2, digits) +
+                           base36(record[6], 2, digits) + base36(record[8], 2, digits) +
+                           base36(record[9], 3, digits) + base36(record[10], 2, digits) +
+                           base36(stepsDelta, 2, digits) + base36(record[12], 2, digits) +
+                           base36(record[13], 2, digits) + base36(record[14], 1, digits));
+            lastEpoch = record[0];
+            if (steps >= 0) { lastSteps = steps; }
         }
-        System.println("FRIEND_" + prefix + "_END");
+        System.println("FRIEND_live4_END");
+    }
+
+    // Fixed-width base 36. Negative means missing and prints as all z's; anything too
+    // large is clamped one below that.
+    function base36(value as Lang.Number, width as Lang.Number,
+                    digits as Lang.Array<Lang.Char>) as Lang.String {
+        var limit = 1;
+        for (var i = 0; i < width; i += 1) { limit *= 36; }
+        var number = value;
+        if (number < 0) {
+            number = limit - 1;
+        } else if (number > limit - 2) {
+            number = limit - 2;
+        }
+        var text = "";
+        for (var j = 0; j < width; j += 1) {
+            text = digits[number % 36].toString() + text;
+            number = number / 36;
+        }
+        return text;
     }
 
     function migrateFromDiary() as Void {

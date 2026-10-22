@@ -57,59 +57,59 @@ if (-not (Test-Path -LiteralPath $txtPath)) {
     throw "Friend's log was not found. Open Friend once, press START, then reconnect."
 }
 
+. (Join-Path $PSScriptRoot "friend-export.ps1")
+
 $allLines = @()
 $bakPath = Join-Path $outDir ($selectedBase + ".bak")
 if (Test-Path -LiteralPath $bakPath) { $allLines += Get-Content -LiteralPath $bakPath }
 $allLines += Get-Content -LiteralPath $txtPath
 
-$begin = -1
-$end = -1
-for ($i = 0; $i -lt $allLines.Count; $i += 1) {
-    if ($allLines[$i] -like "FRIEND_EXPORT_BEGIN,*") { $begin = $i; $end = -1 }
-    elseif ($begin -ge 0 -and $allLines[$i] -eq "FRIEND_EXPORT_END") { $end = $i }
-}
-if ($begin -lt 0 -or $end -le $begin) {
+$block = Get-FriendExportBlock $allLines
+if (-not $block) {
     throw "No complete Friend export was found. Open Friend, press START, and reconnect."
 }
-
-$block = $allLines[$begin..$end]
 $exportMarker = $block[0] -split ","
 $schemaVersion = if ($exportMarker.Count -ge 2) { $exportMarker[1] } else { "unknown" }
 $appVersion = if ($exportMarker.Count -ge 3) { $exportMarker[2] } else { "0.1.0-unlabelled" }
+$deviceLine = @($block | Where-Object { $_ -like "FRIEND_DEVICE,*" }) | Select-Object -First 1
+$deviceParts = if ($deviceLine) { $deviceLine -split "," } else { @() }
 [pscustomobject]@{
     app_version = $appVersion
     schema_version = $schemaVersion
     retrieved_at = (Get-Date).ToString("o")
     device = $DeviceName
+    part_number = if ($deviceParts.Count -ge 2) { $deviceParts[1] } else { $null }
+    firmware = if ($deviceParts.Count -ge 3) { $deviceParts[2] } else { $null }
+    connect_iq = if ($deviceParts.Count -ge 4) { $deviceParts[3] } else { $null }
 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outDir "export-metadata.json")
 
-function Read-FriendSection([string]$Name) {
-    $sectionBegin = -1
-    $sectionEnd = -1
-    for ($i = 0; $i -lt $block.Count; $i += 1) {
-        if ($block[$i] -like "FRIEND_${Name}_BEGIN,*") { $sectionBegin = $i }
-        elseif ($block[$i] -eq "FRIEND_${Name}_END") { $sectionEnd = $i }
-    }
-    if ($sectionBegin -ge 0 -and $sectionEnd -gt ($sectionBegin + 1)) {
-        return @($block[($sectionBegin + 1)..($sectionEnd - 1)] | ConvertFrom-Csv)
-    }
-    return @()
-}
-
-$snapshots = @(Read-FriendSection "snap")
-$sessions = @(Read-FriendSection "session3")
-if ($sessions.Count -eq 0) { $sessions = @(Read-FriendSection "session") }
-$chapters = @(Read-FriendSection "chapter3")
-$live = @(Read-FriendSection "live3")
-if ($live.Count -eq 0) { $live = @(Read-FriendSection "live") }
+$snapshots = @(Read-FriendCsvSection $block "snap")
+$sessions = @(Read-FriendCsvSection $block "session3")
+if ($sessions.Count -eq 0) { $sessions = @(Read-FriendCsvSection $block "session") }
+$chapters = @(Read-FriendCsvSection $block "chapter3")
+$live = @(ConvertFrom-FriendLive4 (Get-FriendSectionLines $block "live4"))
+if ($live.Count -eq 0) { $live = @(Read-FriendCsvSection $block "live3") }
+if ($live.Count -eq 0) { $live = @(Read-FriendCsvSection $block "live") }
 $snapshots | Export-Csv (Join-Path $outDir "snapshots.csv") -NoTypeInformation
 $sessions | Export-Csv (Join-Path $outDir "sessions.csv") -NoTypeInformation
 $chapters | Export-Csv (Join-Path $outDir "chapters.csv") -NoTypeInformation
 $live | Export-Csv (Join-Path $outDir "live.csv") -NoTypeInformation
 
+# Each export only carries the newest records, so every read also grows a
+# permanent archive; repeated reads add up to the whole history.
+$archiveDir = Join-Path $repo "binriendrchive"
+New-Item -ItemType Directory -Force -Path $archiveDir | Out-Null
+$newRows = @(
+    Add-FriendArchive (Join-Path $archiveDir "snapshots.csv") $snapshots "epoch"
+    Add-FriendArchive (Join-Path $archiveDir "sessions.csv") $sessions "start_epoch"
+    Add-FriendArchive (Join-Path $archiveDir "chapters.csv") $chapters "start_epoch"
+    Add-FriendArchive (Join-Path $archiveDir "live.csv") $live "epoch"
+)
+
 Write-Host "[copied] $outDir"
 Write-Host "[export] Friend v$appVersion schema=$schemaVersion"
 Write-Host "[records] snapshots=$($snapshots.Count) sessions=$($sessions.Count) chapters=$($chapters.Count) live=$($live.Count)"
+Write-Host "[archive] $archiveDir added snapshots=$($newRows[0]) sessions=$($newRows[1]) chapters=$($newRows[2]) live=$($newRows[3])"
 if ($snapshots.Count -gt 0) {
     Write-Host "`nLatest check-in"
     $snapshots[-1] | Format-List
@@ -123,7 +123,8 @@ if ($sessions.Count -gt 0) {
                 [int]$_.duration_s - [int]$_.last_input_s
             } }
         },
-        inputs,hr4h_avg,hr_avg,hr_max,motion_avg,moving_pct,steps_start,steps_end |
+        inputs,hides,battery_start,battery_end,mem_peak_kb,hr4h_avg,hr_avg,hr_max,
+        motion_avg,moving_pct,steps_start,steps_end |
         Format-Table -AutoSize
 }
 if ($chapters.Count -gt 0) {

@@ -39,14 +39,23 @@ data/features, and major if stored data or behavior is intentionally broken or r
   copies Garmin's `CIQ_LOG.YML`/`.BAK` crash log next to the export to confirm it.
 - Makes no web requests and sends nothing off the watch.
 
-The export contains four CSV sections: the 8 newest check-in snapshots, the 8 newest session
-summaries, the 12 newest effort chapters, and up to 48 live records sampled evenly across the
-retained four-hour window. This keeps one export inside Garmin's small rotating debug logs while
-the chapter summaries preserve higher-value detail; all 20-second records remain in on-watch
-storage. Each live record now includes the 20-second HR minimum/average/maximum instead of only
-one final reading. Chapter summaries include duration, HR range and peak delta, motion, step
+Garmin rotates the app log at about 5 KB and keeps one older file (measured on the FR265:
+`.BAK` files of 5150 and 5160 bytes), so only an export under 5 KB is always retrieved whole; a
+7.3 KB export on 2026-10-22 lost its start. Export format 4 is therefore sized to about 4.3 KB at
+most:
+
+- `FRIEND_DEVICE`: part number, firmware and Connect IQ version.
+- CSV rows without header lines (the column names live in `scripts/friend-export.ps1`): the 4
+  newest check-in snapshots, the 8 newest session summaries and the 10 newest effort chapters.
+- The 90 newest 20-second live records (the last 30 minutes Friend was open) in a compact
+  fixed-width base-36 form, 22 characters a row instead of about 65.
+
+Session summaries also carry battery % at start and end (`battery_start`, `battery_end`), peak
+app memory in KB (`mem_peak_kb`) and how many times the screen went away (`hides`; a close by the
+watch usually adds one). Chapter summaries include duration, HR range and peak delta, motion, step
 change, whether Back ended the chapter early, and a numeric evidence reason (`1` motion, `2` HR,
-`3` both). Missing values are `-1`; Friend never invents a sensor result.
+`3` both). Missing values are `-1`; Friend never invents a sensor result. All 700 live records
+stay in on-watch storage.
 
 ## Bounce 2 inspiration
 
@@ -86,4 +95,7 @@ Reconnect the watch and run:
 
 Before reconnecting, open Friend and press START once so the newest complete export is in the
 log. The reader copies both the live log and rotated backup, writes parsed CSV files under the
-ignored `bin/friend/downloads/` directory, and leaves on-watch data untouched.
+ignored `bin/friend/downloads/` directory, and leaves on-watch data untouched. Every read also
+merges its rows into `bin/friend/archive/` (no duplicates), so reading after each session builds
+the full history that no single export can carry. `scripts/test-friend-export.ps1` checks the
+compact format and the size budget on the host.
