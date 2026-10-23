@@ -81,10 +81,8 @@ watch's own control to leave USB mode and let it finish processing the app.
 
 Before the first build:
 
-- The manifest declares `Fit`, `Positioning` and `Sensor`. Garmin's permission table lists `Fit` as
-  covering both `ActivityRecording` and `FitContributor`; if the compiler or the watch complains
-  about a FitContributor permission, add `<iq:uses-permission id="FitContributor"/>` to
-  `manifest.xml`.
+- The manifest declares `Fit`, `FitContributor`, `Positioning` and `Sensor`. The SDK 9.1.0 compiler
+  requires the explicit `FitContributor` permission for the custom `pet_mood` field.
 - A store install asks the wearer to approve permissions; a USB sideload is expected to apply them
   without a prompt. If the watch does ask, accept.
 - Because it has the `Fit` permission, the app may be listed under **Activities** rather than
@@ -174,7 +172,8 @@ Fold conclusions back into `11-hardware-test-plan.md` (results log) and the Walk
 
 ## API notes
 
-Every call was checked against Garmin's API docs; nothing here has been compiled on this machine.
+Every call was checked against Garmin's API docs. The FR265 target compiled successfully with SDK
+9.1.0 on 2026-10-23; the outdoor GPS/FIT behavior still needs verification on the watch.
 
 - `ActivityRecording.createSession({:name, :sport})`, `Session.start/stop/save/discard/isRecording`
   and `Session.createField(name, id, type, {:mesgType, :units})`. `Activity.SPORT_WALKING` is used

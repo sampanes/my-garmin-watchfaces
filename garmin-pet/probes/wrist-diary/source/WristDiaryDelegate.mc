@@ -21,7 +21,7 @@ class WristDiaryDelegate extends WatchUi.BehaviorDelegate {
         // A failed save must never keep the wearer inside the app.
         mView.noteInput();
         try {
-            mView.stopSession(WristDiaryView.EXIT_BACK);
+            mView.stopFromBack();
         } catch (e) {
             System.println("FRIEND_STOP_ERROR," + e.getErrorMessage());
         }

@@ -12,7 +12,7 @@ class WalkProbeDelegate extends WatchUi.BehaviorDelegate {
     // START: begin recording, or stop and save the running one.
     function onSelect() {
         if (mView.isRecording()) {
-            mView.finish(WalkProbeView.END_SELECT);
+            mView.finishFromStart();
         } else {
             mView.startRecording();
         }
@@ -24,7 +24,7 @@ class WalkProbeDelegate extends WatchUi.BehaviorDelegate {
     function onBack() {
         if (mView.isRecording()) {
             try {
-                mView.finish(WalkProbeView.END_BACK);
+                mView.finishFromBack();
             } catch (e) {
                 System.println("WALK_STOP_ERROR," + e.getErrorMessage());
             }

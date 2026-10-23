@@ -123,6 +123,26 @@ $tiny = Invoke-PetChapter (New-PetState $born 0) ([pscustomobject]@{
 Assert-Equal $tiny.Points 1 "A 20-second chapter earns the 1-point minimum"
 Assert-Equal $tiny.Bonus 0 "A 20-second chapter must not claim the daily-first bonus"
 
+# --- A chapter crossing 03:00 belongs to the evening in which it started.
+$midnight = [long]([Math]::Floor($born / [double]$day) * $day)
+$offset = -7 * $hour
+$localMidnight = $midnight - $offset
+$crossing = [pscustomobject]@{
+    start_epoch = $localMidnight + 2 * $hour + 55 * 60
+    end_epoch = $localMidnight + 3 * $hour + 5 * 60
+    duration_s = 10 * 60
+    partial = 0
+    baseline_hr = 70
+    hr_avg = 85
+    reason = 3
+}
+$crossingCredit = Get-ChapterCredit $crossing (New-PetState $localMidnight $offset) $offset
+Assert-Equal $crossingCredit.Ledger.dayIdx (Get-PetDay $crossing.start_epoch $offset) "A 03:00-crossing chapter must use its start day"
+$crossingResult = Invoke-PetChapter (New-PetState $localMidnight $offset) $crossing
+$afterBoundary = New-Chapter ($localMidnight + 3 * $hour + 20 * 60) 10
+$nextResult = Invoke-PetChapter $crossingResult.State $afterBoundary
+Assert-Equal $nextResult.Bonus $PetConfig.FirstOfDayBonus "The first post-03:00 chapter must receive the new day's bonus"
+
 # --- Splitting a session into chapters does not change its credit.
 $one = Invoke-PetChapter (New-PetState $born 0) (New-Chapter $noon 60)
 $split = New-PetState $born 0
@@ -200,4 +220,4 @@ Assert-True $ready.EvoReady "The first evolution is ready to confirm"
 $confirmed = Get-Stage 5000 $born ($born + 10 * $day) 1 ($born + 10 * $day)
 Assert-Equal $confirmed.Band 5 "After confirming, banked XP opens the next bands"
 
-Write-Host "[pass] Pet model: mood floor, no death at 90 days, warm reunion, 48 h pause, binge taper never zero, split-invariant credit, one-miss grace, warmth never multiplies, monotonic stages, evolution gates"
+Write-Host "[pass] Pet model: mood floor, no death at 90 days, warm reunion, 48 h pause, binge taper never zero, 03:00 start-day credit, split-invariant credit, one-miss grace, warmth never multiplies, monotonic stages, evolution gates"

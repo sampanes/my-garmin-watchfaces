@@ -22,8 +22,8 @@ class WristDiaryView extends WatchUi.View {
     const MAX_SESSIONS = 60;
     const MAX_CHAPTERS = 60;
     // Garmin rotates the app log at about 5 KB and keeps one older file, so only an
-    // export under 5 KB always survives whole. These counts keep it under 4.5 KB.
-    const EXPORT_LIVE = 90;     // Newest 30 minutes at full 20-second resolution.
+    // export under 5 KB always survives whole. These counts keep it under 4.8 KB.
+    const EXPORT_LIVE = 35;     // Newest 11 m 40 s at full 20-second resolution.
     const EXPORT_SNAPSHOTS = 4;
     const EXPORT_SESSIONS = 8;
     const EXPORT_CHAPTERS = 10;
@@ -41,6 +41,7 @@ class WristDiaryView extends WatchUi.View {
     const MOOD_CALM = 0;
     const MOOD_EFFORT = 1;
     const MOOD_REMEMBER = 2;
+    const SAVED_SECONDS = 3;
 
     const L_EPOCH = 0;
     const L_SESSION = 1;
@@ -99,6 +100,7 @@ class WristDiaryView extends WatchUi.View {
     var mStartStress as Lang.Number = -1;
     var mStartBodyBattery as Lang.Number = -1;
     var mStatus as Lang.String = "HELLO";
+    var mSavedUntil as Lang.Number = 0;
 
     // A chapter is intentionally neutral: it means Friend saw sustained effort
     // evidence, not that it knows which exercise (or non-exercise) caused it.
@@ -341,6 +343,16 @@ class WristDiaryView extends WatchUi.View {
     function noteInput() as Void {
         mInputCount += 1;
         mLastInputElapsed = mElapsed;
+    }
+
+    // Keep exit-reason constants private to the view. Monkey C class constants are
+    // not static members, so callers use these named actions instead.
+    function stopFromBack() as Void {
+        stopSession(EXIT_BACK);
+    }
+
+    function stopFromSystemClose() as Void {
+        stopSession(EXIT_OTHER);
     }
 
     function stopSession(reason as Lang.Number) as Void {
@@ -851,6 +863,7 @@ class WristDiaryView extends WatchUi.View {
         captureLive();
         exportAllRecords();
         mStatus = "SAVED";
+        mSavedUntil = Time.now().value() + SAVED_SECONDS;
         WatchUi.requestUpdate();
     }
 
@@ -862,7 +875,7 @@ class WristDiaryView extends WatchUi.View {
     }
 
     function statusText() as Lang.String {
-        if (mStatus == "SAVED") { return mStatus; }
+        if (Time.now().value() <= mSavedUntil) { return "SAVED"; }
         if (mChapterState == CHAPTER_ACTIVE) { return "WITH YOU"; }
         if (recentlyRemembered()) {
             var minutes = (mLastChapterDuration + 30) / 60;

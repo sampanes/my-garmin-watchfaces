@@ -12,12 +12,9 @@
             <iq:product id="fr265s"/>
             <iq:product id="vivoactive6"/>
         </iq:products>
-        <!-- Garmin's permission table lists Fit as covering both Toybox.ActivityRecording
-             and Toybox.FitContributor, so there is no separate FitContributor entry. If the
-             compiler or the watch reports a FitContributor permission error, add
-             <iq:uses-permission id="FitContributor"/> (the FitContributor API page names it). -->
         <iq:permissions>
             <iq:uses-permission id="Fit"/>
+            <iq:uses-permission id="FitContributor"/>
             <iq:uses-permission id="Positioning"/>
             <iq:uses-permission id="Sensor"/>
         </iq:permissions>

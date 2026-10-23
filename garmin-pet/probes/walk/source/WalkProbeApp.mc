@@ -19,7 +19,7 @@ class WalkProbeApp extends Application.AppBase {
     function onStop(state as Lang.Dictionary?) as Void {
         var view = mView;
         if (view != null) {
-            view.finish(WalkProbeView.END_CLOSED);
+            view.finishFromSystemClose();
             view.stopGps();
         }
     }

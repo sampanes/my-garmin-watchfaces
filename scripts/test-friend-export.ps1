@@ -51,16 +51,16 @@ function Export-CompactLiveModel([long[][]]$Records) {
     }
 }
 
-# Real live3 records from the 2026-10-16 export, plus edge cases: missing HR,
-# a motion peak past 3 digits, steps going backwards (midnight), missing stress.
+# Synthetic live3 records covering missing HR, a motion peak past 3 digits,
+# steps going backwards (midnight), and missing stress. No watch export data.
 $records = [long[][]]@(
-    @(1792169101, 1792169060, 40, 102, 98, 101, 102, 32, 407, 3049, 95, 1075, -1, 74, 1),
-    @(1792169121, 1792169060, 60, -1, -1, -1, -1, -1, 388, 3332, 78, 1079, 21, 48, 0),
-    @(1792169141, 1792169060, 80, 120, 117, 119, 121, 50, 408, 24600, 84, 1193, 99, 72, 1),
-    @(1792169161, 1792169060, 100, 113, 113, 113, 114, 44, 238, 1926, 63, 1263, 99, -1, 1),
-    @(1792171443, 1792171163, 280, 112, 112, 112, 112, 38, 264, 6153, 58, 1705, -1, 68, 1),
-    @(1792171463, 1792171163, 300, 99, 98, 99, 101, 25, 148, 745, 48, 12, -1, 68, 1),
-    @(1792171483, 1792171163, 320, 99, 98, 99, 101, 25, 148, 745, 48, 40, 60, 68, 0)
+    @(1700000040, 1700000000, 40, 100, 90, 100, 110, 25, 300, 1200, 80, 500, -1, 60, 1),
+    @(1700000060, 1700000000, 60, -1, -1, -1, -1, -1, 275, 1500, 65, 510, 20, 55, 0),
+    @(1700000080, 1700000000, 80, 145, 135, 145, 155, 45, 450, 25000, 90, 750, 75, 50, 1),
+    @(1700000100, 1700000000, 100, 115, 105, 115, 125, 35, 225, 1800, 55, 5, 40, -1, 1),
+    @(1700004280, 1700004000, 280, 130, 120, 130, 140, 40, 350, 6000, 70, 900, -1, 45, 1),
+    @(1700004300, 1700004000, 300, 95, 85, 95, 105, 20, 125, 700, 35, 920, 15, 40, 1),
+    @(1700004320, 1700004000, 320, 105, 95, 105, 115, 30, 175, 900, 45, 950, 25, 35, 0)
 )
 $lines = @(Export-CompactLiveModel $records)
 foreach ($line in $lines) {
@@ -87,22 +87,22 @@ for ($i = 0; $i -lt $records.Count; $i += 1) {
 
 # Size: a full export at the device's export counts with realistic magnitudes
 # must stay under the ~5 KB Garmin log file, with room for a few later lines.
-$exportLines = @("FRIEND_EXPORT_BEGIN,4,0.4.0", "FRIEND_DEVICE,006-B4257-00,27.09,5.2.0,1,1")
+$exportLines = @("FRIEND_EXPORT_BEGIN,4,0.4.0", "FRIEND_DEVICE,000-TEST00-00,00.00,0.0.0,1,1")
 $exportLines += "FRIEND_snap_BEGIN,4"
-$exportLines += @(1..4 | ForEach-Object { "1792172519,11949,1052,22,11,51,57,77,131,74,1155182,12,16,72,98,101325,180" })
+$exportLines += @(1..4 | ForEach-Object { "1700010000,10000,900,20,8,40,50,60,70,80,900000,10,15,65,95,100000,120" })
 $exportLines += @("FRIEND_snap_END", "FRIEND_session3_BEGIN,8")
 $exportLines += @(1..8 | ForEach-Object {
-    "1792169060,1792170899,11838,53,69,94,66,109,141,253,17351,59,10998,11705,100,100,74,100,12,1838,125,2,1838,14,100,97,312,3"
+    "1700000000,1700001800,12000,50,70,90,60,100,130,200,15000,55,10000,11000,95,100,65,90,10,1800,100,1,1700,12,90,85,250,3"
 })
 $exportLines += @("FRIEND_session3_END", "FRIEND_chapter3_BEGIN,10")
 $exportLines += @(1..10 | ForEach-Object {
-    "1792169061,1792170899,1838,1,69,66,109,141,67,251,17351,58,11075,11705,3"
+    "1700000001,1700001800,1799,1,70,60,100,130,65,200,15000,55,10000,11000,2"
 })
-$exportLines += @("FRIEND_chapter3_END", "FRIEND_live4_BEGIN,90")
-$session = 1792169060
+$exportLines += @("FRIEND_chapter3_END", "FRIEND_live4_BEGIN,35")
+$session = 1700000000
 $many = [System.Collections.Generic.List[long[]]]::new()
-for ($i = 0; $i -lt 90; $i += 1) {
-    if ($i % 30 -eq 0) { $session += 4000 }   # three sessions in the window
+for ($i = 0; $i -lt 35; $i += 1) {
+    if ($i % 15 -eq 0) { $session += 4000 }   # three sessions in the window
     $many.Add([long[]]@(($session + 20 * $i), $session, 0, 120, 110, 120, 140, 50,
                         900, 24600, 100, (10000 + $i * 30), 99, 99, 1))
 }
@@ -111,14 +111,38 @@ $exportLines += @("FRIEND_live4_END", "FRIEND_EXPORT_END")
 $bytes = ($exportLines | ForEach-Object { $_.Length + 1 } | Measure-Object -Sum).Sum
 if ($bytes -gt 4800) { throw "Format 4 export is $bytes bytes; must stay under 4800" }
 
+# Conservative high-width case: every live row came from a separate short
+# session, so every row needs its own S base line. This was over 7 KB at 90 rows.
+$highSnapshot = "1700010000,200000,20000,1440,1440,100,250,250,250,100,10000000,1000,99,999,100,110000,604800"
+$highSession = "1700000000,1700020000,20000,250,250,250,250,250,250,20000,96000,100,100000,200000,100,100,100,100,60,20000,100000,2,20000,1000,100,100,768,100"
+$highChapter = "1700000001,1700020000,19999,1,250,250,250,250,250,20000,96000,100,100000,200000,3"
+$worstPrefix = @("FRIEND_EXPORT_BEGIN,4,0.4.0", "FRIEND_DEVICE,000-TEST00-00,99.99,9.9.9,1,1", "FRIEND_snap_BEGIN,4")
+$worstPrefix += @(1..4 | ForEach-Object { $highSnapshot })
+$worstPrefix += @("FRIEND_snap_END", "FRIEND_session3_BEGIN,8")
+$worstPrefix += @(1..8 | ForEach-Object { $highSession })
+$worstPrefix += @("FRIEND_session3_END", "FRIEND_chapter3_BEGIN,10")
+$worstPrefix += @(1..10 | ForEach-Object { $highChapter })
+$worstPrefix += @("FRIEND_chapter3_END", "FRIEND_live4_BEGIN,35")
+$worstRecords = [System.Collections.Generic.List[long[]]]::new()
+for ($i = 0; $i -lt 35; $i += 1) {
+    $shortSession = 1700000000 + $i * 30
+    $worstRecords.Add([long[]]@(($shortSession + 20), $shortSession, 20,
+        250, 250, 250, 250, 250, 20000, 96000, 100, 200000, 100, 100, 1))
+}
+$worstLive = @(Export-CompactLiveModel $worstRecords.ToArray())
+Assert-Equal @($worstLive | Where-Object { $_ -like "S,*" }).Count 35 "Each short session needs a base line"
+$worstLines = $worstPrefix + $worstLive + @("FRIEND_live4_END", "FRIEND_EXPORT_END")
+$worstBytes = ($worstLines | ForEach-Object { $_.Length + 1 } | Measure-Object -Sum).Sum
+if ($worstBytes -gt 4800) { throw "Worst-case format 4 export is $worstBytes bytes; must stay under 4800" }
+
 # The reader parses the same block end to end, without headers.
 $block = Get-FriendExportBlock (@("junk") + $exportLines + @("FRIEND_EXIT,1,60,40,3"))
 Assert-Equal (@(Read-FriendCsvSection $block "session3")[0].hides) "3" "Session columns come from the reader"
-Assert-Equal @(ConvertFrom-FriendLive4 (Get-FriendSectionLines $block "live4")).Count 90 "All live rows parse"
+Assert-Equal @(ConvertFrom-FriendLive4 (Get-FriendSectionLines $block "live4")).Count 35 "All live rows parse"
 
 # Format 3 sections still parse through their own header lines.
 $old = @("FRIEND_EXPORT_BEGIN,3,0.3.1", "FRIEND_session3_BEGIN,1",
-         "start_epoch,end_epoch,duration_s", "1792171163,1792171914,750",
+         "start_epoch,end_epoch,duration_s", "1700004000,1700004750,750",
          "FRIEND_session3_END", "FRIEND_EXPORT_END")
 Assert-Equal (@(Read-FriendCsvSection (Get-FriendExportBlock $old) "session3")[0].duration_s) "750" "Format 3 headers"
 
@@ -137,4 +161,4 @@ try {
     Remove-Item -LiteralPath $archive -ErrorAction SilentlyContinue
 }
 
-Write-Host "[pass] Friend export: compact round trip, $bytes-byte full export, headerless parse, format 3, archive"
+Write-Host "[pass] Friend export: compact round trip, $bytes-byte full export, $worstBytes-byte worst case, headerless parse, format 3, archive"

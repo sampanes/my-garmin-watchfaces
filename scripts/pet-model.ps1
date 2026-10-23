@@ -183,7 +183,9 @@ function Get-TaperedPoints([double]$From, [double]$To) {
 # Pure: chapter + the day ledger before it -> points and the ledger after it.
 # Takes no momentum, mood or stage input on purpose: nothing multiplies effort.
 function Get-ChapterCredit($Chapter, $Ledger, [int]$OffsetSec, [bool]$ReunionOwed = $false) {
-    $day = Get-PetDay $Chapter.end_epoch $OffsetSec
+    # A chapter belongs to the local 03:00-to-03:00 day in which it started,
+    # even when it crosses the boundary before it closes.
+    $day = Get-PetDay $Chapter.start_epoch $OffsetSec
     $before = 0.0
     $bonusPaid = $false
     if ($Ledger.dayIdx -eq $day) {

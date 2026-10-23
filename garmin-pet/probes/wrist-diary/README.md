@@ -22,7 +22,7 @@ data/features, and major if stored data or behavior is intentionally broken or r
 - Automatically groups sustained HR and/or wrist-motion evidence into neutral **effort chapters**.
   Two positive buckets within one minute open a chapter; six quiet buckets among the latest eight
   close it at the last strong evidence, excluding a forgotten-at-the-desk tail. Friend never names
-  the activity: lifting, stress, chores, and bathroom heroics remain deliberately indistinguishable.
+  the activity: lifting, stress, chores, and other everyday movement remain deliberately indistinguishable.
 - During a chapter the friend says `WITH YOU`. Afterward it says `I SAW N MIN`, remembers the
   chapter at the next check-in, and adds a small persistent memory mark below its face. Memories
   never decay and skipped days carry no penalty.
@@ -41,14 +41,14 @@ data/features, and major if stored data or behavior is intentionally broken or r
 
 Garmin rotates the app log at about 5 KB and keeps one older file (measured on the FR265:
 `.BAK` files of 5150 and 5160 bytes), so only an export under 5 KB is always retrieved whole; a
-7.3 KB export on 2026-10-22 lost its start. Export format 4 is therefore sized to about 4.4 KB at
-most:
+7.3 KB export on 2026-10-22 lost its start. Export format 4 is therefore host-tested below 4.8 KB
+with conservative high-width values even when every detailed row came from a separate short session:
 
 - `FRIEND_DEVICE`: part number, firmware, Connect IQ version, and whether tones and vibration
   are switched on (`1`/`0`).
 - CSV rows without header lines (the column names live in `scripts/friend-export.ps1`): the 4
   newest check-in snapshots, the 8 newest session summaries and the 10 newest effort chapters.
-- The 90 newest 20-second live records (the last 30 minutes Friend was open) in a compact
+- The 35 newest 20-second live records (the last 11 minutes 40 seconds Friend was open) in a compact
   fixed-width base-36 form, 22 characters a row instead of about 65.
 
 Each check-in snapshot also answers open hardware questions: respiration rate, time to recovery

@@ -99,7 +99,7 @@ $live | Export-Csv (Join-Path $outDir "live.csv") -NoTypeInformation
 
 # Each export only carries the newest records, so every read also grows a
 # permanent archive; repeated reads add up to the whole history.
-$archiveDir = Join-Path $repo "binriendrchive"
+$archiveDir = Join-Path $repo "bin\friend\archive"
 New-Item -ItemType Directory -Force -Path $archiveDir | Out-Null
 $newRows = @(
     Add-FriendArchive (Join-Path $archiveDir "snapshots.csv") $snapshots "epoch"

@@ -188,6 +188,20 @@ class WalkProbeView extends WatchUi.View {
         return mState == STATE_RECORDING;
     }
 
+    // Keep end-reason constants private to the view. Monkey C class constants are
+    // not static members, so callers use these named actions instead.
+    function finishFromStart() as Void {
+        finish(END_SELECT);
+    }
+
+    function finishFromBack() as Void {
+        finish(END_BACK);
+    }
+
+    function finishFromSystemClose() as Void {
+        finish(END_CLOSED);
+    }
+
     // Recording starts even without a fix; the route simply begins at the first fix.
     function startRecording() as Void {
         if (!(Toybox has :ActivityRecording)) {
@@ -204,6 +218,7 @@ class WalkProbeView extends WatchUi.View {
             System.println("WALK_HR_ERROR," + e.getErrorMessage());
         }
 
+        var started = false;
         try {
             var session = ActivityRecording.createSession({
                 :name => SESSION_NAME,
@@ -215,6 +230,7 @@ class WalkProbeView extends WatchUi.View {
                 FitContributor.DATA_TYPE_UINT8,
                 { :mesgType => FitContributor.MESG_TYPE_RECORD, :units => "lvl" });
             session.start();
+            started = true;
         } catch (e) {
             System.println("WALK_START_ERROR," + e.getErrorMessage());
             // createSession hands back an unsaved session next time, so drop this one.
@@ -227,9 +243,9 @@ class WalkProbeView extends WatchUi.View {
             mState = STATE_FAILED;
             mError = "START ERR";
             WatchUi.requestUpdate();
-            return;
         }
 
+        if (!started) { return; }
         mState = STATE_RECORDING;
         mError = "";
         mStartedAt = Time.now().value();
