@@ -67,7 +67,7 @@ app to work with effectively one primary action plus Back and page navigation.
 
 ## One app, not two — FR265 buttons accelerate, they never fork the game
 
-**Decision (locked 2026-06-22, John):** ship **one** app and **one** codebase across
+**Decision (locked 2026-06-22):** ship **one** app and **one** codebase across
 FR265 / FR265S / VA6. The FR265's extra physical buttons are **accelerators** for behaviors
 that already exist — never a richer, separate control scheme, and never a reason to maintain a
 second app. The explicit goal: use the buttons where they help, *without the headache of keeping

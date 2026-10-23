@@ -160,8 +160,8 @@ resolves, update the matching ⚠️ VERIFY in `10-power-roster.md` and/or `open
 | _e.g. T1_ | _2026-0x-xx_ | _FR265 / 19.xx_ | _PASS — beeped_ | _melody played fine_ |
 | T1 | 2026-06-25 | FR265 / SW 28.05 / CIQ VM 5.2.0 | FAIL — no audible beep | `Attention.playTone(Attention.TONE_SUCCESS)` produced no audible tone on hardware. Custom `ToneProfile` not yet separately tested. |
 | T2 | 2026-06-25 | FR265 / SW 28.05 / CIQ VM 5.2.0 | CONFIRMED — flat buzz, no pattern | 25/100/25 `VibeProfile` sequence collapsed to one flat vibration. |
-| T7 | 2026-09-01 → 10-22 | FR265 / fw not recorded | PASS (history half) — a device app reads Body Battery | Friend (a `watch-app`) logged `SensorHistory.getBodyBatteryHistory` values on real hardware: check-ins 58, 53, 50, 11, 74, 68; 20-second rows 74 → 66 across a session. Sometimes `-1` (no sample yet). The Complications-subscribe half is still untested. |
-| T8 | 2026-09-01 → 10-22 | FR265 / fw not recorded | PASS (live half) — `ActivityMonitor.getInfo().stressScore` reads in a device app | Values 21–100 across sessions; often `null` (`-1`) in the first seconds after opening, then populated. The history-timestamp half is now logged by Friend 0.4.0 (`stress_age_s` on each check-in). |
+| T7 | 2026 | FR265 / fw not recorded | PASS (history half) — a device app reads Body Battery | Friend (a `watch-app`) returned Body Battery samples in multiple hardware sessions. Sometimes it returned `-1` (no sample yet). The Complications-subscribe half is still untested. |
+| T8 | 2026 | FR265 / fw not recorded | PASS (live half) — `ActivityMonitor.getInfo().stressScore` reads in a device app | Stress populated in multiple hardware sessions; it was often `null` (`-1`) in the first seconds after opening. The history-timestamp half is now logged by Friend 0.4.0 (`stress_age_s` on each check-in). |
 |  |  |  |  |  |
 
 > ⚠️ **T1 needs a re-test.** The 2026-06-25 FAIL was logged before the runner reported the

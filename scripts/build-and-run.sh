@@ -20,13 +20,50 @@
 
 set -euo pipefail
 
-SDK="C:/Users/John/AppData/Roaming/Garmin/ConnectIQ/Sdks/connectiq-sdk-win-9.1.0-2026-03-09-6a872a80b"
-REPO="c:/Users/John/Documents/Personal_Projects/my-garmin-watchfaces"
-KEY="C:/Users/John/MonkeyC/developer_key"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -W)"
+REPO="$(cd -- "$SCRIPT_DIR/.." && pwd -W)"
+
+SDK="${CONNECTIQ_SDK_PATH:-}"
+if [[ -z "$SDK" ]]; then
+  if [[ -z "${APPDATA:-}" ]]; then
+    echo "APPDATA is not set; set CONNECTIQ_SDK_PATH to the Connect IQ SDK directory." >&2
+    exit 1
+  fi
+
+  APPDATA_POSIX="${APPDATA//\\//}"
+  shopt -s nullglob
+  SDK_CANDIDATES=("$APPDATA_POSIX/Garmin/ConnectIQ/Sdks"/connectiq-sdk-win-*)
+  shopt -u nullglob
+  if (( ${#SDK_CANDIDATES[@]} == 0 )); then
+    echo "No Connect IQ SDK found; set CONNECTIQ_SDK_PATH." >&2
+    exit 1
+  fi
+
+  SDK="${SDK_CANDIDATES[0]}"
+  for candidate in "${SDK_CANDIDATES[@]:1}"; do
+    [[ "$candidate" -nt "$SDK" ]] && SDK="$candidate"
+  done
+fi
+
+KEY="${MONKEYC_DEVELOPER_KEY:-}"
+if [[ -z "$KEY" ]]; then
+  if [[ -z "${USERPROFILE:-}" ]]; then
+    echo "USERPROFILE is not set; set MONKEYC_DEVELOPER_KEY to the developer key path." >&2
+    exit 1
+  fi
+  KEY="${USERPROFILE//\\//}/MonkeyC/developer_key"
+fi
+
+SDK="${SDK//\\//}"
+KEY="${KEY//\\//}"
 DEVICE="fr265"
 PRG="$REPO/bin/mygarminwatchfaces.prg"
 JUNGLE="$REPO/monkey.jungle"
 CAPTURE_PS1="$REPO/watch-faces/japanese-ink-heartrate/art/checkpoints/procedural/save-sim-capture.ps1"
+
+[[ -f "$SDK/bin/monkeyc.bat" ]] || { echo "Connect IQ compiler not found under $SDK." >&2; exit 1; }
+[[ -f "$KEY" ]] || { echo "Developer key not found; set MONKEYC_DEVELOPER_KEY." >&2; exit 1; }
+mkdir -p "$(dirname -- "$PRG")"
 
 CAPTURE_PATH="${1:-}"
 

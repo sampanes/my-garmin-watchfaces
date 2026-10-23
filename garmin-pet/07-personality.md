@@ -5,14 +5,14 @@
 evolution.** It's implemented as a **"voice pack"** — a table of canned lines + a few
 behavior weights — so it's nearly free to add and tiny on the wire.
 
-> Origin (2026-06-15): "make personality a lock-in trait too... another user might prefer a very
-> cute supportive sycophant, unlike me." Two people, two opposite coaches, **one app**.
+Design requirement: support opposite coaching preferences in **one app**, from strict and
+challenging to warm and encouraging.
 
 ## Why permanent (and why this is the right call)
 
 - **Commitment breeds attachment** — Gilbert & Ebert (`05 §Layer A`): a chosen-and-kept trait
-  bonds you harder than an endlessly editable slider. "My pet is a jerk" *is* the relationship.
-- **Real user diversity, zero app-fork.** Asshole-for-him / sycophant-for-her is the same
+  bonds you harder than an endlessly editable slider. "My pet is intense" *is* the relationship.
+- **Real user diversity, zero app-fork.** Strict and supportive personas use the same
   build; persona is one integer in the save state. No separate "nice mode" codepath.
 - **It diverges pets further** (the `05` "won't everyone be identical?" answer): same species
   can be a snarling drill sergeant or a gushing cheerleader. Persona is a whole expression axis.
@@ -32,7 +32,7 @@ Don't go infinite (paralysis — `05`). Two legible axes:
                     INTENSE
                        │
       Drill Sergeant   │   Hype Cheerleader
-      "the Asshole"    │   "the Sycophant"
+      "the Enforcer"   │   "the Booster"
    MEAN ───────────────┼─────────────── KIND
       Deadpan          │   Zen Buddy
       "the Snark"      │   "the Calm"
@@ -69,7 +69,7 @@ it doesn't repeat. **Adding or swapping a persona = swap the line table**, not n
 | **Cold open** (press GO) | "Sup. Let's go." | "YES okay okay let's GO — you've got this!!" | "Oh. We're doing this. Fine." | "Hey. Whenever you're ready." |
 | **Solid set (12 reps)** | "Twelve. Barely acceptable." | "TWELVE?! You're literally incredible!" | "Twelve. Didn't hate it." | "Twelve. Nicely done." |
 | **Low-confidence guess** | "The hell was that. A curl? Sure." | "Ooh not sure what that was but you LOOKED amazing!" | "...Sure. We'll call it a curl." | "Not sure what that was — it counted." |
-| **Motion-blind, gassed** (pull-ups) | "Wrist barely moved but you're gassed. Good shit." | "Your heart is POUNDING, you beast — so proud!" | "Can't see it. Heart says you tried. OK." | "Couldn't read the move, but your body worked. Good." |
+| **Motion-blind, gassed** (pull-ups) | "Wrist barely moved but you're gassed. Strong work." | "Your heart is POUNDING, you beast — so proud!" | "Can't see it. Heart says you tried. OK." | "Couldn't read the move, but your body worked. Good." |
 | **Streak broken (3 days off)** | "Oh, look who remembered I exist. 0 for 3." | "I missed you!! No worries — fresh start today!" | "Three days. Bold." | "Welcome back. No guilt. Let's just start." |
 | **Goal hit** | "...Fine. That was actually good. Don't let it go to your head." | "YOU DID IT!!! I'm so, so proud of you!!" | "Goal hit. Cool." | "You reached it. Breathe. Well done." |
 | **High stress** (during the readiness ritual, or passive) | "Numbers are garbage today. Sit down. You can't pour from an empty canteen — that's not soft, it's logistics." | "Hey — you're running hot. Some of that list? Not important today. Fill your cup first; everything's easier from full. I've got you." | "Readiness's in the gutter. Radical idea: do less. World survives." | "Your system's asking for rest, not effort. Self-care isn't indulgence — it's maintenance. Stay here a minute." |
@@ -82,17 +82,15 @@ general-audience (store policy, `open-questions §B`) and, frankly, keeps it fro
 genuinely demotivating jerk. Mean *flavor*, supportive *function*.
 
 Shipping-label rule: **Drill Sergeant / Hype Cheerleader / Deadpan / Zen** are the
-user-facing labels. "Asshole" / "sycophant" can remain internal shorthand for ideation,
-but should not appear in store copy, onboarding, or the picker UI. The joke is the
-relationship dynamic, not edgelord labeling.
+user-facing labels. Internal notes and product copy use those same neutral names. The appeal is
+the relationship dynamic, not provocative labeling.
 
 ## Decision
 
 - [x] **Persona = permanent Layer-A identity trait** (with evolution as the re-pick valve).
 - [x] **Orthogonal to species/look**; implemented as a voice-pack (line table + weights).
 - [x] **Telegraphed at creation** (sample line preview before commit).
-- [x] **Shipping labels separated from internal shorthand** (market-safe labels in UI/store;
-      sharper language can stay in design notes).
+- [x] **Neutral persona labels used consistently** in UI, store copy, and design notes.
 - [ ] Final persona roster (start with the 4 above? add more later?) — open.
 - [ ] Per-persona behavior-weight tuning (nag cadence, praise thresholds) — open.
 

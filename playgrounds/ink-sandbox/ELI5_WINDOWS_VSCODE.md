@@ -63,7 +63,7 @@ Then:
 3. Open this folder:
 
 ```text
-C:\Users\John\Documents\Personal_Projects\my-garmin-watchfaces
+C:\path\to\my-garmin-watchfaces
 ```
 
 ## Step 2: Open a terminal in VS Code
@@ -207,7 +207,7 @@ Try this:
 Open VS Code terminal and run:
 
 ```powershell
-cd C:\Users\John\Documents\Personal_Projects\my-garmin-watchfaces\playgrounds\ink-sandbox
+cd C:\path\to\my-garmin-watchfaces\playgrounds\ink-sandbox
 npm install
 npm run dev
 ```

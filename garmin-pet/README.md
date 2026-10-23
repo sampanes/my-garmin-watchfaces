@@ -81,8 +81,7 @@ Use the other tracks as gated expansions:
   account management, not becoming the main pet home.
 
 Tone guardrail: ship personas as **Drill Sergeant / Hype Cheerleader / Deadpan / Zen**.
-"Asshole coach" is useful internal shorthand, but product copy should roast effort gaps,
-not bodies, worth, or identity.
+Product copy may roast effort gaps, but never bodies, worth, or identity.
 
 ## Target hardware (two devices) — confirmed from repo SPEC docs
 

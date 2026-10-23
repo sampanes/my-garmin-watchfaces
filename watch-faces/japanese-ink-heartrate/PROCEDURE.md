@@ -48,10 +48,12 @@ Everything else — edits, builds, pushes, screenshots, writing the paired `.md`
 
 **You:**
 
-1. Open VS Code in `c:\Users\John\Documents\Personal_Projects\my-garmin-watchfaces\`.
+1. Open VS Code at the repository root.
 2. Launch the simulator. In a shell, run:
    ```powershell
-   & "C:\Users\John\AppData\Roaming\Garmin\ConnectIQ\Sdks\connectiq-sdk-win-9.1.0-2026-03-09-6a872a80b\bin\connectiq.bat"
+   $sdkRoot = Join-Path $env:APPDATA "Garmin\ConnectIQ\Sdks"
+   $sdk = Get-ChildItem $sdkRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+   & (Join-Path $sdk.FullName "bin\connectiq.bat")
    ```
    A blank CIQ Simulator window appears. **Blank is correct** — it waits for a push. Leave this window open for the whole session; you do not re-launch per iteration.
 3. Start (or resume) a Claude Code session in this repo.
@@ -108,7 +110,7 @@ Edit code in `watch-faces/japanese-ink-heartrate/`. Typical touchpoints:
 
 ### Step 2 — Agent: write the paired `.md` stub
 
-Before building, write `art/checkpoints/procedural/YYYY-MM-DD_<name>.md` with the first three sections filled in:
+Before building, write `art/checkpoints/procedural/YYYY-MM-DD_HHMM_<name>.md` with the first three sections filled in:
 
 - **Intent** — what are we testing, what question does this iteration answer
 - **Changes** — concrete diff summary
@@ -123,10 +125,10 @@ Writing the stub **before** capture forces the agent to commit to an intent that
 One command:
 
 ```bash
-bash scripts/build-and-run.sh "c:/Users/John/Documents/Personal_Projects/my-garmin-watchfaces/watch-faces/japanese-ink-heartrate/art/checkpoints/procedural/YYYY-MM-DD_<name>.png"
+bash scripts/build-and-run.sh "$PWD/watch-faces/japanese-ink-heartrate/art/checkpoints/procedural/YYYY-MM-DD_HHMM_<name>.png"
 ```
 
-This wraps `monkeyc` + `monkeydo` + `save-sim-capture.ps1` with all paths hardcoded. Expected output:
+This wraps `monkeyc` + `monkeydo` + `save-sim-capture.ps1`. It derives the repository path from the script, finds the newest installed SDK, and accepts `CONNECTIQ_SDK_PATH` and `MONKEYC_DEVELOPER_KEY` overrides. Expected output:
 
 ```
 [build] monkeyc ... BUILD SUCCESSFUL
@@ -175,7 +177,7 @@ Back to Step 0 with the new iteration name.
 Only the parts that matter for this loop:
 
 ```
-c:\Users\John\Documents\Personal_Projects\my-garmin-watchfaces\
+<repo-root>\
 ├── monkey.jungle                              build entry — points at the watch face manifest
 ├── bin/
 │   └── mygarminwatchfaces.prg                 build output (rewritten each build)
@@ -217,7 +219,9 @@ c:\Users\John\Documents\Personal_Projects\my-garmin-watchfaces\
 ### Launch the sim (once per session, human)
 
 ```powershell
-& "C:\Users\John\AppData\Roaming\Garmin\ConnectIQ\Sdks\connectiq-sdk-win-9.1.0-2026-03-09-6a872a80b\bin\connectiq.bat"
+$sdkRoot = Join-Path $env:APPDATA "Garmin\ConnectIQ\Sdks"
+$sdk = Get-ChildItem $sdkRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+& (Join-Path $sdk.FullName "bin\connectiq.bat")
 ```
 
 ### Build + push (every iteration, agent)
@@ -226,12 +230,12 @@ c:\Users\John\Documents\Personal_Projects\my-garmin-watchfaces\
 bash scripts/build-and-run.sh
 ```
 
-Contents: `monkeyc.bat -o bin/mygarminwatchfaces.prg -f monkey.jungle -y C:/Users/John/MonkeyC/developer_key -d fr265 -w -l 2` then `monkeydo.bat bin/mygarminwatchfaces.prg fr265`. Device id is `fr265`, **not** `fr265_sim` (see §7).
+Contents: `monkeyc.bat -o <repo-root>/bin/mygarminwatchfaces.prg -f <repo-root>/monkey.jungle -y <developer-key> -d fr265 -w -l 2` then `monkeydo.bat <repo-root>/bin/mygarminwatchfaces.prg fr265`. Device id is `fr265`, **not** `fr265_sim` (see §7).
 
 ### Capture screenshot (every iteration, agent)
 
 ```powershell
-& "c:\Users\John\Documents\Personal_Projects\my-garmin-watchfaces\watch-faces\japanese-ink-heartrate\art\checkpoints\procedural\save-sim-capture.ps1" -OutputPath "<absolute-output-path>.png"
+& ".\watch-faces\japanese-ink-heartrate\art\checkpoints\procedural\save-sim-capture.ps1" -OutputPath "<absolute-output-path>.png"
 ```
 
 ### Inspect simulator state (optional, human)
@@ -241,18 +245,20 @@ The sim supports simulated heart rate data via **Simulation → Data Fields → 
 ### Manual build-only (rarely needed, agent)
 
 ```bash
-"C:/Users/John/AppData/Roaming/Garmin/ConnectIQ/Sdks/connectiq-sdk-win-9.1.0-2026-03-09-6a872a80b/bin/monkeyc.bat" \
-  -o "c:/Users/John/Documents/Personal_Projects/my-garmin-watchfaces/bin/mygarminwatchfaces.prg" \
-  -f "c:/Users/John/Documents/Personal_Projects/my-garmin-watchfaces/monkey.jungle" \
-  -y "C:/Users/John/MonkeyC/developer_key" \
+export CONNECTIQ_SDK_PATH="C:/path/to/connectiq-sdk"
+export MONKEYC_DEVELOPER_KEY="C:/path/to/developer_key"
+"$CONNECTIQ_SDK_PATH/bin/monkeyc.bat" \
+  -o "$PWD/bin/mygarminwatchfaces.prg" \
+  -f "$PWD/monkey.jungle" \
+  -y "$MONKEYC_DEVELOPER_KEY" \
   -d fr265 -w -l 2
 ```
 
 ### Manual push-only (if build hasn't changed)
 
 ```bash
-"C:/Users/John/AppData/Roaming/Garmin/ConnectIQ/Sdks/connectiq-sdk-win-9.1.0-2026-03-09-6a872a80b/bin/monkeydo.bat" \
-  "c:/Users/John/Documents/Personal_Projects/my-garmin-watchfaces/bin/mygarminwatchfaces.prg" fr265
+"$CONNECTIQ_SDK_PATH/bin/monkeydo.bat" \
+  "$PWD/bin/mygarminwatchfaces.prg" fr265
 ```
 
 ---

@@ -60,7 +60,7 @@ Both are "all figs, at once, forever." Neither belongs in a cozy daily game.
 ### Layer A — Identity: FEW + PERMANENT. *This is where ownership lives.*
 
 A small handful of one-time, committed choices: the pet's **name**, its **species at birth**,
-its **persona/temperament** (the asshole-vs-sycophant axis — full system in `07-personality.md`),
+its **persona/temperament** (the strict-vs-supportive axis — full system in `07-personality.md`),
 and the **branch chosen at each evolution**. Spaced out so you never face more than one at a
 time (simultaneity dial = serialized). Persona is **orthogonal to species/look** (any creature
 can be any temperament) and, like the evolution branch, is re-pickable only *at evolution*.

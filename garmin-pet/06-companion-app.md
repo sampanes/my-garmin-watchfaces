@@ -4,9 +4,8 @@
 optional Tier-2 amplifier, and the one thing it uniquely unlocks is the *proactive nag*.**
 Do not build a "whole Android backdrop"; it's overkill *and* it buries the best feature.
 
-> Spitball origin (2026-06-15): "would a whole Android app for the backdrop be overkill?"
-> Goal: a little asshole friend on the watch that makes you do 5 pull-ups / run a mile /
-> squat your max.
+Design goal: keep a strict workout friend on the watch that prompts short, concrete efforts
+without requiring a full phone backdrop.
 
 ## Possible? Yes.
 
@@ -32,7 +31,7 @@ bridge. Same mechanism described in `02-async-social.md`. So feasibility is not 
 |---|---|
 | **Watch-only** (Garmin Connect = just the internet pipe) | ⭐ **Start here.** Strongest accountability, smallest scope. |
 | **Watch-first + thin phone companion** | The eventual "if it has legs" upgrade. Add the nag first, visuals later. |
-| **Phone-as-backdrop / home** (the spitball) | Overkill **and** dilutes the point. **Skip.** |
+| **Phone-as-backdrop / home** (the concept) | Overkill **and** dilutes the point. **Skip.** |
 
 ## The ONE real reason a companion earns its keep: the proactive nag
 

@@ -1,6 +1,6 @@
 # Track 1 add-on — Activity sensing: "the pet knows I'm lifting / doing push-ups"
 
-Verbal-ideation capture (2026-06-15), interaction clarified 2026-08-09. Goal: our characters react to strength work
+Design note (2026-06-15), interaction clarified 2026-08-09. Goal: our characters react to strength work
 (weights, push-ups) **without** the clunky native Garmin "Strength" activity flow.
 This feeds Track 1 (the pet eats your effort); it's a *capability*, not a 4th track.
 
@@ -21,12 +21,12 @@ lives in `08-watch-interaction-model.md`.
 
 ## The dream UX: "press GO, he figures it out" (and roasts you)
 
-Spitball (2026-06-15) — the flow worth aiming for: you walk up to the pull-up bar, **press
+Concept flow — you walk up to the pull-up bar, **press
 your friend, he says "sup, let's go" and does NOT ask what you're doing.** Then he *watches
 the signal and guesses out loud*, e.g.:
 - "up-down... that's a **squat**. 12. keep moving."
 - "**left-hand curl**... long pause... **right-hand curl?**... left again. make up your mind."
-- "wrist barely moved but your **HR and breathing spiked** — good shit, bruh."
+- "wrist barely moved but your **HR and breathing spiked** — strong work."
 
 This is the target Level 2 experience: you don't pick the move (still a foreground friend —
 *not* the impossible fully-passive Level 1). The pet **auto-classifies when it can**. But
@@ -42,16 +42,16 @@ product's whole personality:
 | Classifier state | What he says |
 |---|---|
 | **High confidence** | "That's a squat. 12 reps. Don't you dare slow down." |
-| **Low confidence** | "...the hell was that? A curl? Sure. I'll allow it." |
-| **Motion unreadable, body working** | "Wrist barely moved but your heart's redlining — good shit, bruh." |
+| **Low confidence** | "Not sure what that was. A curl? Sure. I'll allow it." |
+| **Motion unreadable, body working** | "Wrist barely moved but your heart's redlining — strong work." |
 
-The asshole is *allowed* to guess wrong and cover with snark. **Misclassification stops being a
+The Drill Sergeant is *allowed* to guess wrong and cover with snark. **Misclassification stops being a
 bug and becomes banter.** Fits the locked canned-vocabulary model perfectly — these are
 pre-written lines keyed by `guess × confidence × performance`.
 
 ## What the wrist can actually see (feasibility, grounded)
 
-Mapping the spitball's own examples to honest tiers (the watch is on **one** wrist):
+Mapping the concept's examples to honest tiers (the watch is on **one** wrist):
 - **Squat** — *medium.* Low cadence, big slow vertical component, stable wrist orientation. Guessable.
 - **Curl on the WATCH arm** — *easy.* Forearm rotates through gravity → the gravity vector
   swings between axes (§ above already calls this "very recognizable").
@@ -96,7 +96,7 @@ routine (`02`). Full split + quadrant: `05`.
 
 ## Personality model (the actual soul)
 
-- The "asshole friend" is **canned dialogue with attitude**, keyed by
+- The hard-edged friend is **canned dialogue with attitude**, keyed by
   `(exercise-guess × confidence × performance × streak × time-of-day)`. Cheap, watch-native,
   on-brand with the locked canned-messaging model (`02`).
 - **He doesn't care what you're about to do** — no tiny menu, no setup maze. Open → "sup,
@@ -106,7 +106,7 @@ routine (`02`). Full split + quadrant: `05`.
   choices interrupt opening the friend in a weight room.
 - Tone scales with the relationship/streak: more roast when you slack, grudging respect when
   you deliver. **The lines above are the *Drill Sergeant* voice specifically** — temperament is
-  now a **permanent identity trait** (asshole vs cheerleader vs deadpan vs zen), so every persona
+  now a **permanent identity trait** (drill sergeant vs cheerleader vs deadpan vs zen), so every persona
   reacts to these same sensing events in its own voice. Full system: **`07-personality.md`**.
 
 ## The mechanism (confirmed feasible)

@@ -1,6 +1,6 @@
 # Pet state and effort economy — a testable proposal
 
-Status: **PROPOSAL (2026-10-22).** Every number in this doc is **PROPOSED**; John decides. It
+Status: **PROPOSAL (2026-10-22).** Every number in this doc is **PROPOSED** and remains a project decision. It
 front-loads the progression numbers that `05-progression.md` left as a kicked can
 (`05-progression.md:234-236`, `05-progression.md:292-301`, `open-questions.md:154-158`) so they can
 be argued with concrete values instead of in the abstract.
@@ -57,7 +57,7 @@ Reasons:
 4. **Three readouts fit one card.** One full-screen pet status card (`08-watch-interaction-model.md:187-196`)
    carries three words more legibly than four or five bars on a round screen.
 
-If John prefers to keep 4 for the MVP, the least harmful 4 are these three plus a care-flavor
+If the project keeps 4 for the MVP, the least harmful 4 are these three plus a care-flavor
 "cozy" readout fed only by optional care actions, never by time.
 
 ---
@@ -329,7 +329,7 @@ What the sim says:
   reads as sunny returns, not lapses.
 - **The taper is strong.** The weekend user trains the most minutes (4106) but earns the least per
   minute (0.70 vs 1.64). That is `05-progression.md:220-221` working as written ("daily beats
-  binge"), but John should decide whether the 0.25 floor rate is too steep (§9).
+  binge"), but the project still needs to decide whether the 0.25 floor rate is too steep (§9).
 - **Warmth saturates.** All three patterns reach "in the zone" (100) within six weeks, because
   gains outrun the gentle drift. That is gain-framed, but it means warmth stops distinguishing
   patterns. Tune in the sandbox if it should.
@@ -369,7 +369,7 @@ thresholds, a new `XP_MAX` (about 5000 to show bands 0-8), the slider max, and r
 
 ---
 
-## 9. Decisions for John
+## 9. Decisions still open
 
 | # | Decision | Proposed default | Alternative |
 |---|---|---|---|

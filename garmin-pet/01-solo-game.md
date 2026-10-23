@@ -64,7 +64,7 @@ session**, and no live IPC between the native activity and the pet.
 - **Walks / runs → AFTER THE FACT.** The pet reads the day's **aggregates** on next open
   (or a ≥5-min background poll): steps / distance / active-minutes via the `Complications`
   STEPS subscription (battery-cheap, OS-pushed) + `ActivityMonitor`. So *"you ran today —
-  good shit"* works **retroactively**. No route, no live presence, but the cardio still
+  strong work"* works **retroactively**. No route, no live presence, but the cardio still
   feeds the pet.
 - **Stretch — "Walk/Run with [pet]" mode (an *unlock*, later):** to have the pet actually
   *present* during a walk/run (live pace + a saved GPS map), the pet must **be the recorder** —
@@ -121,7 +121,7 @@ hold the game anyway.
 
 ## The watch knows the real day — lean on it (the ACNH "alive" feeling)
 
-**John's idea (via *Animal Crossing: New Horizons*):** ACNH feels *alive* because it runs on the
+**Design idea (via *Animal Crossing: New Horizons*):** ACNH feels *alive* because it runs on the
 **real-world calendar** — real time of day, real seasons, holidays on their actual dates, and a
 town that kept living while you were gone. A watch pet gets this more intimately than any phone
 game, because **the watch *is* the clock on your wrist** — it already knows the true date and time
@@ -144,7 +144,7 @@ Time isn't only the decay input (§Time model) — it's the cheapest source of *
 
 ### Daily check-in arc — *morning hello → evening recap* (let biometrics do the talking)
 
-John's framing: the pet **bookends the day.** **Morning** — a warm, forward-looking hello on the
+Product framing: the pet **bookends the day.** **Morning** — a warm, forward-looking hello on the
 first open after wake (or past a local-morning threshold): *"morning — gonna be a good one."*
 **Evening/night** — a reflective beat: *"how'd today go?"*
 
@@ -160,7 +160,7 @@ feeding the pet per §differentiator). So the evening beat **branches on biometr
 - **Biometrics are quiet / ambiguous → then it asks.** *"quiet day on my end — how'd it actually
   go?"* The literal question is the **fallback**, not the default.
 
-Persona colors the wording (`07`): Drill Sergeant *"good shit, I felt that"* vs Zen Buddy *"you
+Persona colors the wording (`07`): Drill Sergeant *"strong work, I felt that"* vs Zen Buddy *"you
 carried a lot today — rest."*
 
 **Moderation guardrail (important):** these beats are **occasional and earned**, never a daily

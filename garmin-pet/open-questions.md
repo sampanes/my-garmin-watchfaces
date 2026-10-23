@@ -134,9 +134,9 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
         (T7, history half) and live stress (T8, live half); see the `11` results log. Friend 0.4.0
         also logs respiration, time-to-recovery, SpO2, pressure and stress-history age on every
         check-in (T9, T10, T12, T17 values, T8 timestamp half), so those resolve on the next read.
-- [ ] **Watch closes a foreground app on its own (2026-10-22, FR265).** Friend sessions ended
-      cleanly (no crash log entry) at 1840 s and 1839 s wall time on 09-22 and 10-16, both mid-effort,
-      while other sessions ran 81–132 min. Hypothesis: an inactivity timeout of about 30 min without
+- [ ] **Watch may close a foreground app on its own (FR265).** Multiple Friend sessions ended
+      cleanly (no crash log entry) at roughly 30 minutes while other sessions continued much longer.
+      Hypothesis: an inactivity timeout of about 30 min without
       input for a non-recording app. Friend 0.4.0 records `exit_reason`, `last_input_s`, `inputs` and
       `hides` per session to confirm or rule it out. Matters for the "leave it open" workout loop
       (`04`): if confirmed, a long session needs input, an `ActivityRecording`, or acceptance.
@@ -157,8 +157,8 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
 - [ ] **Companion phone app:** build one, or watch-only `makeWebRequest`?
       *(Recommend launch without; add later if it has legs.)* Gates push + QR-add.
 - [x] **Persona tone: LOCKED guardrail.** User-facing labels are Drill Sergeant /
-      Hype Cheerleader / Deadpan / Zen. Internal "asshole coach" shorthand is fine
-      for ideation, but shipped lines roast the effort gap, never body/worth/identity.
+      Hype Cheerleader / Deadpan / Zen. Design notes use those same neutral names;
+      shipped lines roast the effort gap, never body/worth/identity.
 - [x] **Failure mechanic: LOCKED gentle** (sick/sad, never death/neglect-spiral) — cozy
       guardrails, `05-progression.md`. Decay forgives missed days.
 - [~] **Species/evolution: structure decided in `05-progression.md`** — evolution is *the one
