@@ -1,0 +1,50 @@
+# A starter routine to edit. One file = one workout in Garmin Connect, named by
+# `name`; pushing again updates that workout instead of making a copy.
+#
+# Each [[block]] is one exercise done for `sets` sets, either `reps` or `seconds`
+# each, with `rest` seconds after every set. Exercise names come from Garmin's
+# catalog; spacing, case and hyphens don't matter ("push up" finds "Push-up").
+#   .\scripts\watch-tools.ps1 find squat     lists the squat variants
+#   .\scripts\watch-tools.ps1 check          validates every file here
+#   .\scripts\watch-tools.ps1 push           sends them all to the watch
+# Optional per block: weight_kg = 10, note = "a cue shown on the watch".
+# A block with only `rest = 90` is a plain rest step.
+
+name = "Mat basics"
+note = "Bodyweight circuit, about 20 minutes."
+
+[[block]]
+exercise = "Jumping Jacks"
+sets = 1
+seconds = 60
+rest = 30
+
+[[block]]
+exercise = "Push-up"
+sets = 3
+reps = 12
+rest = 60
+
+[[block]]
+exercise = "Air Squat"
+sets = 3
+reps = 15
+rest = 60
+
+[[block]]
+exercise = "Walking Lunge"
+sets = 2
+reps = 20
+rest = 60
+
+[[block]]
+exercise = "Plank"
+sets = 3
+seconds = 45
+rest = 30
+
+[[block]]
+exercise = "Dead Bug"
+sets = 2
+reps = 12
+rest = 30

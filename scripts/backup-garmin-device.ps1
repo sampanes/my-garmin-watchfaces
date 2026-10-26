@@ -13,7 +13,8 @@ param(
     [ValidateRange(1, 1000000)]
     [int]$MaxItems = 250000,
     [ValidateRange(1, 256)]
-    [int]$MaxDepth = 128
+    [int]$MaxDepth = 128,
+    [switch]$SkipSettingsInventory
 )
 
 Set-StrictMode -Version 2.0
@@ -544,8 +545,17 @@ if ($MyInvocation.InvocationName -ne ".") {
     if ([string]::IsNullOrWhiteSpace($effectiveOutputRoot)) {
         $effectiveOutputRoot = Join-Path (Split-Path -Parent $BackupScriptDirectory) "bin\garmin-device-backups"
     }
-    Invoke-GarminDeviceBackup -WantedDevice $DeviceName -BackupRoot $effectiveOutputRoot `
+    $completedBackup = Invoke-GarminDeviceBackup -WantedDevice $DeviceName -BackupRoot $effectiveOutputRoot `
         -PerFileTimeoutSeconds $CopyTimeoutSeconds -FindTimeoutSeconds $DiscoveryTimeoutSeconds `
         -PollMs $PollMilliseconds -OverallMinutes $OverallTimeoutMinutes `
-        -ItemLimit $MaxItems -DepthLimit $MaxDepth | Out-Null
+        -ItemLimit $MaxItems -DepthLimit $MaxDepth | Select-Object -Last 1
+    # A readable settings inventory and the diff against the previous backup. Only
+    # reads the finished backup, and a failure here never invalidates the backup.
+    if (-not $SkipSettingsInventory) {
+        try {
+            & (Join-Path $BackupScriptDirectory "watch-tools.ps1") settings $completedBackup
+        } catch {
+            Write-Warning ("Settings inventory skipped: {0}" -f $_.Exception.Message)
+        }
+    }
 }

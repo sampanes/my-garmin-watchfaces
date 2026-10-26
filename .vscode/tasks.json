@@ -15,6 +15,48 @@
             "problemMatcher": []
         },
         {
+            "label": "Garmin: settings inventory + diff",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\scripts\\watch-tools.ps1",
+                "settings"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Garmin: check workouts",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\scripts\\watch-tools.ps1",
+                "check"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Garmin: push workouts to the watch",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\scripts\\watch-tools.ps1",
+                "push"
+            ],
+            "problemMatcher": []
+        },
+        {
             "label": "Wrist diary: build FR265",
             "type": "shell",
             "command": "powershell",

@@ -34,3 +34,6 @@ Thumbs.db
 .env.production.local
 
 .claude/
+
+# Python
+__pycache__/

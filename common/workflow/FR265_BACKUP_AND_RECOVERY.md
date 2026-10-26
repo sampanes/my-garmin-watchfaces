@@ -64,6 +64,17 @@ No one layer is complete by itself.
 Run this before and after firmware updates, before app replacement, after an
 important activity has synced, and after any meaningful configuration change.
 
+## Settings record and workouts as code
+
+Every completed backup also writes `settings-inventory.txt` (each decoded
+setting as one line) and `settings-diff.txt` (what changed since the previous
+backup) into its folder. Strength workouts live as TOML files in
+`scripts/watch/workouts/` and are pushed to the watch with
+`.\scripts\watch-tools.ps1 push`. See [scripts/watch/README.md](../../scripts/watch/README.md).
+
+The inventory is a record and a rebuild checklist, not a restore source: it is
+never written back to the watch.
+
 ## Preserve the rebuild kit
 
 An MTP snapshot is not enough for locally developed Connect IQ apps.
