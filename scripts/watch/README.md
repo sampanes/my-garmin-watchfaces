@@ -56,6 +56,49 @@ uses the unofficial `garminconnect` library, which talks to Garmin's private web
 API, so a Garmin change can break it without warning; `check` and `show` work
 offline either way.
 
+## Setup as code (Garmin Connect)
+
+Much of the setup lives in the Garmin Connect account, not only on the watch,
+and survives a watch wipe: units, sleep window, user profile, heart-rate zones,
+goals, and the device settings Garmin Connect can edit (activity tracking,
+alarms, and whatever else `snapshot` shows). `connect_setup.py` reads it, digs
+the pre-wipe values out of old activity files, and writes a desired state back.
+
+```powershell
+.\scripts\watch-tools.ps1 snapshot                     # read-only: bin\garmin-connect\snapshot-<time>\*.json
+.\scripts\watch-tools.ps1 recover --wiped 2026-10-26   # settings inside the last activity before / first after
+.\scripts\watch-tools.ps1 apply                        # diff bin\watch-setup.toml vs Garmin Connect, write nothing
+.\scripts\watch-tools.ps1 apply --yes                  # write only the differences
+```
+
+`recover` works because Garmin embeds part of the setup (device settings, user
+profile, zones, sport settings) in every activity file. The last activity
+before the wipe is a record of the old setup; `wipe-diff.txt` lists what the
+wipe changed.
+
+`bin\watch-setup.toml` is the desired state, using Garmin Connect's own JSON key
+names as TOML tables (take them from a snapshot). Only listed keys are compared
+or written; everything else is left alone:
+
+```toml
+[user.userData]
+measurementSystem = "statute_us"
+
+[device.activityTracking]
+moveAlertEnabled = true
+
+[[hr_zones]]
+sport = "DEFAULT"
+maxHeartRateUsed = 186
+```
+
+Not reachable this way: the watch face, glances, the controls menu, and the
+activity list and data screens, unless a snapshot shows them in the device
+settings. Those are set on the watch or in the Connect phone app.
+
+Run these in an interactive terminal: the first login asks for the Garmin
+email, password and MFA code, which a non-interactive prompt cannot answer.
+
 ## Tests
 
 `.\scripts\watch-tools.ps1 test` builds FIT files with the FIT SDK's encoder,

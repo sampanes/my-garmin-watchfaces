@@ -72,7 +72,10 @@ def format_value(value) -> str:
     return str(value)
 
 
-def fit_lines(relative: str, data: bytes) -> list[str]:
+def fit_lines(relative: str, data: bytes, skip: frozenset[str] = frozenset(),
+              max_instances: int | None = None) -> list[str]:
+    """One line per field. skip names messages to leave out; max_instances drops
+    any message type repeated more often than that (per-second data, not settings)."""
     decoder = Decoder(Stream.from_byte_array(bytearray(data)))
     if not decoder.is_fit():
         return [f"{relative} | ! not a FIT file"]
@@ -82,6 +85,8 @@ def fit_lines(relative: str, data: bytes) -> list[str]:
         lines.append(f"{relative} | ! decode error: {errors[0]}")
     for group in sorted(messages):
         name = group[:-6] if group.endswith("_mesgs") else f"message_{group}"
+        if name in skip or (max_instances is not None and len(messages[group]) > max_instances):
+            continue
         for index, message in enumerate(messages[group]):
             for key in sorted(message, key=str):
                 field = key if isinstance(key, str) else f"field_{key}"

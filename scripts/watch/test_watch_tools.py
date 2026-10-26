@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import datetime
+import io
 import json
 import sys
 import tempfile
 import tomllib
 import unittest
+import zipfile
 from pathlib import Path
 
 from garmin_fit_sdk import Encoder, Profile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import connect_setup as cs  # noqa: E402
 import settings_inventory as inv  # noqa: E402
 import workouts as wk  # noqa: E402
 
@@ -158,6 +161,108 @@ class WorkoutsTest(unittest.TestCase):
         api = FakeGarmin([])
         wk.push(api, list(workouts.values()), schedule="2026-10-27")
         self.assertEqual(api.calls, [("upload", "Mat basics"), ("schedule", 900, "2026-10-27")])
+
+
+def activity_zip(backlight: str, rest_hr: int) -> bytes:
+    """An activity download: per-second records plus the settings the watch embeds."""
+    records = [("RECORD", {"heart_rate": 100 + i}) for i in range(30)]
+    fit = fit_file("activity", ("USER_PROFILE", {"resting_heart_rate": rest_hr}),
+                   ("DEVICE_SETTINGS", {"backlight_mode": backlight}), *records)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("123_ACTIVITY.fit", fit)
+    return buffer.getvalue()
+
+
+class FakeConnect:
+    def __init__(self):
+        self.writes = []
+        self.device = {"activityTracking": {"moveAlertEnabled": False, "autoGoal": True},
+                       "alarms": [], "backlight": {"mode": "AUTO"}}
+        self.user = {"userData": {"measurementSystem": "statute_us", "weight": 80000},
+                     "userSleep": {"sleepTime": 79200, "wakeTime": 21600}}
+        self.zones = [{"sport": "DEFAULT", "trainingMethod": "HR_MAX", "maxHeartRateUsed": 190,
+                       "zone1Floor": 95}]
+
+    def get_devices(self):
+        return [{"deviceId": 7, "productDisplayName": "Index S2 Scale"},
+                {"deviceId": 42, "productDisplayName": "Forerunner 265"}]
+
+    def get_device_settings(self, device_id):
+        assert device_id == 42
+        return self.device
+
+    def get_user_profile(self):
+        return self.user
+
+    def get_userprofile_settings(self):
+        raise RuntimeError("endpoint moved")
+
+    def get_heart_rate_zones(self):
+        return self.zones
+
+    def get_user_goals(self):
+        return [{"goalType": "steps", "goalValue": 8000}]
+
+    def update_user_settings(self, settings):
+        self.writes.append(("user", settings))
+
+    def update_device_settings(self, device_id, settings):
+        self.writes.append(("device", device_id, settings))
+
+    def update_heart_rate_zones(self, zones):
+        self.writes.append(("zones", zones))
+
+    def get_activities_by_date(self, start, end, sortorder=None):
+        return [{"activityId": 1, "activityName": "Old run", "startTimeLocal": "2026-10-20 07:00:00"},
+                {"activityId": 2, "activityName": "New walk", "startTimeLocal": "2026-10-26 18:00:00"}]
+
+    def download_activity(self, activity_id, dl_fmt=None):
+        return activity_zip("auto_brightness", 50) if activity_id == 1 else activity_zip("manual", 50)
+
+
+class ConnectSetupTest(unittest.TestCase):
+    def test_picks_the_watch_not_the_scale(self):
+        self.assertEqual(cs.pick_watch(FakeConnect().get_devices())["deviceId"], 42)
+        with self.assertRaises(SystemExit):
+            cs.pick_watch([{"deviceId": 1, "productDisplayName": "A"}, {"deviceId": 2, "productDisplayName": "B"}])
+
+    def test_snapshot_keeps_going_past_a_failed_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = cs.snapshot(FakeConnect(), None, Path(tmp))
+            names = sorted(p.name for p in out.iterdir())
+            self.assertEqual(names, ["device-settings.json", "devices.json", "goals.json",
+                                     "hr-zones.json", "user-settings.json", "userprofile-settings.json"])
+            self.assertIn("error", json.loads((out / "userprofile-settings.json").read_text()))
+
+    def test_recover_diffs_the_settings_inside_activities(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = cs.recover(FakeConnect(), datetime.date(2026, 10, 25), Path(tmp))
+            before = (out / "before-wipe.txt").read_text(encoding="utf-8")
+            self.assertIn("device_settings[0] | backlight_mode = auto_brightness", before)
+            self.assertNotIn("record[", before)
+            changes = (out / "wipe-diff.txt").read_text(encoding="utf-8").splitlines()
+            self.assertIn("~ device_settings[0] | backlight_mode = auto_brightness  ->  manual", changes)
+            self.assertFalse(any("resting_heart_rate" in c for c in changes))
+
+    def test_apply_is_a_dry_run_without_yes(self):
+        api = FakeConnect()
+        setup = {"user": {"userData": {"measurementSystem": "metric"}},
+                 "device": {"activityTracking": {"moveAlertEnabled": True}},
+                 "hr_zones": [{"sport": "DEFAULT", "maxHeartRateUsed": 186}]}
+        cs.apply(api, setup, write=False)
+        self.assertEqual(api.writes, [])
+        cs.apply(api, setup, write=True)
+        user, device, zones = api.writes
+        self.assertEqual(user[1]["userData"], {"measurementSystem": "metric", "weight": 80000})
+        self.assertEqual(device[1:], (42, {"activityTracking": {"moveAlertEnabled": True, "autoGoal": True}}))
+        self.assertEqual(zones[1], [{"sport": "DEFAULT", "trainingMethod": "HR_MAX",
+                                     "maxHeartRateUsed": 186, "zone1Floor": 95}])
+
+    def test_apply_writes_nothing_when_already_matching(self):
+        api = FakeConnect()
+        cs.apply(api, {"device": {"backlight": {"mode": "AUTO"}}}, write=True)
+        self.assertEqual(api.writes, [])
 
 
 if __name__ == "__main__":

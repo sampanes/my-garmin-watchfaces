@@ -15,7 +15,6 @@ Login tokens are saved in ~/.garminconnect after the first login.
 from __future__ import annotations
 
 import argparse
-import getpass
 import json
 import sys
 import tomllib
@@ -27,8 +26,10 @@ from garminconnect.workout import (
     create_strength_timed_set,
 )
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # run with python -I
+from garmin_login import connect  # noqa: E402
+
 WORKOUT_DIR = Path(__file__).resolve().parent / "workouts"
-TOKEN_DIR = "~/.garminconnect"
 STRENGTH = {"sportTypeId": 5, "sportTypeKey": "strength_training", "displayOrder": 5}
 
 
@@ -162,24 +163,6 @@ def push(api, chosen: list[StrengthWorkout], schedule: str | None = None) -> lis
             where = "sent to the watch"
         report.append(f"[{action}] {workout.workoutName} (id {workout_id}), {where}")
     return report
-
-
-def connect():
-    """A logged-in Garmin client; asks for credentials only when no saved token works."""
-    from garminconnect import Garmin
-
-    try:
-        api = Garmin()
-        api.login(TOKEN_DIR)
-        return api
-    except Exception:
-        pass
-    print("Garmin Connect login (the token is saved in ~/.garminconnect; the password is not).")
-    email = input("Email: ").strip()
-    password = getpass.getpass("Password: ")
-    api = Garmin(email, password, prompt_mfa=lambda: input("MFA code: ").strip())
-    api.login(TOKEN_DIR)
-    return api
 
 
 def main(argv: list[str] | None = None) -> int:

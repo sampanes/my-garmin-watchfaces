@@ -7,10 +7,14 @@
 #   .\scripts\watch-tools.ps1 show "Mat basics"          the JSON Garmin Connect would receive
 #   .\scripts\watch-tools.ps1 push [name...]             create/update in Garmin Connect, send to the watch
 #   .\scripts\watch-tools.ps1 push --schedule 2026-10-27 put them on the calendar instead
+#   .\scripts\watch-tools.ps1 snapshot                   save what Garmin Connect holds (read-only)
+#   .\scripts\watch-tools.ps1 recover --wiped 2026-10-26 settings inside activities before/after a wipe
+#   .\scripts\watch-tools.ps1 apply [file]               diff bin\watch-setup.toml vs Garmin Connect
+#   .\scripts\watch-tools.ps1 apply --yes                ...and write the differences
 #   .\scripts\watch-tools.ps1 test                       host tests
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("settings", "check", "find", "show", "push", "test")]
+    [ValidateSet("settings", "check", "find", "show", "push", "snapshot", "recover", "apply", "test")]
     [string]$Command = "check",
     [Parameter(Position = 1, ValueFromRemainingArguments = $true)]
     [string[]]$Rest = @()
@@ -45,6 +49,7 @@ if (-not (Test-Path -LiteralPath $python) -or $installed -ne $wanted) {
 
 switch ($Command) {
     "settings" { & $python -I (Join-Path $tools "settings_inventory.py") @Rest }
+    { $_ -in @("snapshot", "recover", "apply") } { & $python -I (Join-Path $tools "connect_setup.py") $Command @Rest }
     "test" { & $python -I (Join-Path $tools "test_watch_tools.py") @Rest }
     default { & $python -I (Join-Path $tools "workouts.py") $Command @Rest }
 }
