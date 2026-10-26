@@ -2,6 +2,19 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Garmin: verified full backup",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\scripts\\backup-garmin-device.ps1"
+            ],
+            "problemMatcher": []
+        },
+        {
             "label": "Wrist diary: build FR265",
             "type": "shell",
             "command": "powershell",

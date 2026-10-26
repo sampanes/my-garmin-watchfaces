@@ -53,6 +53,7 @@ Welcome to the linked knowledge tree for Garmin development. This map connects t
 - **Planning next?** Use the [Pre-Build Discovery Findings + Idea Backlog](workflow/PREBUILD_DISCOVERY_AND_IDEA_BACKLOG.md).
 - **Spec before build?** Fill the [CIQ Product Requirements Template](workflow/CIQ_PRODUCT_REQUIREMENTS_TEMPLATE.md).
 - **Troubleshooting?** Check the [Debugging & Issues Guide](workflow/DEBUGGING_AND_TROUBLESHOOTING.md) and [Windows Quirks](workflow/WINDOWS_SPECIFIC_QUIRKS.md).
+- **Protecting a physical watch?** Use the [FR265 Backup and Recovery Guide](workflow/FR265_BACKUP_AND_RECOVERY.md).
 - **Multi-device planning?** See the [Multi-Device Strategy Guide](workflow/MULTI_DEVICE_STRATEGY.md).
 - **High-level overview?** See the [Bird's Eye View](BIRDSEYE_VIEW.md).
 

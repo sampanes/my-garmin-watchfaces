@@ -21,17 +21,39 @@ if (-not $device) { throw "$DeviceName is not connected." }
 $storage = $device.GetFolder.Items() | Where-Object Name -eq "Internal Storage" | Select-Object -First 1
 $garmin = $storage.GetFolder.Items() | Where-Object Name -eq "GARMIN" | Select-Object -First 1
 $apps = $garmin.GetFolder.Items() | Where-Object Name -eq "Apps" | Select-Object -First 1
-$logs = $apps.GetFolder.Items() | Where-Object Name -eq "LOGS" | Select-Object -First 1
-if (-not $apps -or -not $logs) { throw "GARMIN/Apps or GARMIN/Apps/LOGS was not found." }
+if (-not $apps) { throw "GARMIN/Apps was not found." }
 
-# Friend deliberately keeps Wrist Diary's UUID, and Garmin consequently keeps
-# routing System.println output to the original sideload basename.
-$tempLog = Join-Path ([System.IO.Path]::GetTempPath()) "wrist-diary-fr265.txt"
-[System.IO.File]::WriteAllText($tempLog, "")
-$apps.GetFolder.CopyHere($prg, 16)
-$logs.GetFolder.CopyHere($tempLog, 16)
+$prgInfo = Get-Item -LiteralPath $prg
+$prgName = $prgInfo.Name
+$existing = $apps.GetFolder.Items() |
+    Where-Object { $_.ExtendedProperty("System.FileName") -ieq $prgName } |
+    Select-Object -First 1
+if ($existing) {
+    $existingSize = [uint64]$existing.ExtendedProperty("System.Size")
+    if ($existingSize -ne [uint64]$prgInfo.Length) {
+        throw "$prgName already exists on the watch with a different size. Back it up and remove it explicitly before replacement."
+    }
+    Write-Host "[staged] $prgName was already present with the expected size."
+} else {
+    $apps.GetFolder.CopyHere($prg, 16)
+    $copied = $null
+    for ($i = 0; $i -lt 80; $i += 1) {
+        Start-Sleep -Milliseconds 250
+        $copied = $apps.GetFolder.Items() |
+            Where-Object { $_.ExtendedProperty("System.FileName") -ieq $prgName } |
+            Select-Object -First 1
+        if ($copied -and [uint64]$copied.ExtendedProperty("System.Size") -eq [uint64]$prgInfo.Length) {
+            break
+        }
+    }
+    if (-not $copied) { throw "$prgName did not appear in GARMIN/Apps after the copy." }
+    $copiedSize = [uint64]$copied.ExtendedProperty("System.Size")
+    if ($copiedSize -ne [uint64]$prgInfo.Length) {
+        throw "$prgName was copied with the wrong size (expected $($prgInfo.Length), got $copiedSize)."
+    }
+    Write-Host "[verified] $prgName staged at $copiedSize bytes."
+}
 
-Start-Sleep -Seconds 5
 Write-Host "[installed] Friend v$friendVersion replaces the Wrist Diary app identity on $DeviceName."
 Write-Host "[next] On the watch itself, use its button/control to leave USB mode."
 Write-Host "[next] Let the watch finish syncing/updating the staged app before unplugging or opening Friend."
