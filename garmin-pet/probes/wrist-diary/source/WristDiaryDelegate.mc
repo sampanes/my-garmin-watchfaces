@@ -11,15 +11,15 @@ class WristDiaryDelegate extends WatchUi.BehaviorDelegate {
 
     function onSelect() {
         mView.noteInput();
-        mView.exportNow();
+        mView.selectAction();
         return true;
     }
 
     function onBack() {
-        // Back is the escape hatch. Save compact records, then leave; the
-        // potentially large text export remains an explicit Select action.
-        // A failed save must never keep the wearer inside the app.
         mView.noteInput();
+        if (!mView.backAction()) { return true; }
+        // Home Back is the escape hatch. A failed compact save must never keep
+        // the wearer inside the app.
         try {
             mView.stopFromBack();
         } catch (e) {
@@ -29,19 +29,21 @@ class WristDiaryDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    // Unused behaviors are still counted as input, then left to the system.
     function onNextPage() {
         mView.noteInput();
-        return false;
+        mView.pageAction();
+        return true;
     }
 
     function onPreviousPage() {
         mView.noteInput();
-        return false;
+        mView.pageAction();
+        return true;
     }
 
     function onMenu() {
         mView.noteInput();
-        return false;
+        mView.menuAction();
+        return true;
     }
 }

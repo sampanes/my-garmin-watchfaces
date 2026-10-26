@@ -54,7 +54,7 @@ for ($i = 0; $i -lt 20 -and -not (Test-Path -LiteralPath $txtPath); $i += 1) {
     Start-Sleep -Milliseconds 500
 }
 if (-not (Test-Path -LiteralPath $txtPath)) {
-    throw "Friend's log was not found. Open Friend once, press START, then reconnect."
+    throw "Friend's log was not found. Open Friend, use Up/Down to DEBUG DATA, press START, then reconnect."
 }
 
 . (Join-Path $PSScriptRoot "friend-export.ps1")
@@ -66,7 +66,7 @@ $allLines += Get-Content -LiteralPath $txtPath
 
 $block = Get-FriendExportBlock $allLines
 if (-not $block) {
-    throw "No complete Friend export was found. Open Friend, press START, and reconnect."
+    throw "No complete Friend export was found. Open Friend, use Up/Down to DEBUG DATA, press START, and reconnect."
 }
 $exportMarker = $block[0] -split ","
 $schemaVersion = if ($exportMarker.Count -ge 2) { $exportMarker[1] } else { "unknown" }

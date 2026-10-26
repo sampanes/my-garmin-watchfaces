@@ -129,6 +129,12 @@ Cap: **AUTO** = stub self-reports · **MAN** = you observe & record.
 
 Probe app for T19/T20: [`probes/walk/`](probes/walk/README.md) (build with `scripts/build-walk-probe.ps1`; outdoor procedure, Connect checklist and results table in its README).
 
+**FR265 result:** T19 passed. Two recordings ended explicitly with START and appeared in
+Garmin Connect as accurate walks; decoded FIT data contained the expected GPS, HR and
+`pet_mood` developer records. T20 was negative: a recording closed by the watch logged
+`save()` success, but produced no corresponding FIT file. A product walk must therefore use an
+explicit foreground stop/save path and must not promise recovery from `onStop`.
+
 ### F — Navigation (MAN — app exits)
 | ID | Resolves | Stub | Observe / record | Dev |
 |----|----------|------|------------------|-----|
@@ -162,6 +168,8 @@ resolves, update the matching ⚠️ VERIFY in `10-power-roster.md` and/or `open
 | T2 | 2026-06-25 | FR265 / SW 28.05 / CIQ VM 5.2.0 | CONFIRMED — flat buzz, no pattern | 25/100/25 `VibeProfile` sequence collapsed to one flat vibration. |
 | T7 | 2026 | FR265 / fw not recorded | PASS (history half) — a device app reads Body Battery | Friend (a `watch-app`) returned Body Battery samples in multiple hardware sessions. Sometimes it returned `-1` (no sample yet). The Complications-subscribe half is still untested. |
 | T8 | 2026 | FR265 / fw not recorded | PASS (live half) — `ActivityMonitor.getInfo().stressScore` reads in a device app | Stress populated in multiple hardware sessions; it was often `null` (`-1`) in the first seconds after opening. The history-timestamp half is now logged by Friend 0.4.0 (`stress_age_s` on each check-in). |
+| T19 | 2026-10-25 | FR265 / SW 29.05 / CIQ VM 5.2.0 | PASS — app-recorded walks reach Connect with accurate maps and HR | Two START-saved walks rendered accurately in Garmin Connect. Decoded FIT data also contained `pet_mood`. |
+| T20 | 2026-10-24 | FR265 / SW 29.05 / CIQ VM 5.2.0 | FAIL — `CLOSED` save is not durable | `onStop` logged a successful save, but no corresponding FIT file existed afterward. Temporary screen hides could continue receiving fixes; a true close could not be recovered. |
 |  |  |  |  |  |
 
 > ⚠️ **T1 needs a re-test.** The 2026-06-25 FAIL was logged before the runner reported the
@@ -173,11 +181,12 @@ resolves, update the matching ⚠️ VERIFY in `10-power-roster.md` and/or `open
 > single-intensity).
 
 ### Priority order if time is short
-1. **T19** (Walk-with-me → Connect map) — the flagship power's core proof.
-2. **T5** (background notification) — could rewrite `06`'s proactive-nag stance.
-3. **T23/T24** (ANT encounter) — the only no-backend in-person social path (`03`).
-4. **T7/T11/T15** (Body Battery / DIY HRV / complication-subscribe) — unlock the richest sense powers.
-5. **T1/T2** (tones/haptics device-split) + **T16/T17** (sleep/baro split) — cheap, fast, confirm the cross-device beat.
+T19 is resolved positively and T20 negatively on the FR265. For the remaining probes:
+
+1. **T5** (background notification) — could rewrite `06`'s proactive-nag stance.
+2. **T23/T24** (ANT encounter) — the only no-backend in-person social path (`03`).
+3. **T7/T11/T15** (Body Battery / DIY HRV / complication-subscribe) — unlock the richest sense powers.
+4. **T1/T2** (tones/haptics device-split) + **T16/T17** (sleep/baro split) — cheap, fast, confirm the cross-device beat.
 
 ## Cross-refs
 - `10-power-roster.md` — every ⚠️ VERIFY tag here maps to a power there

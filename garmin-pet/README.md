@@ -40,6 +40,9 @@ excludes a later quiet desk tail, and keeps a forgiving visual memory without re
 Version 0.4 records how each session ends, fits its export inside Garmin's ~5 KB log file, logs
 battery and memory cost, answers several hardware-test questions on every check-in, and draws a
 round-screen layout with three moods.
+Version 0.5 adds an explicit `Friend Walk` mode that records a standard Walking FIT activity with
+GPS, HR and distance. It keeps the companion's neutral effort sensing active underneath, requires
+a foreground end confirmation, and moves the debug export to its own Up/Down card.
 
 **Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer
 progression/ownership model (how the pet "scales up" without becoming a paralyzing

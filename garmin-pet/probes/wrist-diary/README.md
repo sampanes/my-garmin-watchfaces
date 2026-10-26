@@ -5,11 +5,16 @@ installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.4.0`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.5.0`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
 dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
-build that never reached git, and `0.4.0` is built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
+build that never reached git, and `0.4.0` was built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
 data/features, and major if stored data or behavior is intentionally broken or replaced.
+
+**0.5.0 — Walk with Friend:** the T19-proven foreground recorder is now an explicit Friend mode.
+It creates a standard Walking FIT activity with GPS, HR and distance for Garmin Connect. Ending a
+walk is an explicit foreground confirmation; a `CLOSED`/`onStop` save remains best-effort only,
+because T20 returned success but produced no FIT file.
 
 ## What it does
 
@@ -26,10 +31,14 @@ data/features, and major if stored data or behavior is intentionally broken or r
 - During a chapter the friend says `WITH YOU`. Afterward it says `I SAW N MIN`, remembers the
   chapter at the next check-in, and adds a small persistent memory mark below its face. Memories
   never decay and skipped days carry no penalty.
-- Back exits immediately after saving a compact session summary, even if that save fails.
-  Pressing Select (the top-right START button on the FR265, marked by a short green arc on the
-  rim) performs the larger text export on demand and shows `SAVED`; ordinary open/close use does
-  not serialize the whole history.
+- From the companion screen, START enters `FRIEND WALK` and begins warming GPS; START again begins
+  the activity even if a fix is still settling. While walking, START or Back opens `END WALK?`;
+  START explicitly stops and saves, while Back resumes without a route gap. A successful result
+  says `WE WALKED` and the activity syncs through Garmin normally.
+- Up/Down opens the debug-data card. START there performs the larger text export on demand and
+  shows `EXPORTED`; ordinary open/close use does not serialize the whole history.
+- Back from the companion screen exits immediately after saving a compact session summary, even
+  if that save fails. Back from preparation cancels it, and Back from a walk result returns home.
 - The face has three moods: calm (green, small smile), effort (orange, open mouth) and remember
   (gold, happy closed eyes). Every text line is sized to fit the round screen at its height.
 - Every session summary records how it ended (`exit_reason` `1` Back, `2` the watch closed the
@@ -97,8 +106,8 @@ Reconnect the watch and run:
 .\scripts\read-friend.ps1
 ```
 
-Before reconnecting, open Friend and press START once so the newest complete export is in the
-log. The reader copies both the live log and rotated backup, writes parsed CSV files under the
+Before reconnecting, open Friend, use Up/Down to reach `DEBUG DATA`, then press START so the newest
+complete export is in the log. The reader copies both the live log and rotated backup, writes parsed CSV files under the
 ignored `bin/friend/downloads/` directory, and leaves on-watch data untouched. Every read also
 merges its rows into `bin/friend/archive/` (no duplicates), so reading after each session builds
 the full history that no single export can carry. `scripts/test-friend-export.ps1` checks the

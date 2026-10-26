@@ -13,7 +13,7 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.4.0";
+    const APP_VERSION = "0.5.0";
     const SCHEMA = 3;           // On-watch storage layout.
     const EXPORT_FORMAT = 4;    // Log export layout; read-friend.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;
@@ -42,6 +42,12 @@ class WristDiaryView extends WatchUi.View {
     const MOOD_EFFORT = 1;
     const MOOD_REMEMBER = 2;
     const SAVED_SECONDS = 3;
+
+    const SCREEN_HOME = 0;
+    const SCREEN_WALK = 1;
+    const SCREEN_END_WALK = 2;
+    const SCREEN_WALK_RESULT = 3;
+    const SCREEN_EXPORT = 4;
 
     const L_EPOCH = 0;
     const L_SESSION = 1;
@@ -126,9 +132,12 @@ class WristDiaryView extends WatchUi.View {
     var mLifetimeChapters as Lang.Number = 0;
     var mLastChapterDuration as Lang.Number = 0;
     var mLastChapterEpoch as Lang.Number = 0;
+    var mScreen as Lang.Number = SCREEN_HOME;
+    var mWalk as FriendWalkRecorder;
 
     function initialize() {
         View.initialize();
+        mWalk = new FriendWalkRecorder();
         migrateFromDiary();
         readFourHourBaseline();
         refreshSlowSignals();
@@ -149,6 +158,7 @@ class WristDiaryView extends WatchUi.View {
 
     function onShow() as Void {
         startSession();
+        mWalk.onShow();
     }
 
     // The screen went away (a notification, another app, or the app closing).
@@ -159,6 +169,23 @@ class WristDiaryView extends WatchUi.View {
     function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
+
+        if (mScreen == SCREEN_WALK) {
+            drawWalkScreen(dc);
+            return;
+        }
+        if (mScreen == SCREEN_END_WALK) {
+            drawEndWalkScreen(dc);
+            return;
+        }
+        if (mScreen == SCREEN_WALK_RESULT) {
+            drawWalkResultScreen(dc);
+            return;
+        }
+        if (mScreen == SCREEN_EXPORT) {
+            drawExportScreen(dc);
+            return;
+        }
 
         var height = dc.getHeight();
         var centerX = dc.getWidth() / 2;
@@ -192,7 +219,114 @@ class WristDiaryView extends WatchUi.View {
         dc.drawText(centerX, y, fitFont(dc, info, [Graphics.FONT_XTINY], y),
                     info, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
+        drawCenteredLine(dc, centerX, height * 90 / 100, "START walk   DOWN data",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+
         drawStartHint(dc);
+    }
+
+    function drawWalkScreen(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        var recording = mWalk.isRecording();
+
+        drawCenteredLine(dc, centerX, height * 10 / 100, "FRIEND WALK", 0x3E7A62,
+                         [Graphics.FONT_XTINY]);
+        drawFace(dc, centerX, height * 28 / 100, height * 10 / 100,
+                 recording ? MOOD_EFFORT : moodNow());
+        drawCenteredLine(dc, centerX, height * 43 / 100,
+                         recording ? "WITH YOU" : "READY TO WALK",
+                         recording ? 0xFFB15C : 0x6ED6A8,
+                         [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        drawCenteredLine(dc, centerX, height * 55 / 100,
+                         "GPS " + mWalk.qualityText(), Graphics.COLOR_LT_GRAY,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        drawCenteredLine(dc, centerX, height * 67 / 100,
+                         walkElapsedText(), Graphics.COLOR_WHITE,
+                         [Graphics.FONT_NUMBER_MILD, Graphics.FONT_MEDIUM]);
+
+        var hr = (mHeartRate > 0) ? mHeartRate.toString() : "--";
+        drawCenteredLine(dc, centerX, height * 79 / 100,
+                         walkDistanceText() + "   HR " + hr, Graphics.COLOR_LT_GRAY,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 89 / 100,
+                         recording ? "START finish" : "START walk   BACK cancel",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    function drawEndWalkScreen(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND WALK", 0x3E7A62,
+                         [Graphics.FONT_XTINY]);
+        drawFace(dc, centerX, height * 32 / 100, height * 11 / 100, MOOD_EFFORT);
+        drawCenteredLine(dc, centerX, height * 53 / 100, "END WALK?", Graphics.COLOR_WHITE,
+                         [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
+        drawCenteredLine(dc, centerX, height * 66 / 100, "recording continues", 0xE8CF70,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        drawCenteredLine(dc, centerX, height * 80 / 100, "START save", 0x6ED6A8,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        drawCenteredLine(dc, centerX, height * 90 / 100, "BACK resume", Graphics.COLOR_LT_GRAY,
+                         [Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    function drawWalkResultScreen(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        var failed = mWalk.isFailed();
+        drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND WALK", 0x3E7A62,
+                         [Graphics.FONT_XTINY]);
+        drawFace(dc, centerX, height * 32 / 100, height * 11 / 100,
+                 failed ? MOOD_CALM : MOOD_REMEMBER);
+        drawCenteredLine(dc, centerX, height * 53 / 100,
+                         failed ? "WALK FAILED" : "WE WALKED",
+                         failed ? 0xFF6060 : 0xE8CF70,
+                         [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        drawCenteredLine(dc, centerX, height * 66 / 100,
+                         walkElapsedText() + "   " + walkDistanceText(), Graphics.COLOR_WHITE,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        drawCenteredLine(dc, centerX, height * 78 / 100,
+                         failed ? mWalk.errorText() : "ACTIVITY SAVED",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        drawCenteredLine(dc, centerX, height * 90 / 100, "START home", Graphics.COLOR_LT_GRAY,
+                         [Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    function drawExportScreen(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND " + APP_VERSION, 0x3E7A62,
+                         [Graphics.FONT_XTINY]);
+        drawFace(dc, centerX, height * 34 / 100, height * 12 / 100, moodNow());
+        drawCenteredLine(dc, centerX, height * 57 / 100, "DEBUG DATA", Graphics.COLOR_WHITE,
+                         [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
+        drawCenteredLine(dc, centerX, height * 71 / 100,
+                         (Time.now().value() <= mSavedUntil) ? "EXPORTED" : "START export",
+                         (Time.now().value() <= mSavedUntil) ? 0x6ED6A8 : Graphics.COLOR_LT_GRAY,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        drawCenteredLine(dc, centerX, height * 86 / 100, "UP/DOWN home   BACK home",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    function drawCenteredLine(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number,
+                              text as Lang.String, color as Lang.Number,
+                              fonts as Lang.Array<Graphics.FontDefinition>) as Void {
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y, fitFont(dc, text, fonts, y), text,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    function walkElapsedText() as Lang.String {
+        var seconds = mWalk.elapsed();
+        return (seconds / 60).format("%02d") + ":" + (seconds % 60).format("%02d");
+    }
+
+    function walkDistanceText() as Lang.String {
+        return mWalk.distanceMeters().toNumber().format("%d") + " m";
     }
 
     function moodNow() as Lang.Number {
@@ -345,13 +479,88 @@ class WristDiaryView extends WatchUi.View {
         mLastInputElapsed = mElapsed;
     }
 
+    // One primary action, interpreted by the current full-screen card.
+    function selectAction() as Void {
+        if (mScreen == SCREEN_HOME) {
+            mWalk.enterReady();
+            mScreen = mWalk.isFailed() ? SCREEN_WALK_RESULT : SCREEN_WALK;
+        } else if (mScreen == SCREEN_WALK) {
+            if (mWalk.isReady()) {
+                mWalk.start();
+                if (mWalk.isFailed()) { mScreen = SCREEN_WALK_RESULT; }
+            } else if (mWalk.isRecording()) {
+                mScreen = SCREEN_END_WALK;
+            } else {
+                mScreen = SCREEN_WALK_RESULT;
+            }
+        } else if (mScreen == SCREEN_END_WALK) {
+            mWalk.saveFromSelect();
+            mScreen = SCREEN_WALK_RESULT;
+        } else if (mScreen == SCREEN_WALK_RESULT) {
+            if (mWalk.close()) { mScreen = SCREEN_HOME; }
+        } else if (mScreen == SCREEN_EXPORT) {
+            exportNow();
+        }
+        WatchUi.requestUpdate();
+    }
+
+    // True means the delegate should leave the app. Every other screen consumes Back
+    // as a literal step backward; a running walk gets a confirmation screen first.
+    function backAction() as Lang.Boolean {
+        if (mScreen == SCREEN_HOME) { return true; }
+        if (mScreen == SCREEN_EXPORT) {
+            mScreen = SCREEN_HOME;
+        } else if (mScreen == SCREEN_END_WALK) {
+            mScreen = SCREEN_WALK;
+        } else if (mScreen == SCREEN_WALK_RESULT) {
+            if (mWalk.close()) { mScreen = SCREEN_HOME; }
+        } else if (mScreen == SCREEN_WALK) {
+            if (mWalk.isRecording()) {
+                mScreen = SCREEN_END_WALK;
+            } else {
+                mWalk.close();
+                mScreen = SCREEN_HOME;
+            }
+        }
+        WatchUi.requestUpdate();
+        return false;
+    }
+
+    function pageAction() as Void {
+        if (mScreen == SCREEN_HOME) {
+            mScreen = SCREEN_EXPORT;
+        } else if (mScreen == SCREEN_EXPORT) {
+            mScreen = SCREEN_HOME;
+        }
+        WatchUi.requestUpdate();
+    }
+
+    function menuAction() as Void {
+        if (mScreen == SCREEN_HOME) {
+            mScreen = SCREEN_EXPORT;
+            WatchUi.requestUpdate();
+        }
+    }
+
     // Keep exit-reason constants private to the view. Monkey C class constants are
     // not static members, so callers use these named actions instead.
     function stopFromBack() as Void {
+        try {
+            if (mWalk.isRecording()) { mWalk.saveFromBack(); }
+        } catch (e) {
+            System.println("FRIEND_WALK_EXIT_ERROR," + e.getErrorMessage());
+        }
+        try { mWalk.close(); } catch (e2) { }
         stopSession(EXIT_BACK);
     }
 
     function stopFromSystemClose() as Void {
+        try {
+            if (mWalk.isRecording()) { mWalk.saveFromSystemClose(); }
+        } catch (e) {
+            System.println("FRIEND_WALK_CLOSE_ERROR," + e.getErrorMessage());
+        }
+        try { mWalk.close(); } catch (e2) { }
         stopSession(EXIT_OTHER);
     }
 
@@ -374,6 +583,7 @@ class WristDiaryView extends WatchUi.View {
     function onSecond() as Void {
         mElapsed += 1;
         readLiveHeartRate();
+        mWalk.tick();
         if ((mElapsed % 60) == 0) { refreshSlowSignals(); }
         if ((mElapsed % LIVE_INTERVAL_SECONDS) == 0) { captureLive(); }
         WatchUi.requestUpdate();

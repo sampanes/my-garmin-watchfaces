@@ -9,6 +9,11 @@ It records a real FIT activity with `ActivityRecording` (sport walking), turns o
 location events and the HR sensor explicitly (neither is recorded unless the app enables it), and
 adds one custom FIT field, `pet_mood`. Nothing goes off the watch except the normal activity sync.
 
+**FR265 outcome:** T19 passed with two START-saved walks that rendered accurately in Garmin
+Connect; decoded FIT data contained GPS, HR and `pet_mood`. T20 failed as a recovery strategy:
+the watch-closed path logged `save()` success but left no corresponding FIT file. Keep a product
+walk in the foreground and require an explicit end confirmation and foreground save.
+
 ## What it proves
 
 | Question | Where the answer shows |
@@ -127,10 +132,10 @@ The close itself usually adds one hide to `HID`, so a walk that ended `CLOSED` s
 
 ## What to look for in Garmin Connect
 
-- [ ] Activity appears after sync, named "Walk Probe"
-- [ ] Activity type shows as **Walking**
-- [ ] **Route map** present and follows the real path
-- [ ] **HR graph** present, values plausible
+- [x] Activity appears after sync, named "Walk Probe" (FR265)
+- [x] Activity type shows as **Walking** (FR265)
+- [x] **Route map** present and follows the real path (two FR265 walks)
+- [x] **HR graph** present, values plausible (FR265)
 - [ ] Distance and pace present and plausible
 - [ ] **Custom field** present: look for a "Connect IQ" section near the bottom of the activity
       page, on the phone and on the website, and for a "Pet mood" chart
@@ -138,7 +143,7 @@ The close itself usually adds one hide to `HID`, so a walk that ended `CLOSED` s
       own step count too)
 - [ ] Walk counts toward **intensity minutes** for that day
 - [ ] Shows up in weekly activity totals / training load like a native walk
-- [ ] T20: gap, early end, or unbroken route where the app left the screen
+- [x] T20: true close is unsafe — `save()` returned success, but no FIT survived
 
 If the custom field is missing from Connect, do not mark the probe failed yet. Connect gets a
 field's labels and chart settings from the app's store package, and forum reports disagree on
@@ -151,21 +156,21 @@ reaches Connect, and showing it needs a store or beta build.
 
 | Check | FR265 | VA6 |
 |---|---|---|
-| Date / firmware / CIQ version | | |
-| Time to first `READY` | | |
-| Activity synced, name | | |
-| Activity type | | |
-| Route map | | |
-| HR graph | | |
-| `pet_mood` in Connect (where) | | |
-| `pet_mood` in the raw FIT | | |
-| Counts toward steps | | |
-| Counts toward intensity minutes | | |
-| Elapsed / `FIX` count at save | | |
-| T20: how the app left the screen | | |
-| T20: `HID` detail / `LAST` result | | |
-| T20: route shape in Connect | | |
-| Surprises | | |
+| Date / firmware / CIQ version | 2026-10-24/25 / SW 29.05 / CIQ 5.2.0 | |
+| Time to first `READY` | Not recorded | |
+| Activity synced, name | PASS — two START-saved `Walk Probe` walks | |
+| Activity type | PASS — Walking | |
+| Route map | PASS — both routes accurate | |
+| HR graph | PASS — present and plausible | |
+| `pet_mood` in Connect (where) | Not confirmed in the Connect UI | |
+| `pet_mood` in the raw FIT | PASS — decoded developer field | |
+| Counts toward steps | Not checked | |
+| Counts toward intensity minutes | Not checked | |
+| Elapsed / `FIX` count at save | Recorded locally; explicit START saves succeeded | |
+| T20: how the app left the screen | Watch closed the app; `onStop` attempted save | |
+| T20: `HID` detail / `LAST` result | `CLOSED`; `save()` returned success | |
+| T20: route shape in Connect | FAIL — no corresponding FIT/activity survived | |
+| Surprises | A true close can lose the activity despite reported save success | |
 
 Fold conclusions back into `11-hardware-test-plan.md` (results log) and the Walk/Run with me row of
 `10-power-roster.md`.
@@ -173,7 +178,8 @@ Fold conclusions back into `11-hardware-test-plan.md` (results log) and the Walk
 ## API notes
 
 Every call was checked against Garmin's API docs. The FR265 target compiled successfully with SDK
-9.1.0 on 2026-10-23; the outdoor GPS/FIT behavior still needs verification on the watch.
+9.1.0; T19 then passed outdoors on the watch. T20 showed that saving during a true app close is
+not reliable even when `Session.save()` reports success.
 
 - `ActivityRecording.createSession({:name, :sport})`, `Session.start/stop/save/discard/isRecording`
   and `Session.createField(name, id, type, {:mesgType, :units})`. `Activity.SPORT_WALKING` is used
