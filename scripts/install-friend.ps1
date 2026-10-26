@@ -30,10 +30,28 @@ $existing = $apps.GetFolder.Items() |
     Select-Object -First 1
 if ($existing) {
     $existingSize = [uint64]$existing.ExtendedProperty("System.Size")
-    if ($existingSize -ne [uint64]$prgInfo.Length) {
-        throw "$prgName already exists on the watch with a different size. Back it up and remove it explicitly before replacement."
+    $same = $existingSize -eq [uint64]$prgInfo.Length
+    if ($same) {
+        # Equal size is not equal content: two builds can match in size. Copy the
+        # watch's PRG to the PC (read-only on the watch) and compare hashes.
+        $compareDir = Join-Path ([System.IO.Path]::GetTempPath()) ("friend-prg-" + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $compareDir | Out-Null
+        try {
+            $shell.Namespace($compareDir).CopyHere($existing, 16)
+            $watchCopy = Join-Path $compareDir $prgName
+            for ($i = 0; $i -lt 80 -and -not (Test-Path -LiteralPath $watchCopy); $i += 1) {
+                Start-Sleep -Milliseconds 250
+            }
+            if (-not (Test-Path -LiteralPath $watchCopy)) { throw "Could not copy $prgName off the watch to compare it." }
+            $same = (Get-FileHash -LiteralPath $watchCopy).Hash -eq (Get-FileHash -LiteralPath $prg).Hash
+        } finally {
+            Remove-Item -LiteralPath $compareDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
-    Write-Host "[staged] $prgName was already present with the expected size."
+    if (-not $same) {
+        throw "A different $prgName is already on the watch. Back it up and remove it explicitly before replacement."
+    }
+    Write-Host "[staged] $prgName on the watch is already this build (same SHA-256)."
 } else {
     $apps.GetFolder.CopyHere($prg, 16)
     $copied = $null
@@ -52,6 +70,30 @@ if ($existing) {
         throw "$prgName was copied with the wrong size (expected $($prgInfo.Length), got $copiedSize)."
     }
     Write-Host "[verified] $prgName staged at $copiedSize bytes."
+}
+
+# Garmin writes System.println output only to a log file that already exists.
+# Friend keeps Wrist Diary's UUID, so Garmin keeps the original sideload basename.
+# Create it only when missing: an existing one may hold an export not yet read.
+$logs = $apps.GetFolder.Items() | Where-Object Name -eq "LOGS" | Select-Object -First 1
+if (-not $logs) {
+    Write-Warning "GARMIN/Apps/LOGS was not found; Friend's export will not be logged."
+} else {
+    $logItem = $logs.GetFolder.Items() |
+        Where-Object { $_.ExtendedProperty("System.FileName") -ieq "wrist-diary-fr265.txt" } |
+        Select-Object -First 1
+    if ($logItem) {
+        Write-Host "[log] wrist-diary-fr265.txt already exists; left as is."
+    } else {
+        $tempLogDir = Join-Path ([System.IO.Path]::GetTempPath()) ("friend-log-" + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tempLogDir | Out-Null
+        $tempLog = Join-Path $tempLogDir "wrist-diary-fr265.txt"
+        [System.IO.File]::WriteAllText($tempLog, "")
+        $logs.GetFolder.CopyHere($tempLog, 16)
+        Start-Sleep -Seconds 2
+        Remove-Item -LiteralPath $tempLogDir -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "[log] Created an empty wrist-diary-fr265.txt so Friend's export is kept."
+    }
 }
 
 Write-Host "[installed] Friend v$friendVersion replaces the Wrist Diary app identity on $DeviceName."
