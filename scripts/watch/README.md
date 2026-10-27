@@ -2,7 +2,7 @@
 
 Two tools for keeping the FR265 setup reproducible, run through
 `scripts\watch-tools.ps1`, which builds its own Python environment in
-`bin\watch-venv` on first use (Python 3.12+ needed).
+`.venv` at the repo root on first use (Python 3.12+ needed).
 
 ## Settings inventory
 

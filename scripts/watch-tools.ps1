@@ -1,5 +1,5 @@
 # Runs the Python watch tools in scripts/watch with their own virtual environment
-# (bin/watch-venv, rebuilt when requirements.txt changes).
+# (.venv at the repo root, rebuilt when requirements.txt changes).
 #
 #   .\scripts\watch-tools.ps1 settings [backup-folder]   inventory + diff vs the previous backup
 #   .\scripts\watch-tools.ps1 check                      validate scripts/watch/workouts/*.toml
@@ -23,7 +23,7 @@ param(
 $ErrorActionPreference = "Stop"
 $repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $tools = Join-Path $PSScriptRoot "watch"
-$venv = Join-Path $repo "bin\watch-venv"
+$venv = Join-Path $repo ".venv"
 $python = Join-Path $venv "Scripts\python.exe"
 $requirements = Join-Path $tools "requirements.txt"
 $stamp = Join-Path $venv "requirements.sha256"
