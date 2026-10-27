@@ -254,7 +254,7 @@ what the forums say about hardware behavior, which is the part that matters.
 
 | Feature (API level) | What it replaces here | Status |
 |---|---|---|
-| `createBufferedBitmap({... :alphaBlending => ALPHA_BLENDING_FULL})` (4.0.0) | Nothing yet: `ensureBuffer()` creates the scene buffer without it | Forum thread 340936: an 8-bit-alpha PNG drawn bitmap-over-bitmap rendered **1-bit** (opaque or clear) on a real epix 2, same AMOLED/5.2 generation, while the sim blended fine; `ALPHA_BLENDING_FULL` was the suggested fix and nobody tested it. This face's whole grammar is alpha PNGs into a BufferedBitmap, and PROCEDURE §10 still says "Next: sideload to the FR265". **Verify on the wrist before anything else.** |
+| `createBufferedBitmap({... :alphaBlending => ALPHA_BLENDING_FULL})` (4.0.0) | Nothing yet: `ensureBuffer()` creates the scene buffer without it | Forum thread 340936: an 8-bit-alpha PNG drawn bitmap-over-bitmap rendered **1-bit** (opaque or clear) on a real epix 2, same AMOLED/5.2 generation, while the sim blended fine; `ALPHA_BLENDING_FULL` was the suggested fix and nobody tested it. This face's whole grammar is alpha PNGs into a BufferedBitmap. John ran the face on the wrist (before 2026-10-27) and it read poorly while the sim captures read right: that sim-versus-watch gap is exactly the symptom in the thread, so this row is the first suspect. |
 | `drawBitmap2(x, y, bmp, {:transform => AffineTransform, :filterMode => FILTER_MODE_BILINEAR})` (4.2.1) | `drawScaledBitmap` (point sampling): translation gap 3 ("device scaling is crisper than LANCZOS, thin strokes become a barcode"); horizontal flips and rotations without extra PNGs | Documented, device list not given. Bug CIQQA-3176 (`drawScaledBitmap` pixelated on a real vivoactive 6, fine in the sim) says scaling quality is a hardware question. Unverified on FR265. |
 | `drawBitmap2 ... :tintColor` (4.2.1) | `mist_band_lite.png` (alpha baked at 62% because there was no global-alpha knob); the parked time-of-day ink tints | Mixed reports: works for some, a no-op for others, and "Source must be native color format" crashes on cheaper AMOLEDs in the SDK 8.3 sim (venusq2, fr165, instinct 3). Needs `automaticPalette="false"` (already in the tuned-import contract). Probe. |
 | `setBlendMode(BLEND_MODE_MULTIPLY)` (4.2.1) | The ink glaze itself: overlapping washes darken like real ink instead of alpha-over going muddy | Docs: "Only supported on devices with GPU." Could not confirm the FR265 has one. Probe: two overlapping washes under multiply vs source-over. |
@@ -267,5 +267,7 @@ mountain through `drawBitmap2` with a scale transform and bilinear filtering
 beside the current `drawScaledBitmap`, (c) stamps the mist once with a
 50%-alpha `:tintColor` instead of `mist_band_lite`, and (d) overlaps two
 guest washes under `BLEND_MODE_MULTIPLY`. Sideload, photograph the wrist,
-and keep whichever rows survive. Until that photo exists, every "on-device"
-claim in ART_PIPELINE.md means the simulator.
+and keep whichever rows survive. Note that "on-device" in ART_PIPELINE.md
+means a simulator capture; the only wrist evidence so far is John's verdict
+that it looked bad there, and a photo of the wrist next to the sim capture
+of the same minute is what turns that verdict into a diagnosis.
