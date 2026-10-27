@@ -92,9 +92,15 @@ sport = "DEFAULT"
 maxHeartRateUsed = 186
 ```
 
-Not reachable this way: the watch face, glances, the controls menu, and the
-activity list and data screens, unless a snapshot shows them in the device
-settings. Those are set on the watch or in the Connect phone app.
+Not reachable this way: most of the watch. On the FR265 (snapshot of
+2026-10-27), Garmin Connect's device settings fill in only units, time and date
+format, start of week, alarms, do-not-disturb, auto-sync thresholds, Connect IQ
+auto-update and the intensity-minute zones. Watch face, glances, controls menu,
+backlight, activity list and data screens all come back `null`, so they are set
+on the watch or in the Connect phone app.
+
+`recover` needs activities recorded on the watch and synced to Garmin Connect.
+An account with none has nothing to recover from.
 
 Run these in an interactive terminal: the first login asks for the Garmin
 email, password and MFA code, which a non-interactive prompt cannot answer.
