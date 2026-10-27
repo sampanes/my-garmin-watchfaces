@@ -1,0 +1,5 @@
+<fonts xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <!-- Both pairs are baked by scripts/gen_ink_font.py; never hand-edit the .fnt. -->
+    <font id="InkDigits" filename="ink_digits.fnt" antialias="true" filter="0123456789:" />
+    <font id="SealDigits" filename="seal_digits.fnt" antialias="true" filter="0123456789" />
+</fonts>

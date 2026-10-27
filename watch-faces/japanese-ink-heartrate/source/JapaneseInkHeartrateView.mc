@@ -8,8 +8,14 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     var mIsLowPower as Lang.Boolean = false;
     var mScene as JapaneseInkHeartrateScene;
 
-    // Sumi ink for the inscription digits; vermillion for the seal.
-    const INK = 0x342A22;
+    // Baked by scripts/gen_ink_font.py: brush-written digits for the
+    // inscription, carved-stamp digits for the seal (resources/fonts).
+    var mInkFont as WatchUi.FontResource;
+    var mSealFont as WatchUi.FontResource;
+
+    // Sumi ink for the inscription digits (the darkest ink in the painting);
+    // vermillion for the seal.
+    const INK = 0x18120E;
     const SEAL_RED_R = 176;
     const SEAL_RED_G = 52;
     const SEAL_RED_B = 38;
@@ -17,6 +23,8 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     function initialize() {
         WatchUi.WatchFace.initialize();
         mScene = new JapaneseInkHeartrateScene();
+        mInkFont = WatchUi.loadResource(Rez.Fonts.InkDigits) as WatchUi.FontResource;
+        mSealFont = WatchUi.loadResource(Rez.Fonts.SealDigits) as WatchUi.FontResource;
     }
 
     function onLayout(dc as Graphics.Dc) as Void {
@@ -103,17 +111,18 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         } else {
             dc.setColor(INK, Graphics.COLOR_TRANSPARENT);
         }
-        dc.drawText(colX, hourY, Graphics.FONT_LARGE, hourText,
+        dc.drawText(colX, hourY, mInkFont, hourText,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        dc.drawText(colX, minY, Graphics.FONT_LARGE, minText,
+        dc.drawText(colX, minY, mInkFont, minText,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         if (isAod) {
             return;
         }
 
-        // Artist's seal: rounded vermillion square, live HR inside.
-        var sealSize = (width * 67) / 1000;
+        // Artist's seal: rounded vermillion square, live HR inside in the
+        // carved seal digits (three of them fit with the 8.5% size).
+        var sealSize = (width * 85) / 1000;
         var sealX = colX - (sealSize / 2);
         var sealY = (height * 425) / 1000;
         dc.setFill(Graphics.createColor(0xEB, SEAL_RED_R, SEAL_RED_G, SEAL_RED_B));
@@ -122,7 +131,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         var hrText = currentHeartRateText();
         if (hrText != null) {
             dc.setColor(0xF4EEE2, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(colX, sealY + (sealSize / 2), Graphics.FONT_XTINY, hrText,
+            dc.drawText(colX, sealY + (sealSize / 2), mSealFont, hrText,
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
     }

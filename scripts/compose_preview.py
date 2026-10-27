@@ -8,16 +8,21 @@ Writes art/kit_preview.png (circular-masked, on dark surround like the sim).
 Planes, back to front (same order on the watch):
     paper -> sun/moon -> far_range -> mist_lite -> guest -> host -> mist
     -> fg_left -> fg_right -> paper grain -> (View) inscription + seal
+
+The inscription uses the baked BMFont pairs in resources/fonts (read from the
+.fnt exactly as the resource compiler reads them), so the preview's digits
+are the device's digits.
 """
 
 import os
 import sys
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FACE = os.path.join(HERE, "..", "watch-faces", "japanese-ink-heartrate")
 DRAW = os.path.join(FACE, "resources", "drawables")
+FONTS = os.path.join(FACE, "resources", "fonts")
 OUT = os.path.join(FACE, "art", "kit_preview.png")
 
 W = H = 416
@@ -80,6 +85,39 @@ def paste_scaled(base, img, x, y, w, h):
 
 def load(name):
     return Image.open(os.path.join(DRAW, name)).convert("RGBA")
+
+
+class BmFont:
+    """Reads a baked .fnt/.png pair exactly as the resource compiler will, and
+    draws a string the way dc.drawText(..., CENTER | VCENTER) places it: the
+    advances summed and centered on x, the line height centered on y."""
+
+    def __init__(self, name):
+        self.glyphs = {}
+        with open(os.path.join(FONTS, name + ".fnt")) as f:
+            for line in f:
+                kv = dict(tok.split("=", 1) for tok in line.split()[1:] if "=" in tok)
+                if line.startswith("common "):
+                    self.line_h = int(kv["lineHeight"])
+                elif line.startswith("char "):
+                    self.glyphs[chr(int(kv["id"]))] = {
+                        k: int(kv[k]) for k in
+                        ("x", "y", "width", "height", "xoffset", "yoffset", "xadvance")}
+        self.atlas = Image.open(os.path.join(FONTS, name + ".png")).convert("RGBA").getchannel("A")
+
+    def draw(self, img, text, cx, cy, rgb):
+        adv = sum(self.glyphs[c]["xadvance"] for c in text)
+        pen = cx - adv / 2.0
+        top = cy - self.line_h / 2.0
+        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        for c in text:
+            g = self.glyphs[c]
+            a = self.atlas.crop((g["x"], g["y"], g["x"] + g["width"], g["y"] + g["height"]))
+            tile = Image.new("RGBA", a.size, rgb + (255,))
+            tile.putalpha(a)
+            layer.paste(tile, (int(round(pen + g["xoffset"])), int(round(top + g["yoffset"]))))
+            pen += g["xadvance"]
+        return Image.alpha_composite(img, layer)
 
 
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
@@ -153,24 +191,22 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
     if grain is not None:
         base = paste_scaled(base, grain, 0, 0, W, H)
 
-    # 8. inscription time + seal (upper-left void), as the View draws them
-    d = ImageDraw.Draw(base, "RGBA")
-    try:
-        f_big = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 58)
-        f_small = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 16)
-    except Exception:
-        f_big = f_small = ImageFont.load_default()
-    ink = (52, 42, 34, 255)
+    # 8. inscription time + seal (upper-left void), as the View draws them:
+    #    the baked brush digits for the time, the carved seal digits for HR.
+    ink_font = BmFont("ink_digits")
+    seal_font = BmFont("seal_digits")
+    ink = (24, 18, 14)
     hour = minute_of_day // 60
     hour12 = 12 if hour % 12 == 0 else hour % 12
-    d.text((int(0.22 * W), int(0.21 * H)), str(hour12), font=f_big, fill=ink, anchor="mm")
-    d.text((int(0.22 * W), int(0.33 * H)), "%02d" % (minute_of_day % 60), font=f_big, fill=ink, anchor="mm")
-    seal = int(W * 0.067)
+    base = ink_font.draw(base, str(hour12), int(0.22 * W), int(0.21 * H), ink)
+    base = ink_font.draw(base, "%02d" % (minute_of_day % 60), int(0.22 * W), int(0.33 * H), ink)
+    seal = int(W * 0.085)
     sx0, sy0 = int(0.22 * W) - seal // 2, int(0.425 * H)
-    d.rounded_rectangle([sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7, fill=(176, 52, 38, 235))
+    ImageDraw.Draw(base, "RGBA").rounded_rectangle(
+        [sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7, fill=(176, 52, 38, 235))
     if hr_now is not None:
-        d.text((int(0.22 * W), sy0 + seal // 2), str(int(round(hr_now))), font=f_small,
-               fill=(244, 238, 226, 255), anchor="mm")
+        base = seal_font.draw(base, str(int(round(hr_now))), int(0.22 * W), sy0 + seal / 2.0,
+                              (244, 238, 226))
 
     # circular mask + dark surround (sim look)
     mask = Image.new("L", (W, H), 0)
