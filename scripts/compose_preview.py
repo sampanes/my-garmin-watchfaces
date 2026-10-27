@@ -1,12 +1,18 @@
 #!/usr/bin/env python
-"""Offline 416x416 mock of the watch composition using the generated kit.
+"""Offline 416x416 mock of the watch composition using the baked layers.
 
-Mirrors the intended Monkey C draw recipe 1:1 so layout numbers proven here
-can be ported straight into JapaneseInkHeartrateScene.mc. Writes
-art/kit_preview.png (circular-masked, on dark surround like the sim).
+Mirrors the Monkey C draw recipe 1:1 so every layout number proven here is
+ported straight into JapaneseInkHeartrateScene.mc as the same fraction.
+Writes art/kit_preview.png (circular-masked, on dark surround like the sim).
+
+Planes, back to front (same order on the watch):
+    paper -> sun/moon -> far_range -> mist_lite -> guest -> host -> mist
+    -> fg_left -> fg_right -> paper grain -> (View) inscription + seal
 """
 
 import os
+import sys
+
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -15,11 +21,21 @@ DRAW = os.path.join(FACE, "resources", "drawables")
 OUT = os.path.join(FACE, "art", "kit_preview.png")
 
 W = H = 416
+PAPER = (242, 238, 230, 255)
 
 # ---- mock HR history (same binning and landmark model as Monkey C) --------
 MOCK = [72, 74, 76, 78, 82, 88, 95, 105, 112, 108, 100, 92, 85, 80, 77, 75,
         73, 72, 74, 78, 84, 92, 102, 115, 128, 135, 130, 120, 108, 95, 85, 78,
         74, 72, 70, 71, 73, 76, 79, 82, 85, 90, 96, 102, 108, 110, 105, 98]
+HR_MIN, HR_MAX = 45.0, 160.0
+
+
+def norm_hr(hr):
+    return min(max((hr - HR_MIN) / (HR_MAX - HR_MIN), 0.0), 1.0)
+
+
+def height_for_hr(hr):
+    return 0.35 + norm_hr(hr) * 0.65
 
 
 def peak_x(nx):
@@ -36,138 +52,141 @@ def bucket_history(data, count=16):
     return bins
 
 
-def top_landmarks(history, count=2):
-    """Return strong, separated temporal landmarks as (time, height)."""
-    candidates = sorted(range(len(history)), key=lambda i: history[i], reverse=True)
-    chosen = []
-    for idx in candidates:
-        if all(abs(idx - old) >= 4 for old in chosen):
-            chosen.append(idx)
-        if len(chosen) == count:
-            break
-    while len(chosen) < count:
-        chosen.append(0 if not chosen else len(history) - 1)
-    peaks = []
-    for idx in chosen:
-        norm = min(max((history[idx] - 45.0) / 115.0, 0.0), 1.0)
-        peaks.append((idx / (len(history) - 1), 0.35 + norm * 0.65))
-    return peaks
-
-
-def draw_memory_ridge(base, history):
-    """Paint all four hours as a quiet, time-ordered distant range."""
-    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
-    left, right = 22, W - 18
-    base_y = 327
-    points = []
+def landmark_peaks(history):
+    """Strongest bucket (host) and strongest bucket at least an hour away (guest)."""
+    host = max(range(len(history)), key=lambda i: history[i])
+    guest, guest_hr = -1, -1.0
     for i, hr in enumerate(history):
-        x = left + (right - left) * i / (len(history) - 1)
-        norm = min(max((hr - 45.0) / 115.0, 0.0), 1.0)
-        y = base_y - (10 + 44 * norm)
-        points.append((int(x), int(y)))
-    d.line(points, fill=(112, 106, 96, 82), width=1, joint="curve")
-    return Image.alpha_composite(base, layer)
+        if abs(i - host) >= 4 and hr > guest_hr:
+            guest, guest_hr = i, hr
+    if guest < 0:
+        guest = len(history) - 1 if host < len(history) / 2 else 0
+    denom = len(history) - 1
+    return [(host / denom, height_for_hr(history[host])),
+            (guest / denom, height_for_hr(history[guest]))]
 
 
 # ---- compose ----------------------------------------------------------------
 
-def paste_scaled(base, img, x, y, w, h, alpha=1.0):
-    im = img.resize((max(1, int(w)), max(1, int(h))), Image.LANCZOS)
-    if alpha < 1.0:
-        a = im.getchannel("A").point(lambda v: int(v * alpha))
-        im.putalpha(a)
+def paste_scaled(base, img, x, y, w, h):
+    """Scale and source-over like drawScaledBitmap. The layer is pasted WITHOUT
+    a mask: pasting with the image as its own mask squares the alpha and made
+    every earlier preview far paler than the device."""
+    im = img.resize((max(1, int(round(w))), max(1, int(round(h)))), Image.LANCZOS)
     layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    layer.paste(im, (int(x), int(y)), im)
+    layer.paste(im, (int(round(x)), int(round(y))))
     return Image.alpha_composite(base, layer)
 
 
-def main():
-    host = Image.open(os.path.join(DRAW, "host_mountain.png")).convert("RGBA")
-    guest = Image.open(os.path.join(DRAW, "guest_mountain.png")).convert("RGBA")
-    mist = Image.open(os.path.join(DRAW, "mist_band.png")).convert("RGBA")
-    shore = Image.open(os.path.join(DRAW, "shore_foreground.png")).convert("RGBA")
+def load(name):
+    return Image.open(os.path.join(DRAW, name)).convert("RGBA")
+
+
+def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
+    far = load("far_range.png")
+    guest = load("guest_mountain.png")
+    host = load("host_mountain.png")
+    fg_l = load("fg_left.png")
+    fg_r = load("fg_right.png")
+    mist = load("mist_band.png")
+    mist_lite = load("mist_band_lite.png")
     grain_p = os.path.join(DRAW, "paper_grain.png")
     grain = Image.open(grain_p).convert("RGBA") if os.path.exists(grain_p) else None
 
-    history = bucket_history(MOCK, 16)
-    peaks = top_landmarks(history, 2)
-    (host_nx, h0), (guest_nx, h1) = peaks[0], peaks[1]
-    hx = 0.36 + peak_x(host_nx) * 0.40       # host stays mid-right of center
+    (host_nx, h0), (guest_nx, h1) = landmark_peaks(history)
+    hx = 0.36 + peak_x(host_nx) * 0.40          # host stays mid-right of center
     gx = peak_x(guest_nx)
-    if abs(hx - gx) < 0.30:                  # guest must clear the host massif
+    if abs(hx - gx) < 0.30:                      # guest must clear the host massif
         gx = hx + 0.34 if hx < 0.5 else hx - 0.34
     gx = min(max(gx, 0.16), 0.84)
+    # Foreground masses carry the two ends of the window: oldest left, newest right.
+    h_start = norm_hr(history[0])
+    h_end = norm_hr(history[-1])
 
-    # paper
-    base = Image.new("RGBA", (W, H), (242, 238, 230, 255))
+    base = Image.new("RGBA", (W, H), PAPER)
 
-    # 1. full four-hour memory ridge: oldest left, newest right.
-    base = draw_memory_ridge(base, history)
-
-    # 2. guest mountain — recessed mid-ground hint beyond the mist, NOT a
-    # competing tower. Small, pale, low.
-    g_h = int(210 * (0.42 + 0.28 * h1))
-    g_w = int(250 * g_h / 210)
-    g_apex_frac = 100.0 / 250.0          # guest main spire x within bitmap
-    g_x = int(gx * W - g_apex_frac * g_w)
-    g_y = 300 - g_h
-    base = paste_scaled(base, guest, g_x, g_y, g_w, g_h)
-
-    # 3. mist pass 1 — separates guest from host plane (right fade on-screen)
-    base = paste_scaled(base, mist, -90, 226, 444, 96, alpha=0.62)
-
-    # 4. host mountain — the hero
-    h_h = int(290 * (0.86 + 0.38 * h0))
-    h_w = int(320 * h_h / 290)
-    h_apex_frac = 158.0 / 320.0
-    h_x = int(hx * W - h_apex_frac * h_w)
-    h_y = 372 - h_h
-    base = paste_scaled(base, host, h_x, h_y, h_w, h_h)
-
-    # 5. mist pass 2 — dissolves all bases
-    base = paste_scaled(base, mist, -12, 296, 446, 112, alpha=1.0)
-
-    # 6. shore foreground bottom-left (after mist; high enough to stay
-    # inside the circular screen)
-    base = paste_scaled(base, shore, -8, 286, 332, 101)
-
-    # 7. sun (afternoon position mock)
+    # sun / moon on the day arc (sun 06:00-18:00 west to east)
     d = ImageDraw.Draw(base, "RGBA")
-    sx, sy = int(0.70 * W), 56
-    d.ellipse([sx - 19, sy - 19, sx + 19, sy + 19], fill=(200, 70, 50, 0x40))
-    d.ellipse([sx - 14, sy - 14, sx + 14, sy + 14], fill=(175, 38, 28, 0xCC))
+    night = minute_of_day < 360 or minute_of_day >= 1080
+    t = ((minute_of_day - 1080) % 1440) / 720.0 if night else (minute_of_day - 360) / 720.0
+    import math
+    sx = int(W * 0.20 + W * 0.60 * t)
+    sy = int(H * 0.14 - math.sin(t * math.pi) * H * 0.06)
+    r_halo, r_core = int(W * 0.046), int(W * 0.034)
+    if night:
+        d.ellipse([sx - r_halo, sy - r_halo, sx + r_halo, sy + r_halo], fill=(240, 235, 220, 0x30))
+        d.ellipse([sx - r_core, sy - r_core, sx + r_core, sy + r_core], fill=(248, 244, 232, 0xC0))
+    else:
+        d.ellipse([sx - r_halo, sy - r_halo, sx + r_halo, sy + r_halo], fill=(200, 70, 50, 0x40))
+        d.ellipse([sx - r_core, sy - r_core, sx + r_core, sy + r_core], fill=(175, 38, 28, 0xCC))
 
-    # 8. paper grain on top
+    # 1. far plane (ghost + far ridges), the horizon haze
+    base = paste_scaled(base, far, -0.02 * W, 0.33 * H, 1.04 * W, 0.29 * H)
+
+    # 2. light mist between far and mid planes
+    base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
+
+    # 3. guest: second landmark, recessed
+    g_h = 0.50 * H * (0.55 + 0.45 * h1)
+    g_w = g_h * (260.0 / 190.0)
+    g_apex = 0.42
+    base = paste_scaled(base, guest, gx * W - g_apex * g_w, 0.71 * H - g_h, g_w, g_h)
+
+    # 4. host: strongest landmark, the hero
+    m_h = 0.70 * H * (0.72 + 0.38 * h0)
+    m_w = m_h * (340.0 / 260.0)
+    m_apex = 0.47
+    base = paste_scaled(base, host, hx * W - m_apex * m_w, 0.87 * H - m_h, m_w, m_h)
+
+    # 5. full mist dissolving the mid-plane bases
+    base = paste_scaled(base, mist, -0.03 * W, 0.69 * H, 1.06 * W, 0.20 * H)
+
+    # 6. foreground masses: left = oldest hour, right = newest
+    l_h = 0.58 * H * (0.80 + 0.20 * h_start)
+    l_w = 0.74 * W
+    base = paste_scaled(base, fg_l, -0.04 * W, H - l_h + 0.03 * H, l_w, l_h)
+    r_h = 0.52 * H * (0.80 + 0.20 * h_end)
+    r_w = 0.68 * W
+    base = paste_scaled(base, fg_r, W - r_w + 0.04 * W, H - r_h + 0.03 * H, r_w, r_h)
+
+    # 7. paper grain over everything
     if grain is not None:
         base = paste_scaled(base, grain, 0, 0, W, H)
 
-    # 9. inscription time + seal (upper-left void)
+    # 8. inscription time + seal (upper-left void), as the View draws them
     d = ImageDraw.Draw(base, "RGBA")
     try:
-        f_h = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 58)
-        f_m = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 58)
-        f_s = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 16)
+        f_big = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 58)
+        f_small = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 16)
     except Exception:
-        f_h = f_m = f_s = ImageFont.load_default()
+        f_big = f_small = ImageFont.load_default()
     ink = (52, 42, 34, 255)
-    d.text((104, 96), "5", font=f_h, fill=ink, anchor="mm")
-    d.text((104, 152), "42", font=f_m, fill=ink, anchor="mm")
-    # red seal with current HR
-    seal = (176, 52, 38, 235)
-    d.rounded_rectangle([90, 186, 118, 214], radius=4, fill=seal)
-    d.text((104, 200), str(round(history[-1])), font=f_s,
-           fill=(244, 238, 226, 255), anchor="mm")
-    d.text((104, 224), "4h", font=f_s, fill=(104, 98, 89, 190), anchor="mm")
+    hour = minute_of_day // 60
+    hour12 = 12 if hour % 12 == 0 else hour % 12
+    d.text((int(0.22 * W), int(0.21 * H)), str(hour12), font=f_big, fill=ink, anchor="mm")
+    d.text((int(0.22 * W), int(0.33 * H)), "%02d" % (minute_of_day % 60), font=f_big, fill=ink, anchor="mm")
+    seal = int(W * 0.067)
+    sx0, sy0 = int(0.22 * W) - seal // 2, int(0.425 * H)
+    d.rounded_rectangle([sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7, fill=(176, 52, 38, 235))
+    if hr_now is not None:
+        d.text((int(0.22 * W), sy0 + seal // 2), str(int(round(hr_now))), font=f_small,
+               fill=(244, 238, 226, 255), anchor="mm")
+    d.text((int(0.22 * W), int(0.525 * H)), "4h", font=f_small, fill=(104, 98, 89, 190), anchor="mm")
 
     # circular mask + dark surround (sim look)
     mask = Image.new("L", (W, H), 0)
     ImageDraw.Draw(mask).ellipse([0, 0, W - 1, H - 1], fill=255)
     surround = Image.new("RGBA", (W, H), (24, 24, 24, 255))
     surround.paste(base, (0, 0), mask)
-    surround.convert("RGB").save(OUT)
-    print("preview ->", os.path.abspath(OUT))
+    return surround.convert("RGB")
+
+
+def main(argv):
+    out = argv[1] if len(argv) > 1 else OUT
+    history = bucket_history(MOCK, 16)
+    compose(history, hr_now=history[-1]).save(out)
+    print("preview ->", os.path.abspath(out))
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv)

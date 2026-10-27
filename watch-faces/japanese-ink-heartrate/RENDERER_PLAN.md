@@ -1,8 +1,17 @@
 # Japanese Ink Heartrate — Renderer Plan
 
-Last updated: 2026-10-27 (§13 API audit; everything else 2026-06-10)
+Last updated: 2026-10-27 (§13 API audit and the pivot below; §1–§12 are 2026-06-10)
 
-> **2026-06-10 PIVOT — complete-painting grammar (CURRENT).** The small-stamp
+> **2026-10-27 PIVOT — baked benchmark planes (CURRENT).** The 2026-06
+> complete-painting kit below read as airbrush (two blurred towers) in the sim
+> and on the wrist. The benchmark in §1 was always the target, so
+> `scripts/gen_ink_layers.py` now ports its primitives (gradient fill, cun,
+> dry brush, flying white, bleed, branching trees, organic mist) and bakes
+> each PLANE as one PNG: far haze, guest, host, fg_left, fg_right, mist,
+> grain. Methods: [ART_PIPELINE.md](ART_PIPELINE.md). The 2026-06 note below
+> is kept as history.
+
+> **2026-06-10 PIVOT — complete-painting grammar (superseded).** The small-stamp
 > asset family below (§4–§7, §12) is superseded. The working architecture,
 > proven on-device in iter11/11b, inverts it: each mountain is authored
 > offline as a FINISHED sumi-e painting (tower-profile spires `h·(1-t^q)^p`,

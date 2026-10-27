@@ -6,14 +6,16 @@ using Toybox.System;
 using Toybox.Time;
 using Toybox.WatchUi;
 
-// 2026-06-10 rewrite — complete-painting asset grammar.
+// 2026-10-27 rewrite — baked benchmark planes.
 //
-// Every prior procedural attempt failed because Garmin's Dc has no gradients
-// or blur, so runtime composition of primitives always exposed the primitive.
-// The fix: each mountain is authored OFFLINE as a finished sumi-e painting
-// (facet shading, dry-brush streaks, flying-white ridge gaps, crowning pines,
-// mist-dissolved base all baked into PNG alpha by scripts/gen_sumie_kit.py).
-// This file only PLACES those paintings, driven by the HR peak descriptor.
+// Garmin's Dc has no gradients or blur, so runtime composition of primitives
+// always exposed the primitive. The look that works is the browser benchmark
+// (playgrounds/ink-sandbox/main.js): gradient-filled ridges with cun strokes,
+// dry brush, ink bleed and small trees, separated by organic mist. The script
+// scripts/gen_ink_layers.py ports those primitives and bakes each PLANE as one
+// PNG; this file only places the planes, driven by the four-hour HR history:
+// the two strongest hour-separated landmarks become the mid-plane peaks, the
+// oldest and newest buckets set the two dark foreground masses.
 //
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
@@ -25,11 +27,13 @@ class JapaneseInkHeartrateScene {
     var mBufferHeight as Lang.Number = 0;
     var mLastSceneKey as Lang.Number = -1;
 
+    var mFar;
     var mHost;
     var mGuest;
     var mMist;
     var mMistLite;
-    var mShore;
+    var mFgLeft;
+    var mFgRight;
     var mPaperGrain;
 
     // HR peak descriptor cache. Each element is [nx, h, s] — normalized x
@@ -46,21 +50,23 @@ class JapaneseInkHeartrateScene {
     const HISTORY_BUCKETS = 16;
     const HISTORY_SECONDS = 4 * 3600;
 
-    // Asset native dimensions (must match gen_sumie_kit.py outputs).
-    const HOST_W = 320.0;
-    const HOST_H = 290.0;
-    const HOST_APEX_FRAC = 0.49375;   // main tower x within host bitmap
-    const GUEST_W = 250.0;
-    const GUEST_H = 210.0;
-    const GUEST_APEX_FRAC = 0.40;
+    // Asset native dimensions (must match gen_ink_layers.py outputs).
+    const HOST_W = 340.0;
+    const HOST_H = 260.0;
+    const HOST_APEX_FRAC = 0.47;      // main peak x within the host bitmap
+    const GUEST_W = 260.0;
+    const GUEST_H = 190.0;
+    const GUEST_APEX_FRAC = 0.42;
 
     function initialize() {
         if (WatchUi has :loadResource) {
+            mFar = WatchUi.loadResource(Rez.Drawables.FarRangeTuned);
             mHost = WatchUi.loadResource(Rez.Drawables.HostMountainTuned);
             mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainTuned);
             mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned);
             mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned);
-            mShore = WatchUi.loadResource(Rez.Drawables.ShoreForegroundTuned);
+            mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftTuned);
+            mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightTuned);
             mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned);
         }
         refreshHistory();
@@ -117,11 +123,27 @@ class JapaneseInkHeartrateScene {
         }
     }
 
-    function heightForHr(hr as Lang.Float) as Lang.Float {
+    function normHr(hr as Lang.Float) as Lang.Float {
         var value = hr;
         if (value < HR_MIN) { value = HR_MIN; }
         if (value > HR_MAX) { value = HR_MAX; }
-        return 0.35 + ((value - HR_MIN) / (HR_MAX - HR_MIN)) * 0.65;
+        return (value - HR_MIN) / (HR_MAX - HR_MIN);
+    }
+
+    function heightForHr(hr as Lang.Float) as Lang.Float {
+        return 0.35 + normHr(hr) * 0.65;
+    }
+
+    // Normalized HR of the oldest (edge < 0) or newest (edge > 0) bucket that
+    // holds data; 0.5 when the window is empty.
+    function edgeHr(history as Lang.Array<Lang.Float>?, edge as Lang.Number) as Lang.Float {
+        if (history == null) { return 0.5; }
+        var i = (edge < 0) ? 0 : history.size() - 1;
+        while (i >= 0 && i < history.size()) {
+            if (history[i] > 0.0) { return normHr(history[i]); }
+            i += (edge < 0) ? 1 : -1;
+        }
+        return 0.5;
     }
 
     // Pick the strongest two 15-minute landmarks, separated by at least one
@@ -304,95 +326,62 @@ class JapaneseInkHeartrateScene {
             if (guestNx > 0.84) { guestNx = 0.84; }
         }
 
+        // The foreground masses carry the two ends of the window: the oldest
+        // hour on the left, the newest (now) on the right.
+        var hStart = edgeHr(mHistory, -1);
+        var hEnd = edgeHr(mHistory, 1);
+
         drawPaper(dc);
         drawCelestial(dc, width, height);
 
-        // 1. memory ridge — every 15-minute average in temporal order.
-        // Its construction baseline extends beneath the later mist pass.
-        drawMemoryRidge(dc, width, height);
+        // 1. far plane: ghost and far ridges, the horizon haze
+        if (mFar != null) {
+            dc.drawScaledBitmap(-(w * 0.02), h * 0.33, w * 1.04, h * 0.29, mFar);
+        }
 
-        // 2. guest mountain — recessed beyond the mist
+        // 2. light mist between the far and mid planes
+        if (mMistLite != null) {
+            dc.drawScaledBitmap(-(w * 0.10), h * 0.50, w * 1.20, h * 0.17, mMistLite);
+        }
+
+        // 3. guest: the second landmark, recessed
         if (mGuest != null) {
-            var gH = h * 0.505 * (0.42 + 0.28 * h1);
+            var gH = h * 0.50 * (0.55 + 0.45 * h1);
             var gW = gH * (GUEST_W / GUEST_H);
             var gX = guestNx * w - GUEST_APEX_FRAC * gW;
-            var gY = h * 0.7212 - gH;
+            var gY = h * 0.71 - gH;
             dc.drawScaledBitmap(gX, gY, gW, gH, mGuest);
         }
 
-        // 3. light mist — separates guest plane from host plane
-        if (mMistLite != null) {
-            dc.drawScaledBitmap(-(w * 0.216), h * 0.543, w * 1.067, h * 0.231, mMistLite);
-        }
-
-        // 4. host mountain — the hero massif
+        // 4. host: the strongest landmark, the hero
         if (mHost != null) {
-            var hH = h * 0.6971 * (0.86 + 0.38 * h0);
+            var hH = h * 0.70 * (0.72 + 0.38 * h0);
             var hW = hH * (HOST_W / HOST_H);
             var hX = hostNx * w - HOST_APEX_FRAC * hW;
-            var hY = h * 0.8942 - hH;
+            var hY = h * 0.87 - hH;
             dc.drawScaledBitmap(hX, hY, hW, hH, mHost);
         }
 
-        // 5. full mist — dissolves all bases
+        // 5. full mist dissolving the mid-plane bases
         if (mMist != null) {
-            dc.drawScaledBitmap(-(w * 0.029), h * 0.7115, w * 1.072, h * 0.269, mMist);
+            dc.drawScaledBitmap(-(w * 0.03), h * 0.69, w * 1.06, h * 0.20, mMist);
         }
 
-        // 6. shore — dark foreground anchor, bottom-left inside the circle
-        if (mShore != null) {
-            dc.drawScaledBitmap(-(w * 0.019), h * 0.6875, w * 0.798, h * 0.243, mShore);
+        // 6. foreground masses: left = oldest hour, right = newest
+        if (mFgLeft != null) {
+            var lH = h * 0.58 * (0.80 + 0.20 * hStart);
+            var lW = w * 0.74;
+            dc.drawScaledBitmap(-(w * 0.04), h - lH + h * 0.03, lW, lH, mFgLeft);
+        }
+        if (mFgRight != null) {
+            var rH = h * 0.52 * (0.80 + 0.20 * hEnd);
+            var rW = w * 0.68;
+            dc.drawScaledBitmap(w - rW + w * 0.04, h - rH + h * 0.03, rW, rH, mFgRight);
         }
 
         // 7. paper grain over everything: converts "screen" to "paper"
         if (mPaperGrain != null) {
             dc.drawScaledBitmap(0, 0, width, height, mPaperGrain);
-        }
-    }
-
-    function drawMemoryRidge(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
-        var history = mHistory;
-        if (history == null || history.size() < 2) { return; }
-
-        var first = -1;
-        var last = -1;
-        for (var i = 0; i < history.size(); i++) {
-            if (history[i] > 0.0) {
-                if (first < 0) { first = i; }
-                last = i;
-            }
-        }
-        if (first < 0 || last <= first) { return; }
-
-        var left = width * 53 / 1000;
-        var right = width * 957 / 1000;
-        var baseY = height * 785 / 1000;
-        var span = (HISTORY_BUCKETS - 1).toFloat();
-        // Keep the complete trace low in the mist plane. The large painted
-        // mountains already embody the two strongest hour-separated peaks;
-        // this hairline supplies the precise chronology without reading as a
-        // dashboard graph or, for steady HR, an intrusive horizontal bar.
-        dc.setPenWidth(1);
-        dc.setColor(Graphics.createColor(0x52, 112, 106, 96), Graphics.COLOR_TRANSPARENT);
-        var previousX = -1;
-        var previousY = -1;
-        for (var i = first; i <= last; i++) {
-            if (history[i] <= 0.0) {
-                previousX = -1;
-                previousY = -1;
-                continue;
-            }
-            var x = left + (((right - left).toFloat() * i.toFloat()) / span).toNumber();
-            var norm = (history[i] - HR_MIN) / (HR_MAX - HR_MIN);
-            if (norm < 0.0) { norm = 0.0; }
-            if (norm > 1.0) { norm = 1.0; }
-            var lift = height.toFloat() * (0.025 + 0.105 * norm);
-            var y = baseY - lift.toNumber();
-            if (previousX >= 0) {
-                dc.drawLine(previousX, previousY, x, y);
-            }
-            previousX = x;
-            previousY = y;
         }
     }
 

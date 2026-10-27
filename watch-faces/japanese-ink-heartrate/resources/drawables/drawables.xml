@@ -5,6 +5,7 @@
     <bitmap id="FarRangeTuned" filename="far_range.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="MistBandTuned" filename="mist_band.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="MistBandLiteTuned" filename="mist_band_lite.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="ShoreForegroundTuned" filename="shore_foreground.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FgLeftTuned" filename="fg_left.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FgRightTuned" filename="fg_right.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PaperGrainTuned" filename="paper_grain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

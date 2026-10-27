@@ -1,15 +1,14 @@
-# Art Pipeline — Complete-Painting Method
+# Art Pipeline — Baked Benchmark Planes
 
-Last updated: 2026-06-11 (iter11b). This is the methods document for the
-architecture that finally worked. It records *how* the assets are made and
-*why* each technique exists, so the pipeline can be extended without
-re-deriving it.
+Last updated: 2026-10-27. This is the methods document for the current
+architecture. It records *how* the assets are made and *why* each technique
+exists, so the pipeline can be extended without re-deriving it.
 
 Companions:
 
-- [RENDERER_PLAN.md](RENDERER_PLAN.md) — diagnosis history, acceptance criteria, anti-goals
+- [RENDERER_PLAN.md](RENDERER_PLAN.md) — diagnosis history, acceptance criteria, anti-goals, §13 API audit
 - [PROCEDURE.md](PROCEDURE.md) — build/push/capture loop mechanics
-- Checkpoints `art/checkpoints/procedural/2026-06-10_2241_*` and `_2245_*` — the proof captures
+- `playgrounds/ink-sandbox/main.js` — the browser benchmark this pipeline ports
 
 ---
 
@@ -17,14 +16,19 @@ Companions:
 
 Garmin's `Graphics.Dc` has no gradients, no blur, and no per-shape softness,
 so **any** runtime composition of primitives exposes the primitive (ten
-iterations of evidence: bands, dots, pillars, fog slabs, charts). The working
-inversion: author each landscape element offline as a **finished sumi-e
-painting** — every gradient, texture, and soft edge baked into PNG alpha —
-and reduce the watch renderer to *placing* ~7 bitmaps, positioned and scaled
-by the HR descriptor. The watch contributes layout, not brushwork.
+iterations of evidence: bands, dots, pillars, fog slabs, charts). The
+2026-06 "complete painting" kit baked two isolated mountains as blurred
+vertical gradients and read as airbrush, in the sim and on the wrist alike.
+What *does* read as shanshui is the browser benchmark: gradient-filled
+ridges with scattered cun strokes, dry-brush dashes, ink-bleed blobs and
+small branching trees, stacked as ghost / far / mid / foreground planes with
+organic mist between them. `scripts/gen_ink_layers.py` ports those exact
+primitives to numpy/Pillow and bakes each **plane** as one PNG with the
+brushwork inside. The watch places seven planes with `drawScaledBitmap`,
+driven by the four-hour HR history. It contributes layout, not brushwork.
 
 ```
-gen_sumie_kit.py  ──writes──>  resources/drawables/*.png   (the paintings)
+gen_ink_layers.py  ──writes──>  resources/drawables/*.png   (the planes)
 compose_preview.py ──reads──>  art/kit_preview.png         (416x416 mock)
         │  layout numbers proven here are ported 1:1, as fractions
         ▼
@@ -32,166 +36,149 @@ JapaneseInkHeartrateScene.mc   (7 drawScaledBitmap calls + sun/moon + paper)
 JapaneseInkHeartrateView.mc    (inscription time + vermillion HR seal)
 ```
 
-**Iterate in Python, not on-device.** A preview render takes ~2 s; a
-build+push+capture cycle takes ~1 min and adds sim-focus failure modes. The
-on-device capture is for *verifying* the port, not for exploring art.
+**Iterate in Python, not on-device.** Bake plus preview takes about two
+seconds; a build+push+capture cycle takes a minute and adds sim-focus
+failure modes. The device capture verifies the port, it does not explore art.
 
 ---
 
-## 2. The generator (`scripts/gen_sumie_kit.py`)
+## 2. The generator (`scripts/gen_ink_layers.py`)
 
-Everything renders at `SS = 3` supersample and is LANCZOS-downsampled — this
-is where the "analog" edge softness comes from. All randomness goes through
-seeded `numpy` RNGs and two value-noise helpers (`vnoise1`, `vnoise2`,
-octaved, smoothstep-interpolated), so **regeneration is deterministic**:
-same script → byte-identical PNGs.
+Everything renders at `SS = 3` supersample and is LANCZOS-downsampled; that
+is where the analog edge softness comes from. All randomness goes through
+seeded numpy RNGs and seeded value noise, so **regeneration is
+deterministic**: same script, byte-identical PNGs.
 
-### 2.1 Mountain silhouettes — tower profile, not cones
+### 2.1 Silhouette: Gaussian peaks plus three scales of noise
 
-Each mountain is a cluster of "spires," each contributing a ridge height
-profile over x:
+Each plane's ridge is `max` over Gaussian peak descriptors `(nx, h, s)`,
+exactly the benchmark's `profile()`, plus domain-warped fbm (folded-rock
+edges), mid-frequency fbm (hill-scale variation) and turbulence (micro
+crags), all scaled by `rough`. Two departures from the benchmark, both
+because a plane is a *stamp* and not a full-width polygon:
 
-```
-h(x) = H · (1 − t^q)^p      t = |x − cx| / w, clamped to [0,1]
-```
+- the noise rides on the peak envelope (`0.25 + 0.75·v`), so the skirts
+  between and beyond peaks stay calm instead of growing a hill band;
+- an edge envelope takes the ridge to zero at the stamp's left/right edge
+  (foreground masses keep their outer edge open, they are placed off-screen).
 
-- `q` (3–4.5) holds the profile near full height until t ≈ 0.7, then
-  plunges → **near-vertical rock walls with flattish crowns**, the
-  Huangshan-tower grammar of the reference paintings.
-- `q` low + `p` ≈ 1 → gentle hills (don't — that's the failed gaussian-bump
-  look; v1 of this kit proved it reads as spray-painted cones).
-- The cluster takes the max over spires; per-x bookkeeping records which
-  spire "owns" the ridge and which side of its apex you're on (drives facet
-  shading).
-- Three noise layers roughen the ridge: medium undulation, **quantized
-  "ledge" noise** (`round(noise·3)/3` — gives stepped rock shelves), and
-  fine jitter. All scaled by local height so valleys stay calm.
+### 2.2 Ink: the benchmark's gradient, then marks
 
-### 2.2 Ink model — what replaces the missing gradient
-
-Ink density at a pixel `d` px below the ridgeline, local spire height `Hloc`:
-
-| Layer | Formula (shape) | Role |
+| Layer | What it is | Why |
 |---|---|---|
-| crown | `exp(−d / (crown_k·Hloc))` | dark brush-redefine band at the ridge |
-| body | `(1 − d/(body_depth·Hloc))^1.1` | broad wash keeping the face toned (exponent ≥1.5 hollows the mountain out — v1 mistake) |
-| facet | `1 ± facet_strength` by apex side | one face lit, one shadowed, per spire |
-| streaks | 1-D noise sampled through a **y-warped x** (domain warp ±17 px) | vertical dry-brush pull-downs; warp is what stops it reading as wood grain |
-| cun | thresholded 2-D noise, weighted by crown | broken hatch texture on upper faces |
-| flying white | where ridge-band noise > 0.74, cut density to 30% | the dry-brush gaps in the ridge stroke |
-| base dissolve | smoothstep fade starting at `fade_top`·height, noisy boundary | mountain dissolves into mist; never reaches the bitmap bottom |
-| edge guards | smoothstep fades at bitmap x-edges and bottom | the stamp must never reveal its rectangle |
+| gradient fill | alpha by depth below the plane's highest point: 1.0 → .88 at 15% → .55 at 38% → .20 at 65% → .05 at 88%, times `ink` | the ink-wash body; this *is* the missing `createLinearGradient` |
+| crown | `crown · exp(−depth / (crown_k · local height))` | brush-redefined ridge; the one addition to the benchmark, so silhouettes read as drawn edges |
+| dry brush | near-horizontal dashed marks just under the ridge, alpha ≤ .07·ink | bristles on washi |
+| cun | 3–17 px pressure-varying strokes scattered through the body (`sin(πt)^0.6` pressure, noise-modulated) | the texture strokes of the rock faces |
+| flying white | short dashed marks hugging the ridge, alpha ≤ .16·ink | dry-brush breaks at the stroke |
+| trees | recursive 3-deep branches with noise-perturbed foliage polygons, `tree_prob` per 1x column along the ridge | life; sparse on mid planes, dense on the foreground |
+| bleed | radial blobs at the ridge (28% of columns) | ink wicking into fibers |
+| base dissolve | smoothstep fade with a wobbling boundary before the stamp's bottom | the stamp must never show its rectangle |
 
-Then: small gaussian blur (ink bleed, ~0.8 px at 1×) + a faint wide-blur
-halo, pines stamped **after** the blur so they stay crisp.
+Then one Gaussian blur per plane (0.5 px foreground, 0.9–1.2 px mid,
+3.5–7 px far), as in the benchmark. One ink RGB per PNG; alpha carries tone.
 
-### 2.3 Pines — blob clusters with needle ticks
+### 2.3 Mist
 
-At 13–20 px a pine is: a leaning 2-segment trunk hint, 2–3 irregular
-noise-eroded foliage clumps shrinking upward, and 2–4 **radiating needle
-ticks** per clump. The ticks are what flip the read from "boulder" to
-"pine" (v2 lesson: stacked clean ellipses = TV antenna; clean blobs =
-boulders). Pines are placed via `ridge_y_at()` (mirrors the silhouette math
-exactly) so they sit *on* crowns and shoulders.
+`organic_mist()` is the benchmark's three passes: an fbm-displaced band with
+a vertical alpha ramp, overlapping cloud puffs, long thin wisps, plus
+along-length gaps so it never reads as a stripe. **Its RGB equals the paper
+fill exactly (0xF2EEE6)**, so it only erases ink and is invisible over bare
+paper. `mist_band_lite.png` is the same image at 62% alpha, baked because
+`drawScaledBitmap` has no global-alpha knob (API audit: `drawBitmap2
+:tintColor` may be that knob, unverified on hardware).
 
-### 2.4 Bands
+### 2.4 Asset inventory
 
-- **far_range** — gentle noise ridge, heavy blur, alpha ≤ ~0.46. It is the
-  third depth plane; at 0.34 it vanished on-device.
-- **mist_band** — **RGB must equal the paper fill EXACTLY (0xF2EEE6 /
-  242,238,230).** Mist works by *erasing ink it overlaps*; any RGB lighter
-  than paper renders as a visible stripe across the whole face (v1 mistake).
-  Lumpy 1-D density + gap noise + strongly varying center-line keep it from
-  reading as a rectangle. `mist_band_lite.png` is the same image at 62%
-  alpha, baked because `drawScaledBitmap` has no global-alpha knob.
-- **shore_foreground** — 4 *overlapping, wavy-centered* dry-brush strokes +
-  5 reed ticks, blur 1.4. Separated straight strokes read as a barcode
-  on-device (iter11 capture) — overlap and waviness are load-bearing.
-- **paper_grain** — authored at 240×240, upscaled on-device (subtle noise
-  survives the stretch; saves ~5× decoded memory). Max alpha ~0.16: it
-  tones, never speckles.
-
-### 2.5 Asset inventory
-
-| File | Native size | Ink RGB | Drawn at (fractions of screen) |
+| File | Native | Ink RGB | Role |
 |---|---|---|---|
-| host_mountain.png | 320×290 | 44,38,31 | h = 0.6971·(0.86+0.38·h0), apex x-frac 0.49375 |
-| guest_mountain.png | 250×210 | 104,98,89 | h = 0.505·(0.42+0.28·h1), apex x-frac 0.40 |
-| far_range.png | 320×85 | 150,152,146 | (−0.024, 0.308, 1.048, 0.269) |
-| mist_band.png | 360×96 | 242,238,230 | (−0.029, 0.7115, 1.072, 0.269) |
-| mist_band_lite.png | 360×96 | same ×0.62α | (−0.216, 0.543, 1.067, 0.231) |
-| shore_foreground.png | 320×100 | 52,44,36 | (−0.019, 0.6875, 0.798, 0.243) |
-| paper_grain.png | 240×240 | 96,84,70 | (0, 0, 1, 1) |
+| far_range.png | 416×120 | 70,66,60 | ghost (ink .09, blur 7) over far (ink .19, blur 3.5) |
+| guest_mountain.png | 260×190 | 12,9,7 | second landmark, ink .36, crown .16, apex nx .42 |
+| host_mountain.png | 340×260 | 12,9,7 | strongest landmark, ink .62, crown .30, apex nx .47 |
+| fg_left.png | 300×200 | 11,8,6 | foreground, ink .90, open left edge, tree_prob .042 |
+| fg_right.png | 280×180 | 11,8,6 | foreground, ink .86, open right edge, tree_prob .034 |
+| mist_band.png (+_lite) | 416×110 | 242,238,230 | organic mist, alpha .58 (lite ×.62) |
+| paper_grain.png | 240×240 | 96,84,70 | washi grain, upscaled on-device, alpha ≤ .16 |
+
+Decoded pixel budget is about 450k px, up from 300k in the 2026-06 kit. The
+old kit ran on the FR265; this one is unverified there (first build will tell).
 
 All registered in `drawables.xml` with the tuned-import contract
 (`dithering="none" automaticPalette="false" packingFormat="png"
-compress="false"`) — default import quantizes alpha and wrecks softness.
+compress="false"`); default import quantizes alpha and wrecks softness.
 
 ---
 
 ## 3. The preview compositor (`scripts/compose_preview.py`)
 
-A pixel-level mock of the Monkey C recipe: same paper color, same layer
-order, same placement math (including the mock-HR → 3-peak descriptor →
-host/guest position pipeline), circular mask + dark surround to match the
-sim. **The contract: layout numbers live here first, and are ported to
-`JapaneseInkHeartrateScene.mc` as the same fractions, unchanged.** If the
-preview and the device capture disagree, §5 lists the known translation
-gaps; anything else is a porting bug.
+A pixel-level mock of the Monkey C recipe: same paper color, same plane
+order, same placement math (mock HR → 16 buckets → two hour-separated
+landmarks → host/guest apex x and height; oldest and newest buckets → the two
+foreground heights), circular mask + dark surround to match the sim. **The
+contract: layout numbers live here first and are ported to
+`JapaneseInkHeartrateScene.mc` as the same fractions, unchanged.**
 
-Layer order (both sides): paper → sun/moon → far_range → guest →
-mist_lite → host → mist → shore → grain → (View) inscription + seal.
+Plane order (both sides): paper → sun/moon → far_range → mist_lite → guest →
+host → mist → fg_left → fg_right → grain → (View) inscription + seal.
+
+`compose_preview.py [out.png]` writes `art/kit_preview.png` by default.
 
 ---
 
 ## 4. The watch side
 
-- `JapaneseInkHeartrateScene.mc` — the placements above, drawn into the
-  20-minute-keyed `BufferedBitmap`. The HR descriptor (`computePeaks()`:
-  real 4 h history → smooth → 3 peaks → sort by height; deterministic mock
-  fallback) refreshes on every scene rebuild. Host x is confined to
-  `0.36 + peakX(nx)·0.40` so the upper-left void always survives for the
-  inscription; guest is pushed ≥0.30 away and clamped to [0.16, 0.84].
-- `JapaneseInkHeartrateView.mc` — inscription time: hour over minutes,
-  `FONT_LARGE`, ink `0x342A22`, column at x 22%, rows 21%/33%; vermillion
-  seal (rounded square, 6.7% of width) at y 42.5% showing live HR
-  (`Activity.getActivityInfo().currentHeartRate`; empty square in sim).
-  AOD path: same column in white on black, no seal, burn-in pixel shift.
+- `JapaneseInkHeartrateScene.mc` places the planes into the 5-minute-keyed
+  `BufferedBitmap`. HR: real 4 h history → 16 fifteen-minute buckets →
+  `landmarkPeaks()` (strongest bucket = host, strongest ≥ 1 h away = guest),
+  `edgeHr()` (oldest / newest bucket with data → fg_left / fg_right height).
+  Host x is confined to `0.36 + peakX(nx)·0.40` so the upper-left void always
+  survives for the inscription; guest is pushed ≥ 0.30 away and clamped.
+- `JapaneseInkHeartrateView.mc` draws the inscription (hour over minutes,
+  `FONT_LARGE`, ink `0x342A22`, column at x 22%, rows 21%/33%), the
+  vermillion seal at y 42.5% with live HR, and a "4h" caption. AOD path: same
+  column in white on black, no seal, burn-in pixel shift.
 
 ---
 
-## 5. Python-preview → device translation gaps (learned 2026-06-10)
+## 5. Preview → device translation (what is known)
 
-1. **Fonts**: Garmin system fonts render much larger than equivalent-looking
-   desktop mock fonts. `FONT_NUMBER_MILD` overran the layout; `FONT_LARGE`
-   matches the preview's Arial-58 inscription scale.
-2. **Low alpha renders fainter on-device** than in Pillow compositing —
-   budget ~×1.3 on anything below α≈0.4 (far_range needed 0.34→0.46).
-3. **Thin parallel strokes sharpen into a barcode** — the device's bitmap
-   scaling is crisper than LANCZOS. Overlap strokes and add center waviness.
-4. **The circle eats the corners**: bottom-left content below
-   `y = 208 + √(208² − (208−x)²)` is invisible. The shore must ride high.
-5. **No global alpha at draw time** — bake alpha variants as separate PNGs.
+1. **The old "low alpha renders fainter on-device, budget ×1.3" note was a
+   preview bug**: `Image.paste(im, box, im)` squares the alpha. Fixed
+   2026-10-27; the preview now composites like `drawScaledBitmap`. Expect the
+   device to look like the preview, and if it looks paler, that is new data.
+2. **Fonts**: Garmin system fonts render larger than desktop mocks;
+   `FONT_LARGE` matches the preview's Arial-58 inscription.
+3. **Scaling filter**: the device's bitmap scaling is crisper than LANCZOS
+   (thin parallel strokes sharpened into a barcode in June). Trees and cun
+   strokes are short and non-parallel on purpose. If the hardware still
+   sharpens them, RENDERER_PLAN §13 row 2 (`drawBitmap2` bilinear) is the fix.
+4. **Alpha depth**: whether the hardware blends 8-bit bitmap alpha into the
+   BufferedBitmap is unverified (RENDERER_PLAN §13 row 1). A face that looks
+   like hard cut-outs on the wrist is that, not the art.
+5. **The circle eats the corners**: content below
+   `y = 208 + √(208² − (208−x)²)` is invisible, which is why the foreground
+   masses sit as high as they do.
 6. A capture showing a black screen + play triangle is the sim's "no app"
-   screen (push race), not a crash — re-push and recapture.
+   screen (push race), not a crash: re-push and recapture.
 
 ---
 
 ## 6. How to iterate (recipes)
 
-- **Change a mountain's character**: edit its spire list / make_mountain
-  params in `gen_sumie_kit.py` → `python scripts/gen_sumie_kit.py &&
-  python scripts/compose_preview.py` → Read `art/kit_preview.png`. Only
-  build for the watch when the preview reads right.
-- **Move/resize a layer**: change `compose_preview.py`, verify, then port
-  the same fractions into `renderScene()`.
-- **Add an asset**: generator function → save in `main()` → tuned-import
-  entry in `drawables.xml` → load in `initialize()` → one
-  `drawScaledBitmap` in `renderScene()` → preview parity first.
+- **Change a plane's character**: edit its `render_plane(...)` call in
+  `gen_ink_layers.py` (peaks, `rough`, `ink`, `crown`, `cun_count`,
+  `tree_prob`, blur) → `python scripts/gen_ink_layers.py && python
+  scripts/compose_preview.py` → Read `art/kit_preview.png`. Build for the
+  watch only when the preview reads right.
+- **Move/resize a plane**: change `compose_preview.py`, verify, then port the
+  same fractions into `renderScene()`.
+- **Add a plane**: a `render_plane` call → tuned-import entry in
+  `drawables.xml` → load in `initialize()` → one `drawScaledBitmap` in
+  `renderScene()` → preview parity first.
 - **Capture checkpoint**: `bash scripts/build-and-run.sh <abs-path>.png`
   with filename `YYYY-MM-DD_HHMM_<name>.png` (HHMM mandatory, never
   overwrite), paired `.md` per PROCEDURE.md §4.
 
-Future ideas parked: host variant B (calmer geometry) selected by HR stddev;
-seasonal/time-of-day ink tints; 24h-mode inscription ("22" over "45"); on-
-wrist validation list in the iter11b checkpoint.
+Parked: the benchmark's water band and ripples under the foreground;
+seasonal/time-of-day ink tints (needs `:tintColor`); pines instead of bare
+branching trees; 24h-mode inscription.
