@@ -1,6 +1,6 @@
 # Japanese Ink Heartrate — Renderer Plan
 
-Last updated: 2026-06-10
+Last updated: 2026-10-27 (§13 API audit; everything else 2026-06-10)
 
 > **2026-06-10 PIVOT — complete-painting grammar (CURRENT).** The small-stamp
 > asset family below (§4–§7, §12) is superseded. The working architecture,
@@ -237,3 +237,35 @@ A scene is acceptable when:
 5. Build, sideload to simulator, save checkpoint pair (`YYYY-MM-DD_name.png` + `.md`) per the procedural workflow doc.
 6. Iterate asset tuning before touching composition logic.
 7. Replace mock HR with `ActivityMonitor.getHeartRateHistory` once composition reads correctly.
+
+## 13. API Audit (2026-10-27): What The FR265 Can Do That This Renderer Does Not Use
+
+Trigger: FR265 firmware 29.05 (stable 2026-08-26, newest as of 2026-10-27) and
+Connect IQ SDK 9.3.0 (2026-10). Neither moves the watch. The FR265 stays at
+**API level 5.2** on Garmin's compatible-devices page; API 6.0 is the fenix 8/9,
+Forerunner 570/970, Venu 4 and vivoactive 6 generation. 29.05 is three bug
+fixes (strength PR sync, HR/power field config). SDK 9.2's sleep-score
+complication, and SDK 9.3's `DynamicResource` (API 6.0.3), Audio and LTE, do
+not reach it. The firmware opportunity is zero.
+
+The real opportunity is API 4.0–5.2 graphics this face has never called.
+Every row below is available on the FR265 by API level; the Status column is
+what the forums say about hardware behavior, which is the part that matters.
+
+| Feature (API level) | What it replaces here | Status |
+|---|---|---|
+| `createBufferedBitmap({... :alphaBlending => ALPHA_BLENDING_FULL})` (4.0.0) | Nothing yet: `ensureBuffer()` creates the scene buffer without it | Forum thread 340936: an 8-bit-alpha PNG drawn bitmap-over-bitmap rendered **1-bit** (opaque or clear) on a real epix 2, same AMOLED/5.2 generation, while the sim blended fine; `ALPHA_BLENDING_FULL` was the suggested fix and nobody tested it. This face's whole grammar is alpha PNGs into a BufferedBitmap, and PROCEDURE §10 still says "Next: sideload to the FR265". **Verify on the wrist before anything else.** |
+| `drawBitmap2(x, y, bmp, {:transform => AffineTransform, :filterMode => FILTER_MODE_BILINEAR})` (4.2.1) | `drawScaledBitmap` (point sampling): translation gap 3 ("device scaling is crisper than LANCZOS, thin strokes become a barcode"); horizontal flips and rotations without extra PNGs | Documented, device list not given. Bug CIQQA-3176 (`drawScaledBitmap` pixelated on a real vivoactive 6, fine in the sim) says scaling quality is a hardware question. Unverified on FR265. |
+| `drawBitmap2 ... :tintColor` (4.2.1) | `mist_band_lite.png` (alpha baked at 62% because there was no global-alpha knob); the parked time-of-day ink tints | Mixed reports: works for some, a no-op for others, and "Source must be native color format" crashes on cheaper AMOLEDs in the SDK 8.3 sim (venusq2, fr165, instinct 3). Needs `automaticPalette="false"` (already in the tuned-import contract). Probe. |
+| `setBlendMode(BLEND_MODE_MULTIPLY)` (4.2.1) | The ink glaze itself: overlapping washes darken like real ink instead of alpha-over going muddy | Docs: "Only supported on devices with GPU." Could not confirm the FR265 has one. Probe: two overlapping washes under multiply vs source-over. |
+| `setFill(new BitmapTexture({:bitmap => ...}))` (4.0.0) | The 1 px memory-ridge hairline; could become a grain-filled polygon, paper showing through | Listed for the FR265 (common/deep-research-report-2.md). Never tried here. |
+| `getVectorFont({:face, :size})`, `drawAngledText`, `drawRadialText` (4.2.1; `:scale` 5.1.0) | `FONT_LARGE` inscription (translation gap 1: system fonts render larger than the mock) | FR265 is in `getVectorFont`'s supported-device list. Faces unverified for it; the FR965 reports only RobotoCondensedBold and RobotoRegular. Read `Devices/fr265/simulator.json` in the installed SDK (entries with `type: system_ttf`). |
+
+Probe plan, one build at home: a `PROBE` flag in `JapaneseInkHeartrateScene`
+that (a) creates the buffer with `ALPHA_BLENDING_FULL`, (b) draws the host
+mountain through `drawBitmap2` with a scale transform and bilinear filtering
+beside the current `drawScaledBitmap`, (c) stamps the mist once with a
+50%-alpha `:tintColor` instead of `mist_band_lite`, and (d) overlaps two
+guest washes under `BLEND_MODE_MULTIPLY`. Sideload, photograph the wrist,
+and keep whichever rows survive. Until that photo exists, every "on-device"
+claim in ART_PIPELINE.md means the simulator.
