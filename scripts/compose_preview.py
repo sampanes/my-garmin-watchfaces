@@ -171,7 +171,6 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
     if hr_now is not None:
         d.text((int(0.22 * W), sy0 + seal // 2), str(int(round(hr_now))), font=f_small,
                fill=(244, 238, 226, 255), anchor="mm")
-    d.text((int(0.22 * W), int(0.525 * H)), "4h", font=f_small, fill=(104, 98, 89, 190), anchor="mm")
 
     # circular mask + dark surround (sim look)
     mask = Image.new("L", (W, H), 0)
