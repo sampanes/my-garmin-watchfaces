@@ -116,6 +116,8 @@ function Invoke-WalkAction {
         "Recording" { $Model.State = "EndPrompt" }
         "EndPrompt" { $Model.State = "Recording" }
         "Result" {
+            # Unconditional, and since 0.5.1 the watch matches: a cleanup
+            # failure on the result card never keeps the wearer there.
             $Model.State = "Home"
         }
     }

@@ -13,7 +13,7 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.5.0";
+    const APP_VERSION = "0.5.1";
     const SCHEMA = 3;           // On-watch storage layout.
     const EXPORT_FORMAT = 4;    // Log export layout; read-friend.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;
@@ -497,7 +497,11 @@ class WristDiaryView extends WatchUi.View {
             mWalk.saveFromSelect();
             mScreen = SCREEN_WALK_RESULT;
         } else if (mScreen == SCREEN_WALK_RESULT) {
-            if (mWalk.close()) { mScreen = SCREEN_HOME; }
+            // Home whether or not the cleanup worked: a FIT session that refuses
+            // to discard must never trap the wearer on this card. enterReady()
+            // retries the discard the next time a walk is started.
+            mWalk.close();
+            mScreen = SCREEN_HOME;
         } else if (mScreen == SCREEN_EXPORT) {
             exportNow();
         }
@@ -513,7 +517,9 @@ class WristDiaryView extends WatchUi.View {
         } else if (mScreen == SCREEN_END_WALK) {
             mScreen = SCREEN_WALK;
         } else if (mScreen == SCREEN_WALK_RESULT) {
-            if (mWalk.close()) { mScreen = SCREEN_HOME; }
+            // Same escape hatch as START: Back always leaves the result card.
+            mWalk.close();
+            mScreen = SCREEN_HOME;
         } else if (mScreen == SCREEN_WALK) {
             if (mWalk.isRecording()) {
                 mScreen = SCREEN_END_WALK;

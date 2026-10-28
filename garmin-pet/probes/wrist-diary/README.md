@@ -5,7 +5,7 @@ installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.5.0`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.5.1`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
 dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
 build that never reached git, and `0.4.0` was built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
@@ -15,6 +15,10 @@ data/features, and major if stored data or behavior is intentionally broken or r
 It creates a standard Walking FIT activity with GPS, HR and distance for Garmin Connect. Ending a
 walk is an explicit foreground confirmation; a `CLOSED`/`onStop` save remains best-effort only,
 because T20 returned success but produced no FIT file.
+
+**0.5.1 — No trap on the walk result:** START and Back always leave the `WE WALKED` /
+`WALK FAILED` card, even when the FIT session refuses to discard; the next walk retries that
+cleanup and reports `CLEANUP ERR` if it still fails. Also two casts for the type checker.
 
 ## What it does
 

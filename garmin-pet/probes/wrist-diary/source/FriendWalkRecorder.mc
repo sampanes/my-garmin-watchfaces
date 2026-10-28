@@ -99,7 +99,9 @@ class FriendWalkRecorder {
             System.println("FRIEND_WALK_START_ERROR," + e.getErrorMessage());
             discardSessionAfterFailure();
             var detail = e.getErrorMessage();
-            fail("START ERR", (detail == null) ? "" : detail);
+            // The cast is for the level-2 type checker: every compiled file in
+            // this repo casts a nullable out of a ternary the same way.
+            fail("START ERR", (detail == null) ? "" : (detail as Lang.String));
         }
 
         if (!started) { return false; }
@@ -248,7 +250,7 @@ class FriendWalkRecorder {
         } catch (e) {
             System.println("FRIEND_WALK_GPS_ERROR," + e.getErrorMessage());
             var detail = e.getErrorMessage();
-            fail("NO GPS", (detail == null) ? "" : detail);
+            fail("NO GPS", (detail == null) ? "" : (detail as Lang.String));
             return false;
         }
         // A synchronous info read is only a convenience. Location events are
