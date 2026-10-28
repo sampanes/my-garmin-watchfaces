@@ -5,7 +5,7 @@ installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.5.1`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.6.0`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
 dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
 build that never reached git, and `0.4.0` was built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
@@ -19,6 +19,13 @@ because T20 returned success but produced no FIT file.
 **0.5.1 — No trap on the walk result:** START and Back always leave the `WE WALKED` /
 `WALK FAILED` card, even when the FIT session refuses to discard; the next walk retries that
 cleanup and reports `CLEANUP ERR` if it still fails. Also two casts for the type checker.
+
+**0.6.0 — Beat intervals (test plan T11):** the sensor listener also asks for beat-to-beat
+intervals. Every session summary now tallies how many arrived, how many differed from the one
+before (a constant 1000 ms means interpolated beats, not HRV), the min and max in ms, and the
+same count/changes pair taken while a Friend Walk was recording. Export format 5. If the watch
+refuses the option, Friend logs `FRIEND_RR_ERROR`, records `rr_count` −1 and falls back to the
+motion-only listener 0.4.0 ran with.
 
 ## What it does
 
@@ -40,7 +47,9 @@ cleanup and reports `CLEANUP ERR` if it still fails. Also two casts for the type
   START explicitly stops and saves, while Back resumes without a route gap. A successful result
   says `WE WALKED` and the activity syncs through Garmin normally.
 - Up/Down opens the debug-data card. START there performs the larger text export on demand and
-  shows `EXPORTED`; ordinary open/close use does not serialize the whole history.
+  shows `EXPORTED`; ordinary open/close use does not serialize the whole history. The card also
+  shows the T11 tally at a glance: `RR 812  93% VARY` (intervals this session and the share that
+  differed from the previous one), `RR NONE YET`, or `RR OFF` when the watch refused the option.
 - Back from the companion screen exits immediately after saving a compact session summary, even
   if that save fails. Back from preparation cancels it, and Back from a walk result returns home.
 - The face has three moods: calm (green, small smile), effort (orange, open mouth) and remember
@@ -54,7 +63,7 @@ cleanup and reports `CLEANUP ERR` if it still fails. Also two casts for the type
 
 Garmin rotates the app log at about 5 KB and keeps one older file (measured on the FR265:
 `.BAK` files of 5150 and 5160 bytes), so only an export under 5 KB is always retrieved whole; a
-7.3 KB export on 2026-10-22 lost its start. Export format 4 is therefore host-tested below 4.8 KB
+7.3 KB export on 2026-10-22 lost its start. Export format 5 is therefore host-tested below 4.8 KB
 with conservative high-width values even when every detailed row came from a separate short session:
 
 - `FRIEND_DEVICE`: part number, firmware, Connect IQ version, and whether tones and vibration
@@ -69,7 +78,11 @@ Each check-in snapshot also answers open hardware questions: respiration rate, t
 There `-1` means the watch answered null, `-2` that this firmware lacks the field, and `-3` that
 the call threw. Session summaries also carry battery % at start and end (`battery_start`, `battery_end`), peak
 app memory in KB (`mem_peak_kb`) and how many times the screen went away (`hides`; a close by the
-watch usually adds one). Chapter summaries include duration, HR range and peak delta, motion, step
+watch usually adds one). Since 0.6.0 they end with the T11 beat-interval tally: `rr_count`,
+`rr_changes` (intervals unlike the previous one), `rr_min_ms`, `rr_max_ms`, and `rr_walk_count` /
+`rr_walk_changes` for the part of the session a Friend Walk was recording; `rr_count` −1 means the
+watch refused the option. Session rows stored by an older build are shorter and the reader leaves
+their `rr_*` fields blank. Chapter summaries include duration, HR range and peak delta, motion, step
 change, whether Back ended the chapter early, and a numeric evidence reason (`1` motion, `2` HR,
 `3` both). Missing values are `-1`; Friend never invents a sensor result. All 700 live records
 stay in on-watch storage.

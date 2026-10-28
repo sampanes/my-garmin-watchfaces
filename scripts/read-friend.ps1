@@ -129,6 +129,19 @@ if ($sessions.Count -gt 0) {
         motion_avg,moving_pct,steps_start,steps_end |
         Format-Table -AutoSize
 }
+$withRr = @($sessions | Where-Object { $_.rr_count -ne $null -and $_.rr_count -ne "" })
+if ($withRr.Count -gt 0) {
+    # T11: rr_count -1 = the watch refused the beat-interval option; 0 = enabled
+    # but nothing arrived. vary % near 0 means interpolated beats, not HRV.
+    Write-Host "`nBeat intervals (T11)"
+    $withRr | Select-Object -Last 8 start_epoch,duration_s,rr_count,
+        @{ Name = "vary_pct"; Expression = {
+            if ([int]$_.rr_count -gt 0) { [int](100 * [int]$_.rr_changes / [int]$_.rr_count) } } },
+        rr_min_ms,rr_max_ms,rr_walk_count,
+        @{ Name = "walk_vary_pct"; Expression = {
+            if ([int]$_.rr_walk_count -gt 0) { [int](100 * [int]$_.rr_walk_changes / [int]$_.rr_walk_count) } } } |
+        Format-Table -AutoSize
+}
 if ($chapters.Count -gt 0) {
     Write-Host "`nRecent effort chapters"
     $chapters | Select-Object -Last 12 start_epoch,duration_s,partial,baseline_hr,

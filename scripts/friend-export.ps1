@@ -1,10 +1,12 @@
 # Parsing for Friend's log export, dot-sourced by read-friend.ps1 and
 # test-friend-export.ps1. Format 3 exports carry a header line per section;
 # format 4 drops them to fit Garmin's ~5 KB log file, so the columns live here.
+# Format 5 (Friend 0.6.0) appends the six rr_* beat-interval columns to session
+# rows; rows stored by an older build are shorter and parse with those blank.
 
 $FriendColumns = @{
     snap = "epoch,steps,calories,moderate,vigorous,stress,hr4h_min,hr4h_avg,hr4h_max,body_battery,distance_cm,floors,respiration,time_to_recovery_h,spo2,pressure_pa,stress_age_s"
-    session3 = "start_epoch,end_epoch,duration_s,hr4h_min,hr4h_avg,hr4h_max,hr_min,hr_avg,hr_max,motion_avg,motion_peak,moving_pct,steps_start,steps_end,stress_start,stress_end,bb_start,bb_end,chapters,last_chapter_s,lifetime_chapters,exit_reason,last_input_s,inputs,battery_start,battery_end,mem_peak_kb,hides"
+    session3 = "start_epoch,end_epoch,duration_s,hr4h_min,hr4h_avg,hr4h_max,hr_min,hr_avg,hr_max,motion_avg,motion_peak,moving_pct,steps_start,steps_end,stress_start,stress_end,bb_start,bb_end,chapters,last_chapter_s,lifetime_chapters,exit_reason,last_input_s,inputs,battery_start,battery_end,mem_peak_kb,hides,rr_count,rr_changes,rr_min_ms,rr_max_ms,rr_walk_count,rr_walk_changes"
     chapter3 = "start_epoch,end_epoch,duration_s,partial,baseline_hr,hr_min,hr_avg,hr_max,hr_delta_peak,motion_avg,motion_peak,moving_pct,steps_start,steps_end,reason"
 }
 

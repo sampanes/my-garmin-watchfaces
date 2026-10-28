@@ -87,12 +87,12 @@ for ($i = 0; $i -lt $records.Count; $i += 1) {
 
 # Size: a full export at the device's export counts with realistic magnitudes
 # must stay under the ~5 KB Garmin log file, with room for a few later lines.
-$exportLines = @("FRIEND_EXPORT_BEGIN,4,0.4.0", "FRIEND_DEVICE,000-TEST00-00,00.00,0.0.0,1,1")
+$exportLines = @("FRIEND_EXPORT_BEGIN,5,0.6.0", "FRIEND_DEVICE,000-TEST00-00,00.00,0.0.0,1,1")
 $exportLines += "FRIEND_snap_BEGIN,4"
 $exportLines += @(1..4 | ForEach-Object { "1700010000,10000,900,20,8,40,50,60,70,80,900000,10,15,65,95,100000,120" })
 $exportLines += @("FRIEND_snap_END", "FRIEND_session3_BEGIN,8")
 $exportLines += @(1..8 | ForEach-Object {
-    "1700000000,1700001800,12000,50,70,90,60,100,130,200,15000,55,10000,11000,95,100,65,90,10,1800,100,1,1700,12,90,85,250,3"
+    "1700000000,1700001800,12000,50,70,90,60,100,130,200,15000,55,10000,11000,95,100,65,90,10,1800,100,1,1700,12,90,85,250,3,14000,12500,480,1250,2600,2400"
 })
 $exportLines += @("FRIEND_session3_END", "FRIEND_chapter3_BEGIN,10")
 $exportLines += @(1..10 | ForEach-Object {
@@ -109,14 +109,16 @@ for ($i = 0; $i -lt 35; $i += 1) {
 $exportLines += @(Export-CompactLiveModel $many.ToArray())
 $exportLines += @("FRIEND_live4_END", "FRIEND_EXPORT_END")
 $bytes = ($exportLines | ForEach-Object { $_.Length + 1 } | Measure-Object -Sum).Sum
-if ($bytes -gt 4800) { throw "Format 4 export is $bytes bytes; must stay under 4800" }
+if ($bytes -gt 4800) { throw "Format 5 export is $bytes bytes; must stay under 4800" }
 
 # Conservative high-width case: every live row came from a separate short
 # session, so every row needs its own S base line. This was over 7 KB at 90 rows.
 $highSnapshot = "1700010000,200000,20000,1440,1440,100,250,250,250,100,10000000,1000,99,999,100,110000,604800"
-$highSession = "1700000000,1700020000,20000,250,250,250,250,250,250,20000,96000,100,100000,200000,100,100,100,100,60,20000,100000,2,20000,1000,100,100,768,100"
+# rr_*: five-digit counts for a four-hour session at a fast beat, five-digit ms
+# in case the watch reports an invalid-marker interval.
+$highSession = "1700000000,1700020000,20000,250,250,250,250,250,250,20000,96000,100,100000,200000,100,100,100,100,60,20000,100000,2,20000,1000,100,100,768,100,99999,99999,65535,65535,99999,99999"
 $highChapter = "1700000001,1700020000,19999,1,250,250,250,250,250,20000,96000,100,100000,200000,3"
-$worstPrefix = @("FRIEND_EXPORT_BEGIN,4,0.4.0", "FRIEND_DEVICE,000-TEST00-00,99.99,9.9.9,1,1", "FRIEND_snap_BEGIN,4")
+$worstPrefix = @("FRIEND_EXPORT_BEGIN,5,0.6.0", "FRIEND_DEVICE,000-TEST00-00,99.99,9.9.9,1,1", "FRIEND_snap_BEGIN,4")
 $worstPrefix += @(1..4 | ForEach-Object { $highSnapshot })
 $worstPrefix += @("FRIEND_snap_END", "FRIEND_session3_BEGIN,8")
 $worstPrefix += @(1..8 | ForEach-Object { $highSession })
@@ -133,12 +135,25 @@ $worstLive = @(Export-CompactLiveModel $worstRecords.ToArray())
 Assert-Equal @($worstLive | Where-Object { $_ -like "S,*" }).Count 35 "Each short session needs a base line"
 $worstLines = $worstPrefix + $worstLive + @("FRIEND_live4_END", "FRIEND_EXPORT_END")
 $worstBytes = ($worstLines | ForEach-Object { $_.Length + 1 } | Measure-Object -Sum).Sum
-if ($worstBytes -gt 4800) { throw "Worst-case format 4 export is $worstBytes bytes; must stay under 4800" }
+if ($worstBytes -gt 4800) { throw "Worst-case format 5 export is $worstBytes bytes; must stay under 4800" }
 
 # The reader parses the same block end to end, without headers.
 $block = Get-FriendExportBlock (@("junk") + $exportLines + @("FRIEND_EXIT,1,60,40,3"))
 Assert-Equal (@(Read-FriendCsvSection $block "session3")[0].hides) "3" "Session columns come from the reader"
+Assert-Equal (@(Read-FriendCsvSection $block "session3")[0].rr_walk_changes) "2400" "Format 5 session columns reach the last rr_ column"
 Assert-Equal @(ConvertFrom-FriendLive4 (Get-FriendSectionLines $block "live4")).Count 35 "All live rows parse"
+
+# A session row stored by a pre-0.6.0 build still sits in the ring when the new
+# build exports: 28 columns under a 34-column header parse with blank rr_ fields.
+$mixed = @("FRIEND_EXPORT_BEGIN,5,0.6.0", "FRIEND_session3_BEGIN,2",
+           "1700000000,1700001800,12000,50,70,90,60,100,130,200,15000,55,10000,11000,95,100,65,90,10,1800,100,1,1700,12,90,85,250,3",
+           "1700004000,1700005800,12000,50,70,90,60,100,130,200,15000,55,10000,11000,95,100,65,90,10,1800,100,1,1700,12,90,85,250,3,14000,12500,480,1250,0,0",
+           "FRIEND_session3_END", "FRIEND_EXPORT_END")
+$mixedRows = @(Read-FriendCsvSection (Get-FriendExportBlock $mixed) "session3")
+Assert-Equal $mixedRows.Count 2 "Both session rows parse"
+Assert-Equal $mixedRows[0].hides "3" "The short row keeps its last real column"
+Assert-Equal ([string]::IsNullOrEmpty($mixedRows[0].rr_count)) $true "The short row's rr_count is blank, not shifted"
+Assert-Equal $mixedRows[1].rr_count "14000" "The full row's rr_count parses"
 
 # Format 3 sections still parse through their own header lines.
 $old = @("FRIEND_EXPORT_BEGIN,3,0.3.1", "FRIEND_session3_BEGIN,1",
@@ -161,4 +176,4 @@ try {
     Remove-Item -LiteralPath $archive -ErrorAction SilentlyContinue
 }
 
-Write-Host "[pass] Friend export: compact round trip, $bytes-byte full export, $worstBytes-byte worst case, headerless parse, format 3, archive"
+Write-Host "[pass] Friend export: compact round trip, $bytes-byte full export, $worstBytes-byte worst case, headerless parse, mixed-width sessions, format 3, archive"

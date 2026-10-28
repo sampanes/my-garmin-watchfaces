@@ -13,9 +13,9 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.5.1";
+    const APP_VERSION = "0.6.0";
     const SCHEMA = 3;           // On-watch storage layout.
-    const EXPORT_FORMAT = 4;    // Log export layout; read-friend.ps1 holds the columns.
+    const EXPORT_FORMAT = 5;    // Log export layout; friend-export.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;
     const MAX_LIVE = 700;       // Just under four hours of foreground detail.
     const MAX_SNAPSHOTS = 60;   // Roughly a month at two opens per day.
@@ -134,6 +134,19 @@ class WristDiaryView extends WatchUi.View {
     var mLastChapterEpoch as Lang.Number = 0;
     var mScreen as Lang.Number = SCREEN_HOME;
     var mWalk as FriendWalkRecorder;
+
+    // T11 (DIY HRV): beat-to-beat intervals in ms from the sensor listener. A
+    // "change" is an interval unlike the one before it, so interpolated beats
+    // (a constant 1000 ms) read as 0% and real variability reads near 100%.
+    // The walk pair answers the "inside a recording" half of the question.
+    // mRrCount -1 means the watch refused the beat-interval option.
+    var mRrCount as Lang.Number = 0;
+    var mRrChanges as Lang.Number = 0;
+    var mRrMin as Lang.Number = -1;
+    var mRrMax as Lang.Number = -1;
+    var mRrLast as Lang.Number = -1;
+    var mRrWalkCount as Lang.Number = 0;
+    var mRrWalkChanges as Lang.Number = 0;
 
     function initialize() {
         View.initialize();
@@ -300,10 +313,13 @@ class WristDiaryView extends WatchUi.View {
         var centerX = dc.getWidth() / 2;
         drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND " + APP_VERSION, 0x3E7A62,
                          [Graphics.FONT_XTINY]);
-        drawFace(dc, centerX, height * 34 / 100, height * 12 / 100, moodNow());
-        drawCenteredLine(dc, centerX, height * 57 / 100, "DEBUG DATA", Graphics.COLOR_WHITE,
+        drawFace(dc, centerX, height * 31 / 100, height * 10 / 100, moodNow());
+        drawCenteredLine(dc, centerX, height * 50 / 100, "DEBUG DATA", Graphics.COLOR_WHITE,
                          [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
-        drawCenteredLine(dc, centerX, height * 71 / 100,
+        drawCenteredLine(dc, centerX, height * 62 / 100, beatIntervalText(),
+                         Graphics.COLOR_LT_GRAY,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 74 / 100,
                          (Time.now().value() <= mSavedUntil) ? "EXPORTED" : "START export",
                          (Time.now().value() <= mSavedUntil) ? 0x6ED6A8 : Graphics.COLOR_LT_GRAY,
                          [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
@@ -318,6 +334,14 @@ class WristDiaryView extends WatchUi.View {
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.drawText(x, y, fitFont(dc, text, fonts, y), text,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    // T11 at a glance, without an export: intervals seen this session and the
+    // share that differed from the one before.
+    function beatIntervalText() as Lang.String {
+        if (mRrCount < 0) { return "RR OFF"; }
+        if (mRrCount == 0) { return "RR NONE YET"; }
+        return "RR " + mRrCount + "  " + percentage(mRrChanges, mRrCount) + "% VARY";
     }
 
     function walkElapsedText() as Lang.String {
@@ -456,16 +480,34 @@ class WristDiaryView extends WatchUi.View {
         mStarted = true;
         mStatus = "WATCHING";
         try {
+            // T11: beat intervals ride on the proven 25 Hz motion listener.
             Sensor.registerSensorDataListener(method(:onSensorData), {
                 :period => 1,
                 :accelerometer => {
                     :enabled => true,
                     :sampleRate => 25
+                },
+                :heartBeatIntervals => {
+                    :enabled => true
                 }
             });
         } catch (e) {
-            mStatus = "HR ONLY";
-            System.println("FRIEND_SENSOR_ERROR," + e.getErrorMessage());
+            // The beat-interval option was refused: say so in the session row
+            // and fall back to the motion-only listener 0.4.0 ran with.
+            mRrCount = -1;
+            System.println("FRIEND_RR_ERROR," + e.getErrorMessage());
+            try {
+                Sensor.registerSensorDataListener(method(:onSensorData), {
+                    :period => 1,
+                    :accelerometer => {
+                        :enabled => true,
+                        :sampleRate => 25
+                    }
+                });
+            } catch (e2) {
+                mStatus = "HR ONLY";
+                System.println("FRIEND_SENSOR_ERROR," + e2.getErrorMessage());
+            }
         }
         mTimer = new Timer.Timer();
         (mTimer as Timer.Timer).start(method(:onSecond), 1000, true);
@@ -596,6 +638,15 @@ class WristDiaryView extends WatchUi.View {
     }
 
     function onSensorData(sensorData as Sensor.SensorData) as Void {
+        // Beat intervals first, fenced off: nothing about them may cost the
+        // motion evidence below.
+        try {
+            var hrData = sensorData.heartRateData;
+            if (hrData != null && mRrCount >= 0) {
+                noteBeatIntervals(hrData.heartBeatIntervals);
+            }
+        } catch (e) { }
+
         var accel = sensorData.accelerometerData;
         if (accel == null) { return; }
         var xs = accel.x;
@@ -624,6 +675,26 @@ class WristDiaryView extends WatchUi.View {
             mPreviousX = x;
             mPreviousY = y;
             mPreviousZ = z;
+        }
+    }
+
+    // Every positive interval counts; a change is one unlike the previous one.
+    function noteBeatIntervals(intervals as Lang.Array<Lang.Number>) as Void {
+        var walking = mWalk.isRecording();
+        var size = intervals.size();
+        for (var i = 0; i < size; i += 1) {
+            var ms = intervals[i];
+            if (ms <= 0) { continue; }
+            mRrCount += 1;
+            if (mRrMin < 0 || ms < mRrMin) { mRrMin = ms; }
+            if (ms > mRrMax) { mRrMax = ms; }
+            var changed = (mRrLast >= 0 && ms != mRrLast);
+            if (changed) { mRrChanges += 1; }
+            if (walking) {
+                mRrWalkCount += 1;
+                if (changed) { mRrWalkChanges += 1; }
+            }
+            mRrLast = ms;
         }
     }
 
@@ -936,7 +1007,8 @@ class WristDiaryView extends WatchUi.View {
             mStartBodyBattery, mBodyBattery,
             mSessionChapters, mLastChapterDuration, mLifetimeChapters,
             mExitReason, mLastInputElapsed, mInputCount,
-            mBatteryStart, batteryPercent(), mMemoryPeak / 1024, mHideCount
+            mBatteryStart, batteryPercent(), mMemoryPeak / 1024, mHideCount,
+            mRrCount, mRrChanges, mRrMin, mRrMax, mRrWalkCount, mRrWalkChanges
         ] as Lang.Array<Lang.Number>);
     }
 
