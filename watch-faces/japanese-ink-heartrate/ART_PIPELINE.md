@@ -34,7 +34,7 @@ compose_preview.py ──reads──>  art/kit_preview.png         (416x416 mock
         │  layout numbers proven here are ported 1:1, as fractions
         ▼
 JapaneseInkHeartrateScene.mc   (7 drawScaledBitmap calls + sun/moon + paper)
-JapaneseInkHeartrateView.mc    (inscription time in InkDigits + HR seal in SealDigits)
+JapaneseInkHeartrateView.mc    (hour column in KanjiHours, minutes in InkDigits, HR seal in SealDigits)
 ```
 
 **Iterate in Python, not on-device.** Bake plus preview takes about two
@@ -115,34 +115,43 @@ compress="false"`); default import quantizes alpha and wrecks softness.
 
 The time and the seal's HR were the last thing on the face still drawn by
 Garmin: Roboto digits sitting on an ink painting. `gen_ink_font.py` writes
-them with the same brush as the planes and bakes the result as two BMFont
+them with the same brush as the planes and bakes the result as three BMFont
 pairs in `resources/fonts/`, registered in `fonts.xml` with
-`antialias="true"` and a digit-only `filter`:
+`antialias="true"` (the digit fonts with a digit-only `filter`; the kanji
+font unfiltered, so the XML stays ASCII and every glyph in the descriptor
+is included):
 
 | font | id | cap / line | how it is written |
 |---|---|---|---|
 | ink_digits.fnt/.png | `InkDigits` | 40 / 54 px | brush: a bristle bundle on a hand-set stroke skeleton |
+| kanji_hours.fnt/.png | `KanjiHours` | 36 / 48 px | the same brush; the numerals 〇一二三四五六七八九十廿 for the hour column |
 | seal_digits.fnt/.png | `SealDigits` | 15 / 19 px | carved stamp: one even stroke, chipped edges |
 
-Each glyph is a **stroke skeleton** (`GLYPHS`): the segments a calligrapher
-would write, in order and direction, in a box EM_W (0.64) × cap wide and
-cap tall; corners sit between segments and each segment is Catmull-Rom
-smoothed. Per stroke, `head` says how the brush lands (`press`: set down,
-ink pools; `land`: arrives moving, thin) and `tail` how it leaves (`taper`:
-lifts while moving; `stop`: blunt with a small pool). `pressure()` turns
-that into a width profile (0.045 to 0.20 of cap) with value noise riding on
-it, and `draw_bundle()` lays sixteen bristles along the path, each with its
-own alpha, the outer ones lighter, some running dry partway (flying white).
-Press heads get a soft pooled disc; the finished glyph gets a 1 px ink
-bleed and a paper-fiber modulation. The seal style uses one bristle at even
-width, no dry brush, and a noise chip on the edges.
+Each glyph is a **stroke skeleton** (`GLYPHS` for the digits in a box
+EM_W (0.64) × cap wide, `KANJI` for the numerals in the em square): the
+segments a calligrapher would write, in order and direction; corners sit
+between segments and each segment is Catmull-Rom smoothed. Per stroke,
+`head` says how the brush lands (`press`: set down, ink pools; `land`:
+arrives moving, thin), `tail` how it leaves (`taper`: lifts while moving;
+`stop`: blunt with a small pool), and `body` the pressure floor through
+the middle (0.70 for the digits; a kanji bar, `yoko()`, thins to 0.50
+between its pressed ends, a vertical, `tate()`, holds 0.62). `pressure()`
+turns that into a width profile (0.045 to 0.20 of cap) with value noise
+riding on it, and `draw_bundle()` lays sixteen bristles along the path,
+each with its own alpha, the outer ones lighter, some running dry partway
+(flying white). Press heads get a soft pooled disc; the finished glyph gets
+a 1 px ink bleed and a paper-fiber modulation. The seal style uses one
+bristle at even width, no dry brush, and a noise chip on the edges.
 
 The atlas stores the coverage in alpha AND gray (premultiplied white), so
 whichever channel the resource compiler keys on, it sees the same glyph.
-Metrics: `xoffset` = bearing (3 px ink, 1 px seal), `xadvance` = ink width
-+ 2 bearings (proportional), `yoffset` from a 7 px (seal 2 px) top margin so
-`TEXT_JUSTIFY_VCENTER` centers the cap. A glyph that spills above the line
-is clipped, so keep skeleton heads at y ≥ 0.02.
+Metrics: `xoffset` = bearing (3 px ink, 2 px kanji, 1 px seal), `xadvance`
+= ink width + 2 bearings (proportional), `yoffset` from a 7 px (kanji 6 px,
+seal 2 px) top margin so `TEXT_JUSTIFY_VCENTER` centers the cap. A glyph
+that spills above the line is clipped, so keep skeleton heads at y ≥ 0.02.
+The kanji `char id`s are the Unicode code points (一 = 19968); the View
+builds each one-glyph string from the code point with `toChar().toString()`
+so no source file carries a non-ASCII literal.
 
 `python scripts/gen_ink_font.py --sheet out.png` also writes a taste sheet:
 every glyph at 2×, the inscription at 1×, three HR seals. Change a digit by
@@ -188,11 +197,15 @@ host → mist → fg_left → fg_right → grain → (View) inscription + seal.
   grain), pale inscription ink, dimmed seal. `loadPlanes()` keeps only one
   set in the graphics pool; the hour boundary is always a 5-minute key, and
   a settings change calls `invalidate()` through the App.
-- `JapaneseInkHeartrateView.mc` draws the inscription (hour over minutes in
-  `Rez.Fonts.InkDigits`, ink `0x18120E`, column at x 22%, rows 21%/33%) and
-  the vermillion seal (8.5% of width, y 42.5%) with live HR in
-  `Rez.Fonts.SealDigits`; both fonts load in `initialize()`. AOD path: same
-  column in white on black, no seal, burn-in pixel shift.
+- `JapaneseInkHeartrateView.mc` draws the inscription as a rakkan column at
+  x 22%: the hour as one or two kanji numerals in `Rez.Fonts.KanjiHours`
+  stacked on a 10% pitch with the bottom glyph at y 26.5% (0 = 〇, 1-9,
+  10 = 十, 11-19 = 十X, 20 = 廿, 21-23 = 廿X; twenty is the single character
+  廿 so no hour needs a third line, which would clip on the bezel), the
+  minutes in `Rez.Fonts.InkDigits` at y 37.5%, ink `0x18120E`, and the
+  vermillion seal (8.5% of width, y 46.5%) with live HR in
+  `Rez.Fonts.SealDigits`; the three fonts load in `initialize()`. AOD path:
+  same column in white on black, no seal, burn-in pixel shift.
 
 ---
 
@@ -247,5 +260,6 @@ host → mist → fg_left → fg_right → grain → (View) inscription + seal.
 
 Parked: the benchmark's water band and ripples under the foreground;
 seasonal/time-of-day ink tints (needs `:tintColor`); pines instead of bare
-branching trees; 24h-mode inscription; kanji numerals as a third font for
-the hour only (John's March idea; legibility at a glance is the risk).
+branching trees; kanji minutes (the hour went kanji on 2026-10-28, see
+§4; the minutes stay Arabic for at-a-glance reading); three-glyph hours
+(二十三) if 廿 reads wrong on the wrist.

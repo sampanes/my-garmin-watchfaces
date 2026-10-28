@@ -137,6 +137,22 @@ class BmFont:
         return Image.alpha_composite(img, layer)
 
 
+def kanji_hour(hour):
+    """The hour as one or two numerals, as the View composes them: 0 = 〇,
+    1-9, 10 = 十, 11-19 = 十X, 20 = 廿, 21-23 = 廿X. Never a third glyph,
+    which would run the column into the bezel."""
+    digits = "〇一二三四五六七八九"
+    tens, ones = divmod(hour, 10)
+    out = []
+    if tens == 1:
+        out.append("十")
+    elif tens >= 2:
+        out.append("廿")
+    if ones != 0 or tens == 0:
+        out.append(digits[ones])
+    return out
+
+
 def draw_trace(base, trace, hx, host_apex_y, gx, guest_apex_y, night):
     """The true-HR overlay as the Scene draws it: every sample as a hairline
     on the landscape's axis (axis_x) and scale (the host apex formula), with
@@ -155,7 +171,8 @@ def draw_trace(base, trace, hx, host_apex_y, gx, guest_apex_y, night):
     return Image.alpha_composite(base, layer)
 
 
-def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None):
+def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
+            hour24=False):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples for the true-HR overlay, or None."""
     sfx = "_night" if night else ""
@@ -186,13 +203,16 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
 
     # sun / moon on the day arc (sun 06:00-18:00 west to east)
     d = ImageDraw.Draw(base, "RGBA")
-    night = minute_of_day < 360 or minute_of_day >= 1080
-    t = ((minute_of_day - 1080) % 1440) / 720.0 if night else (minute_of_day - 360) / 720.0
+    # (moon, not night: night mode is the settings window passed in, and it
+    # must not be shadowed here or the ink goes pale on day paper after
+    # 18:00, which the watch never does)
+    moon = minute_of_day < 360 or minute_of_day >= 1080
+    t = ((minute_of_day - 1080) % 1440) / 720.0 if moon else (minute_of_day - 360) / 720.0
     import math
     sx = int(W * 0.20 + W * 0.60 * t)
     sy = int(H * 0.14 - math.sin(t * math.pi) * H * 0.06)
     r_halo, r_core = int(W * 0.046), int(W * 0.034)
-    if night:
+    if moon:
         d.ellipse([sx - r_halo, sy - r_halo, sx + r_halo, sy + r_halo], fill=(240, 235, 220, 0x30))
         d.ellipse([sx - r_core, sy - r_core, sx + r_core, sy + r_core], fill=(248, 244, 232, 0xC0))
     else:
@@ -236,17 +256,24 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     if trace is not None:
         base = draw_trace(base, trace, hx, 0.87 * H - m_h, gx, 0.71 * H - g_h, night)
 
-    # 9. inscription time + seal (upper-left void), as the View draws them:
-    #    the baked brush digits for the time, the carved seal digits for HR.
+    # 9. inscription column + seal (upper-left void), as the View draws them:
+    #    the hour as brush kanji stacked on a 0.10 H pitch, bottom glyph at
+    #    0.265 H so one- and two-glyph hours share a baseline, the minutes in
+    #    the brush digits at 0.375 H, the carved seal digits for HR.
     ink_font = BmFont("ink_digits")
+    kanji_font = BmFont("kanji_hours")
     seal_font = BmFont("seal_digits")
     ink = (216, 210, 198) if night else (24, 18, 14)
     hour = minute_of_day // 60
-    hour12 = 12 if hour % 12 == 0 else hour % 12
-    base = ink_font.draw(base, str(hour12), int(0.22 * W), int(0.21 * H), ink)
-    base = ink_font.draw(base, "%02d" % (minute_of_day % 60), int(0.22 * W), int(0.33 * H), ink)
+    if not hour24:
+        hour = 12 if hour % 12 == 0 else hour % 12
+    glyphs = kanji_hour(hour)
+    pitch, bottom = int(0.10 * H), int(0.265 * H)
+    for i, g in enumerate(glyphs):
+        base = kanji_font.draw(base, g, int(0.22 * W), bottom - (len(glyphs) - 1 - i) * pitch, ink)
+    base = ink_font.draw(base, "%02d" % (minute_of_day % 60), int(0.22 * W), int(0.375 * H), ink)
     seal = int(W * 0.085)
-    sx0, sy0 = int(0.22 * W) - seal // 2, int(0.425 * H)
+    sx0, sy0 = int(0.22 * W) - seal // 2, int(0.465 * H)
     ImageDraw.Draw(base, "RGBA").rounded_rectangle(
         [sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7,
         fill=(150, 44, 32, 235) if night else (176, 52, 38, 235))
@@ -263,15 +290,29 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
 
 
 def main(argv):
-    """compose_preview.py [out.png] [--night] [--no-trace]"""
-    args = [a for a in argv[1:] if not a.startswith("--")]
+    """compose_preview.py [out.png] [--night] [--no-trace] [--24h] [--time HH:MM]
+
+    Defaults: 14:42 by day, 22:15 by night, 12-hour clock."""
+    args = []
+    skip = False
+    for i, a in enumerate(argv[1:], 1):
+        if skip:
+            skip = False
+        elif a == "--time":
+            skip = True
+        elif not a.startswith("--"):
+            args.append(a)
     night = "--night" in argv
     out = args[0] if args else OUT
     history = bucket_history(MOCK, 16)
     trace = None if "--no-trace" in argv else \
         [(i / (len(MOCK) - 1.0), norm_hr(v)) for i, v in enumerate(MOCK)]
     minute = 22 * 60 + 15 if night else 14 * 60 + 42
-    compose(history, minute_of_day=minute, hr_now=history[-1], night=night, trace=trace).save(out)
+    if "--time" in argv:
+        hh, mm = argv[argv.index("--time") + 1].split(":")
+        minute = int(hh) * 60 + int(mm)
+    compose(history, minute_of_day=minute, hr_now=history[-1], night=night, trace=trace,
+            hour24="--24h" in argv).save(out)
     print("preview ->", os.path.abspath(out))
 
 

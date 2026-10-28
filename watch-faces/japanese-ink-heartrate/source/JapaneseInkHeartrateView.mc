@@ -9,8 +9,10 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     var mScene as JapaneseInkHeartrateScene;
 
     // Baked by scripts/gen_ink_font.py: brush-written digits for the
-    // inscription, carved-stamp digits for the seal (resources/fonts).
+    // minutes, brush kanji numerals for the hour, carved-stamp digits for
+    // the seal (resources/fonts).
     var mInkFont as WatchUi.FontResource;
+    var mKanjiFont as WatchUi.FontResource;
     var mSealFont as WatchUi.FontResource;
 
     // Sumi ink for the inscription digits (the darkest ink in the painting),
@@ -28,6 +30,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         WatchUi.WatchFace.initialize();
         mScene = new JapaneseInkHeartrateScene();
         mInkFont = WatchUi.loadResource(Rez.Fonts.InkDigits) as WatchUi.FontResource;
+        mKanjiFont = WatchUi.loadResource(Rez.Fonts.KanjiHours) as WatchUi.FontResource;
         mSealFont = WatchUi.loadResource(Rez.Fonts.SealDigits) as WatchUi.FontResource;
     }
 
@@ -91,10 +94,49 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         dc.drawLine((width * 2) / 3, ridgeY + 2, (width * 7) / 8, ridgeY - 4);
     }
 
-    // The time as a painter's inscription: hour above minutes in a column in
-    // the upper-left void, with a vermillion artist's seal beneath carrying
-    // the live heart rate. Mirrors the inscription+seal grammar of the
-    // reference paintings (and replaces the face-center digits).
+    // One numeral as a one-character string: 0 = 〇, 1-9 the kanji digits.
+    // Code points rather than literals keep this source ASCII.
+    function kanjiDigit(digit as Lang.Number) as Lang.String {
+        var code = 0x3007;
+        switch (digit) {
+            case 1: code = 0x4E00; break;
+            case 2: code = 0x4E8C; break;
+            case 3: code = 0x4E09; break;
+            case 4: code = 0x56DB; break;
+            case 5: code = 0x4E94; break;
+            case 6: code = 0x516D; break;
+            case 7: code = 0x4E03; break;
+            case 8: code = 0x516B; break;
+            case 9: code = 0x4E5D; break;
+        }
+        return code.toChar().toString();
+    }
+
+    // The hour as a column of one or two numerals, top first: 0 = 〇, 1-9,
+    // 10 = 十, 11-19 = 十X, 20 = 廿, 21-23 = 廿X. Twenty is written with the
+    // single character so no hour needs a third line, which would run the
+    // column into the bezel.
+    function kanjiHour(hour as Lang.Number) as Lang.Array<Lang.String> {
+        var out = [] as Lang.Array<Lang.String>;
+        var tens = hour / 10;
+        var ones = hour % 10;
+        if (tens == 1) {
+            out.add((0x5341).toChar().toString());
+        } else if (tens >= 2) {
+            out.add((0x5EFF).toChar().toString());
+        }
+        if (ones != 0 || tens == 0) {
+            out.add(kanjiDigit(ones));
+        }
+        return out;
+    }
+
+    // The time as a painter's inscription in the upper-left void: the hour
+    // in kanji numerals stacked top to bottom, the minutes in brush digits
+    // beneath, and a vermillion artist's seal under those carrying the live
+    // heart rate. The hour column is anchored at its bottom glyph so one-
+    // and two-glyph hours sit the same distance above the minutes. Layout
+    // numbers mirror scripts/compose_preview.py.
     function drawInscription(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number,
                              xOff as Lang.Number, yOff as Lang.Number, isAod as Lang.Boolean) as Void {
         var clockTime = System.getClockTime();
@@ -107,12 +149,13 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
                 hour = hour - 12;
             }
         }
-        var hourText = hour.format("%d");
+        var hourGlyphs = kanjiHour(hour);
         var minText = clockTime.min.format("%02d");
 
         var colX = ((width * 22) / 100) + xOff;
-        var hourY = ((height * 21) / 100) + yOff;
-        var minY = ((height * 33) / 100) + yOff;
+        var hourBottomY = ((height * 265) / 1000) + yOff;
+        var hourPitch = (height * 10) / 100;
+        var minY = ((height * 375) / 1000) + yOff;
 
         var night = mScene.isNight();
         if (isAod) {
@@ -120,8 +163,11 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         } else {
             dc.setColor(night ? INK_NIGHT : INK, Graphics.COLOR_TRANSPARENT);
         }
-        dc.drawText(colX, hourY, mInkFont, hourText,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        var count = hourGlyphs.size();
+        for (var i = 0; i < count; i++) {
+            dc.drawText(colX, hourBottomY - (count - 1 - i) * hourPitch, mKanjiFont, hourGlyphs[i],
+                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
         dc.drawText(colX, minY, mInkFont, minText,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
@@ -133,7 +179,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         // carved seal digits (three of them fit with the 8.5% size).
         var sealSize = (width * 85) / 1000;
         var sealX = colX - (sealSize / 2);
-        var sealY = (height * 425) / 1000;
+        var sealY = (height * 465) / 1000;
         if (night) {
             dc.setFill(Graphics.createColor(0xEB, SEAL_NIGHT_R, SEAL_NIGHT_G, SEAL_NIGHT_B));
         } else {

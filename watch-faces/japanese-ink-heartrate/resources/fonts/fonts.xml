@@ -2,4 +2,6 @@
     <!-- Both pairs are baked by scripts/gen_ink_font.py; never hand-edit the .fnt. -->
     <font id="InkDigits" filename="ink_digits.fnt" antialias="true" filter="0123456789:" />
     <font id="SealDigits" filename="seal_digits.fnt" antialias="true" filter="0123456789" />
+    <!-- No filter: every glyph in the descriptor (the twelve hour numerals), so this file stays ASCII. -->
+    <font id="KanjiHours" filename="kanji_hours.fnt" antialias="true" />
 </fonts>
