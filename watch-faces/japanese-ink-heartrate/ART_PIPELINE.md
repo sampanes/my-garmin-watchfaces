@@ -100,9 +100,12 @@ paper. `mist_band_lite.png` is the same image at 62% alpha, baked because
 | fg_right.png | 280×180 | 11,8,6 | foreground, ink .86, open right edge, tree_prob .034 |
 | mist_band.png (+_lite) | 416×110 | 242,238,230 | organic mist, alpha .58 (lite ×.62) |
 | paper_grain.png | 240×240 | 96,84,70 | washi grain, upscaled on-device, alpha ≤ .16 |
+| `*_night.png` (all but grain) | same | 168,164,152 ink; far 120,118,110; mist 0,0,0 | night mode's pale ink on black paper; alpha × .75 fg, .80 host, .85 guest, .90 far, mist as is (`write_pair`) |
 
 Decoded pixel budget is about 450k px, up from 300k in the 2026-06 kit. The
 old kit ran on the FR265; this one is unverified there (first build will tell).
+The night set is the same budget again on disk (~80 KB of PNG), but
+`loadPlanes()` holds only one set in the graphics pool at a time.
 
 All registered in `drawables.xml` with the tuned-import contract
 (`dithering="none" automaticPalette="false" packingFormat="png"
@@ -170,8 +173,21 @@ host → mist → fg_left → fg_right → grain → (View) inscription + seal.
   `BufferedBitmap`. HR: real 4 h history → 16 fifteen-minute buckets →
   `landmarkPeaks()` (strongest bucket = host, strongest ≥ 1 h away = guest),
   `edgeHr()` (oldest / newest bucket with data → fg_left / fg_right height).
-  Host x is confined to `0.36 + peakX(nx)·0.40` so the upper-left void always
-  survives for the inscription; guest is pushed ≥ 0.30 away and clamped.
+  **One time axis**, `axisX(nx)` = 0.36..0.80 of the width for four hours
+  ago..now, places both landmarks clear of the inscription; the guest apex
+  is also floored at x 0.34 and pushed ≥ 0.30 from the host (crossing to the
+  host's other side when its own side has no room).
+- **True-HR overlay** (setting `trueHrOverlay`, default on): every raw
+  sample of the window (≤ 240, thinned by group maximum so peaks survive)
+  drawn as a hairline on `axisX` and the host apex formula, with rings on
+  the painting's two apexes. Where the line and the rings disagree is the
+  artistic license, measured. The guest ring will usually sit off the line:
+  it is recessed on purpose (smaller height formula) and often moved.
+- **Night mode** (settings `nightStart`/`nightEnd`, hours, default 21–6,
+  equal = off): black paper, the `*_night.png` plane set (pale ink, no
+  grain), pale inscription ink, dimmed seal. `loadPlanes()` keeps only one
+  set in the graphics pool; the hour boundary is always a 5-minute key, and
+  a settings change calls `invalidate()` through the App.
 - `JapaneseInkHeartrateView.mc` draws the inscription (hour over minutes in
   `Rez.Fonts.InkDigits`, ink `0x18120E`, column at x 22%, rows 21%/33%) and
   the vermillion seal (8.5% of width, y 42.5%) with live HR in

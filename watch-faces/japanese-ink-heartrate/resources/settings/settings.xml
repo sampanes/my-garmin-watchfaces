@@ -1,0 +1,11 @@
+<settings>
+    <setting propertyKey="@Properties.trueHrOverlay" title="@Strings.SettingTrueHr">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.nightStart" title="@Strings.SettingNightStart">
+        <settingConfig type="numeric" min="0" max="24" />
+    </setting>
+    <setting propertyKey="@Properties.nightEnd" title="@Strings.SettingNightEnd">
+        <settingConfig type="numeric" min="0" max="24" />
+    </setting>
+</settings>

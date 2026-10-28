@@ -1,5 +1,6 @@
 <drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
+    <!-- Day set: ink on paper. -->
     <bitmap id="HostMountainTuned" filename="host_mountain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="GuestMountainTuned" filename="guest_mountain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="FarRangeTuned" filename="far_range.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
@@ -8,4 +9,12 @@
     <bitmap id="FgLeftTuned" filename="fg_left.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="FgRightTuned" filename="fg_right.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PaperGrainTuned" filename="paper_grain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <!-- Night set: the same planes as pale ink for black paper (no grain). Only one set is loaded at a time. -->
+    <bitmap id="HostMountainNight" filename="host_mountain_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="GuestMountainNight" filename="guest_mountain_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FarRangeNight" filename="far_range_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="MistBandNight" filename="mist_band_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="MistBandLiteNight" filename="mist_band_lite_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FgLeftNight" filename="fg_left_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FgRightNight" filename="fg_right_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

@@ -13,12 +13,16 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     var mInkFont as WatchUi.FontResource;
     var mSealFont as WatchUi.FontResource;
 
-    // Sumi ink for the inscription digits (the darkest ink in the painting);
-    // vermillion for the seal.
+    // Sumi ink for the inscription digits (the darkest ink in the painting),
+    // pale ink on the night paper; vermillion for the seal, dimmed at night.
     const INK = 0x18120E;
+    const INK_NIGHT = 0xD8D2C6;
     const SEAL_RED_R = 176;
     const SEAL_RED_G = 52;
     const SEAL_RED_B = 38;
+    const SEAL_NIGHT_R = 150;
+    const SEAL_NIGHT_G = 44;
+    const SEAL_NIGHT_B = 32;
 
     function initialize() {
         WatchUi.WatchFace.initialize();
@@ -32,6 +36,10 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     }
 
     function onShow() as Void {
+    }
+
+    function onSettingsChanged() as Void {
+        mScene.invalidate();
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
@@ -106,10 +114,11 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         var hourY = ((height * 21) / 100) + yOff;
         var minY = ((height * 33) / 100) + yOff;
 
+        var night = mScene.isNight();
         if (isAod) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         } else {
-            dc.setColor(INK, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(night ? INK_NIGHT : INK, Graphics.COLOR_TRANSPARENT);
         }
         dc.drawText(colX, hourY, mInkFont, hourText,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -125,7 +134,11 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         var sealSize = (width * 85) / 1000;
         var sealX = colX - (sealSize / 2);
         var sealY = (height * 425) / 1000;
-        dc.setFill(Graphics.createColor(0xEB, SEAL_RED_R, SEAL_RED_G, SEAL_RED_B));
+        if (night) {
+            dc.setFill(Graphics.createColor(0xEB, SEAL_NIGHT_R, SEAL_NIGHT_G, SEAL_NIGHT_B));
+        } else {
+            dc.setFill(Graphics.createColor(0xEB, SEAL_RED_R, SEAL_RED_G, SEAL_RED_B));
+        }
         dc.fillRoundedRectangle(sealX, sealY, sealSize, sealSize, sealSize / 7);
 
         var hrText = currentHeartRateText();

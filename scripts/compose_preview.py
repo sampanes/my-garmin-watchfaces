@@ -11,7 +11,8 @@ Planes, back to front (same order on the watch):
 
 The inscription uses the baked BMFont pairs in resources/fonts (read from the
 .fnt exactly as the resource compiler reads them), so the preview's digits
-are the device's digits.
+are the device's digits. --night composes the moonlit negative set (what the
+night-mode hours show); the true-HR overlay is on unless --no-trace.
 """
 
 import os
@@ -39,12 +40,28 @@ def norm_hr(hr):
     return min(max((hr - HR_MIN) / (HR_MAX - HR_MIN), 0.0), 1.0)
 
 
+def height_for_norm(norm):
+    return 0.35 + norm * 0.65
+
+
 def height_for_hr(hr):
-    return 0.35 + norm_hr(hr) * 0.65
+    return height_for_norm(norm_hr(hr))
 
 
 def peak_x(nx):
     return 0.20 + min(max(nx, 0.0), 1.0) * 0.60
+
+
+def axis_x(nx):
+    """The landscape's time axis: four hours ago .. now -> 0.36..0.80 of W,
+    clear of the inscription column. Both landmarks and the true-HR overlay
+    use it, so a departure of the art from the data is visible as such."""
+    return 0.36 + (peak_x(nx) - 0.20) * 0.73
+
+
+def host_height(h_norm):
+    """Host plane height for a landmark height (height_for_hr output)."""
+    return 0.70 * H * (0.50 + 0.60 * h_norm)
 
 
 def bucket_history(data, count=16):
@@ -120,28 +137,52 @@ class BmFont:
         return Image.alpha_composite(img, layer)
 
 
-def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
-    far = load("far_range.png")
-    guest = load("guest_mountain.png")
-    host = load("host_mountain.png")
-    fg_l = load("fg_left.png")
-    fg_r = load("fg_right.png")
-    mist = load("mist_band.png")
-    mist_lite = load("mist_band_lite.png")
-    grain_p = os.path.join(DRAW, "paper_grain.png")
-    grain = Image.open(grain_p).convert("RGBA") if os.path.exists(grain_p) else None
+def draw_trace(base, trace, hx, host_apex_y, gx, guest_apex_y, night):
+    """The true-HR overlay as the Scene draws it: every sample as a hairline
+    on the landscape's axis (axis_x) and scale (the host apex formula), with
+    rings on the painting's two landmarks. Drawn at 2x for antialiasing."""
+    S = 2
+    layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer, "RGBA")
+    color = (127, 170, 255, 255) if night else (47, 98, 200, 255)
+    pts = [(W * axis_x(nx) * S, (0.87 * H - host_height(height_for_norm(norm))) * S)
+           for nx, norm in trace]
+    d.line(pts, fill=color, width=S)
+    for cx, cy in ((hx * W, host_apex_y), (gx * W, guest_apex_y)):
+        d.ellipse([(cx - 5) * S, (cy - 5) * S, (cx + 5) * S, (cy + 5) * S],
+                  outline=color, width=2 * S)
+    layer = layer.resize((W, H), Image.LANCZOS)
+    return Image.alpha_composite(base, layer)
 
+
+def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None):
+    """night: the moonlit negative set (pale ink on black paper, no grain).
+    trace: [(nx, norm_hr)] raw samples for the true-HR overlay, or None."""
+    sfx = "_night" if night else ""
+    far = load("far_range%s.png" % sfx)
+    guest = load("guest_mountain%s.png" % sfx)
+    host = load("host_mountain%s.png" % sfx)
+    fg_l = load("fg_left%s.png" % sfx)
+    fg_r = load("fg_right%s.png" % sfx)
+    mist = load("mist_band%s.png" % sfx)
+    mist_lite = load("mist_band_lite%s.png" % sfx)
+    grain_p = os.path.join(DRAW, "paper_grain.png")
+    grain = Image.open(grain_p).convert("RGBA") if os.path.exists(grain_p) and not night else None
+
+    # Both landmarks on the one time axis. The guest apex also stays right of
+    # the inscription column (x >= 0.34) and clear of the host massif; when
+    # it cannot do both on its own side of the host it crosses over.
     (host_nx, h0), (guest_nx, h1) = landmark_peaks(history)
-    hx = 0.36 + (peak_x(host_nx) - 0.20) * 0.73  # 0.36..0.80, clear of the digits
-    gx = peak_x(guest_nx)
-    if abs(hx - gx) < 0.30:                      # guest must clear the host massif
-        gx = hx + 0.34 if hx < 0.5 else hx - 0.34
-    gx = min(max(gx, 0.16), 0.84)
+    hx = axis_x(host_nx)
+    gx = max(axis_x(guest_nx), 0.34)
+    if abs(hx - gx) < 0.30:
+        gx = hx + 0.34 if hx < 0.55 else hx - 0.34
+        gx = min(max(gx, 0.34), 0.84)
     # Foreground masses carry the two ends of the window: oldest left, newest right.
     h_start = norm_hr(history[0])
     h_end = norm_hr(history[-1])
 
-    base = Image.new("RGBA", (W, H), PAPER)
+    base = Image.new("RGBA", (W, H), (0, 0, 0, 255) if night else PAPER)
 
     # sun / moon on the day arc (sun 06:00-18:00 west to east)
     d = ImageDraw.Draw(base, "RGBA")
@@ -171,7 +212,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
     base = paste_scaled(base, guest, gx * W - g_apex * g_w, 0.71 * H - g_h, g_w, g_h)
 
     # 4. host: strongest landmark, the hero
-    m_h = 0.70 * H * (0.50 + 0.60 * h0)
+    m_h = host_height(h0)
     m_w = m_h * (340.0 / 260.0)
     m_apex = 0.47
     base = paste_scaled(base, host, hx * W - m_apex * m_w, 0.87 * H - m_h, m_w, m_h)
@@ -187,15 +228,19 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
     r_w = 0.68 * W
     base = paste_scaled(base, fg_r, W - r_w + 0.04 * W, H - r_h + 0.03 * H, r_w, r_h)
 
-    # 7. paper grain over everything
+    # 7. paper grain over everything (day only: black paper stays black)
     if grain is not None:
         base = paste_scaled(base, grain, 0, 0, W, H)
 
-    # 8. inscription time + seal (upper-left void), as the View draws them:
+    # 8. the data itself, for judging the painting against it
+    if trace is not None:
+        base = draw_trace(base, trace, hx, 0.87 * H - m_h, gx, 0.71 * H - g_h, night)
+
+    # 9. inscription time + seal (upper-left void), as the View draws them:
     #    the baked brush digits for the time, the carved seal digits for HR.
     ink_font = BmFont("ink_digits")
     seal_font = BmFont("seal_digits")
-    ink = (24, 18, 14)
+    ink = (216, 210, 198) if night else (24, 18, 14)
     hour = minute_of_day // 60
     hour12 = 12 if hour % 12 == 0 else hour % 12
     base = ink_font.draw(base, str(hour12), int(0.22 * W), int(0.21 * H), ink)
@@ -203,7 +248,8 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
     seal = int(W * 0.085)
     sx0, sy0 = int(0.22 * W) - seal // 2, int(0.425 * H)
     ImageDraw.Draw(base, "RGBA").rounded_rectangle(
-        [sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7, fill=(176, 52, 38, 235))
+        [sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7,
+        fill=(150, 44, 32, 235) if night else (176, 52, 38, 235))
     if hr_now is not None:
         base = seal_font.draw(base, str(int(round(hr_now))), int(0.22 * W), sy0 + seal / 2.0,
                               (244, 238, 226))
@@ -217,9 +263,15 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
 
 
 def main(argv):
-    out = argv[1] if len(argv) > 1 else OUT
+    """compose_preview.py [out.png] [--night] [--no-trace]"""
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    night = "--night" in argv
+    out = args[0] if args else OUT
     history = bucket_history(MOCK, 16)
-    compose(history, hr_now=history[-1]).save(out)
+    trace = None if "--no-trace" in argv else \
+        [(i / (len(MOCK) - 1.0), norm_hr(v)) for i, v in enumerate(MOCK)]
+    minute = 22 * 60 + 15 if night else 14 * 60 + 42
+    compose(history, minute_of_day=minute, hr_now=history[-1], night=night, trace=trace).save(out)
     print("preview ->", os.path.abspath(out))
 
 

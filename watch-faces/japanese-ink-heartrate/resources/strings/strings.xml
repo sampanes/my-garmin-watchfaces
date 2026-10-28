@@ -1,3 +1,6 @@
 <resources>
     <string id="AppName">Japanese Ink Heartrate</string>
+    <string id="SettingTrueHr">Show the true HR line over the painting</string>
+    <string id="SettingNightStart">Night mode from (hour, 0-24)</string>
+    <string id="SettingNightEnd">Night mode until (hour, 0-24; same as from = off)</string>
 </resources>

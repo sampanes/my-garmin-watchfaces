@@ -1,4 +1,5 @@
 using Toybox.ActivityMonitor;
+using Toybox.Application;
 using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.Math;
@@ -16,6 +17,14 @@ using Toybox.WatchUi;
 // PNG; this file only places the planes, driven by the four-hour HR history:
 // the two strongest hour-separated landmarks become the mid-plane peaks, the
 // oldest and newest buckets set the two dark foreground masses.
+//
+// 2026-10-28: one time axis for both landmarks (x = 0.36..0.80 of the width,
+// four hours ago to now, clear of the inscription); an optional true-HR
+// overlay that draws every raw sample on that same axis and scale so the
+// gap between the data and the painting is visible at a glance; and a night
+// mode (settings: nightStart/nightEnd hours) that swaps in the moonlit
+// negative plane set (pale ink on black paper) so the face stops lighting
+// the bedroom.
 //
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
@@ -35,6 +44,8 @@ class JapaneseInkHeartrateScene {
     var mFgLeft;
     var mFgRight;
     var mPaperGrain;
+    // Which plane set is in the graphics pool: -1 none, 0 day, 1 night.
+    var mLoadedSet as Lang.Number = -1;
 
     // HR peak descriptor cache. Each element is [nx, h, s] — normalized x
     // position, normalized height, spread. Sorted descending by h so
@@ -44,11 +55,22 @@ class JapaneseInkHeartrateScene {
     // of the four-hour window was unavailable (for example after a reboot).
     var mHistory as Lang.Array<Lang.Float>?;
     var mLatestHr as Lang.Number?;
+    // Raw samples of the window for the true-HR overlay, oldest first:
+    // normalized time (0 = four hours ago, 1 = now) and normalized HR.
+    var mTraceNx as Lang.Array<Lang.Float>?;
+    var mTraceHr as Lang.Array<Lang.Float>?;
+
+    // Settings (resources/settings), re-read on every buffered render.
+    var mShowTrace as Lang.Boolean = true;
+    var mNightStart as Lang.Number = 21;
+    var mNightEnd as Lang.Number = 6;
+    var mNight as Lang.Boolean = false;
 
     const HR_MIN = 45.0;
     const HR_MAX = 160.0;
     const HISTORY_BUCKETS = 16;
     const HISTORY_SECONDS = 4 * 3600;
+    const TRACE_MAX = 240;
 
     // Asset native dimensions (must match gen_ink_layers.py outputs).
     const HOST_W = 340.0;
@@ -59,17 +81,103 @@ class JapaneseInkHeartrateScene {
     const GUEST_APEX_FRAC = 0.42;
 
     function initialize() {
-        if (WatchUi has :loadResource) {
-            mFar = WatchUi.loadResource(Rez.Drawables.FarRangeTuned);
-            mHost = WatchUi.loadResource(Rez.Drawables.HostMountainTuned);
-            mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainTuned);
-            mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned);
-            mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned);
-            mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftTuned);
-            mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightTuned);
-            mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned);
-        }
+        readSettings();
+        mNight = computeNight();
+        loadPlanes(mNight);
         refreshHistory();
+    }
+
+    // ------------------------------------------------------------ settings
+
+    function propValue(key as Lang.String) {
+        var value = null;
+        try {
+            value = Application.Properties.getValue(key);
+        } catch (ex) {
+            value = null;
+        }
+        return value;
+    }
+
+    function propBool(key as Lang.String, fallback as Lang.Boolean) as Lang.Boolean {
+        var value = propValue(key);
+        if (value instanceof Lang.Boolean) { return value as Lang.Boolean; }
+        if (value instanceof Lang.Number) { return (value as Lang.Number) != 0; }
+        return fallback;
+    }
+
+    function propHour(key as Lang.String, fallback as Lang.Number) as Lang.Number {
+        var value = propValue(key);
+        if (value instanceof Lang.Number || value instanceof Lang.Float) {
+            var hour = (value as Lang.Numeric).toNumber();
+            if (hour >= 0 && hour <= 24) { return hour; }
+        }
+        return fallback;
+    }
+
+    function readSettings() as Void {
+        mShowTrace = propBool("trueHrOverlay", true);
+        mNightStart = propHour("nightStart", 21);
+        mNightEnd = propHour("nightEnd", 6);
+    }
+
+    // Night mode is a clock window from the settings; equal hours = off.
+    function computeNight() as Lang.Boolean {
+        if (mNightStart == mNightEnd) { return false; }
+        var hour = System.getClockTime().hour;
+        if (mNightStart < mNightEnd) {
+            return hour >= mNightStart && hour < mNightEnd;
+        }
+        return hour >= mNightStart || hour < mNightEnd;
+    }
+
+    function isNight() as Lang.Boolean {
+        return mNight;
+    }
+
+    // Settings changed (or anything else that must repaint before the next
+    // five-minute key): forget the buffer's key so the next draw re-renders.
+    function invalidate() as Void {
+        mLastSceneKey = -1;
+    }
+
+    // -------------------------------------------------------------- planes
+
+    // Only one set sits in the graphics pool at a time: the other set's
+    // references are dropped before the new one loads.
+    function loadPlanes(night as Lang.Boolean) as Void {
+        var set = night ? 1 : 0;
+        if (set == mLoadedSet) { return; }
+        mFar = null;
+        mHost = null;
+        mGuest = null;
+        mMist = null;
+        mMistLite = null;
+        mFgLeft = null;
+        mFgRight = null;
+        mPaperGrain = null;
+        if (WatchUi has :loadResource) {
+            if (night) {
+                mFar = WatchUi.loadResource(Rez.Drawables.FarRangeNight);
+                mHost = WatchUi.loadResource(Rez.Drawables.HostMountainNight);
+                mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainNight);
+                mMist = WatchUi.loadResource(Rez.Drawables.MistBandNight);
+                mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteNight);
+                mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftNight);
+                mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightNight);
+                // No grain on the night paper: black stays black.
+            } else {
+                mFar = WatchUi.loadResource(Rez.Drawables.FarRangeTuned);
+                mHost = WatchUi.loadResource(Rez.Drawables.HostMountainTuned);
+                mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainTuned);
+                mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned);
+                mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned);
+                mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftTuned);
+                mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightTuned);
+                mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned);
+            }
+        }
+        mLoadedSet = set;
     }
 
     // ------------------------------------------------------------- HR data
@@ -109,6 +217,19 @@ class JapaneseInkHeartrateScene {
         return out;
     }
 
+    function mockTrace() as Void {
+        var source = generateMockHR();
+        var nxs = [] as Lang.Array<Lang.Float>;
+        var hrs = [] as Lang.Array<Lang.Float>;
+        var denom = (source.size() - 1).toFloat();
+        for (var i = 0; i < source.size(); i++) {
+            nxs.add(i.toFloat() / denom);
+            hrs.add(normHr(source[i]));
+        }
+        mTraceNx = nxs;
+        mTraceHr = hrs;
+    }
+
     function fillInternalGaps(history as Lang.Array<Lang.Float>) as Void {
         for (var i = 1; i < history.size() - 1; i++) {
             if (history[i] > 0.0) { continue; }
@@ -130,8 +251,12 @@ class JapaneseInkHeartrateScene {
         return (value - HR_MIN) / (HR_MAX - HR_MIN);
     }
 
+    function heightForNorm(norm as Lang.Float) as Lang.Float {
+        return 0.35 + norm * 0.65;
+    }
+
     function heightForHr(hr as Lang.Float) as Lang.Float {
-        return 0.35 + normHr(hr) * 0.65;
+        return heightForNorm(normHr(hr));
     }
 
     // Normalized HR of the oldest (edge < 0) or newest (edge > 0) bucket that
@@ -176,6 +301,8 @@ class JapaneseInkHeartrateScene {
         var counts = emptyBuckets();
         var valid = 0;
         mLatestHr = null;
+        var traceNx = [] as Lang.Array<Lang.Float>;
+        var traceHr = [] as Lang.Array<Lang.Float>;
 
         if ((Toybox has :ActivityMonitor) && (ActivityMonitor has :getHeartRateHistory)) {
             var iterator = null;
@@ -200,6 +327,11 @@ class JapaneseInkHeartrateScene {
                         counts[bucket] += 1.0;
                         mLatestHr = hr.toNumber();
                         valid++;
+                        var nx = elapsed.toFloat() / HISTORY_SECONDS.toFloat();
+                        if (nx < 0.0) { nx = 0.0; }
+                        if (nx > 1.0) { nx = 1.0; }
+                        traceNx.add(nx);
+                        traceHr.add(normHr(hr.toFloat()));
                     }
                     sample = iterator.next();
                 }
@@ -208,6 +340,7 @@ class JapaneseInkHeartrateScene {
 
         if (valid < 8) {
             mHistory = mockBuckets();
+            mockTrace();
         } else {
             var history = emptyBuckets();
             for (var i = 0; i < HISTORY_BUCKETS; i++) {
@@ -217,19 +350,58 @@ class JapaneseInkHeartrateScene {
             // time remains blank in the distant ridge rather than invented.
             fillInternalGaps(history);
             mHistory = history;
+            storeTrace(traceNx, traceHr);
         }
         mPeaks = landmarkPeaks(mHistory as Lang.Array<Lang.Float>);
+    }
+
+    // Keep at most TRACE_MAX samples. Groups are reduced to their highest
+    // sample, never their first, so a peak survives the thinning.
+    function storeTrace(nxs as Lang.Array<Lang.Float>, hrs as Lang.Array<Lang.Float>) as Void {
+        if (nxs.size() <= TRACE_MAX) {
+            mTraceNx = nxs;
+            mTraceHr = hrs;
+            return;
+        }
+        var stride = (nxs.size() + TRACE_MAX - 1) / TRACE_MAX;
+        var outNx = [] as Lang.Array<Lang.Float>;
+        var outHr = [] as Lang.Array<Lang.Float>;
+        for (var i = 0; i < nxs.size(); i += stride) {
+            var best = i;
+            for (var j = i + 1; j < i + stride && j < nxs.size(); j++) {
+                if (hrs[j] > hrs[best]) { best = j; }
+            }
+            outNx.add(nxs[best]);
+            outHr.add(hrs[best]);
+        }
+        mTraceNx = outNx;
+        mTraceHr = outHr;
     }
 
     function latestHeartRateText() as Lang.String? {
         return (mLatestHr == null) ? null : mLatestHr.format("%d");
     }
 
+    // ------------------------------------------------------------ mapping
+    // The landscape's time axis: 0 (four hours ago) .. 1 (now) maps to
+    // x = 0.36..0.80 of the width, which keeps every apex clear of the
+    // inscription column. The true-HR overlay uses the same two functions,
+    // so wherever the art departs from the data, the departure shows.
+
     function peakX(nx as Lang.Float) as Lang.Float {
         var clamped = nx;
         if (clamped < 0.0) { clamped = 0.0; }
         if (clamped > 1.0) { clamped = 1.0; }
         return 0.20 + clamped * 0.60;
+    }
+
+    function axisX(nx as Lang.Float) as Lang.Float {
+        return 0.36 + (peakX(nx) - 0.20) * 0.73;
+    }
+
+    // Host plane height for a landmark height (heightForHr output).
+    function hostHeight(hNorm as Lang.Float, h as Lang.Float) as Lang.Float {
+        return h * 0.70 * (0.50 + 0.60 * hNorm);
     }
 
     // ------------------------------------------------------ buffer plumbing
@@ -257,6 +429,8 @@ class JapaneseInkHeartrateScene {
         }
     }
 
+    // Five-minute key. The night window flips on an hour, which is always a
+    // key boundary, so the swap never waits.
     function getSceneKey() as Lang.Number {
         var clockTime = System.getClockTime();
         var minuteOfDay = (clockTime.hour * 60) + clockTime.min;
@@ -290,6 +464,9 @@ class JapaneseInkHeartrateScene {
 
         // Five-minute refresh tracks new history samples without doing the
         // iterator and buffered painting work on every one-second update.
+        readSettings();
+        mNight = computeNight();
+        loadPlanes(mNight);
         refreshHistory();
         renderScene(buffer.getDc(), mBufferWidth, mBufferHeight);
         mLastSceneKey = sceneKey;
@@ -305,26 +482,27 @@ class JapaneseInkHeartrateScene {
         var w = width.toFloat();
         var h = height.toFloat();
 
-        // host x anchor stays mid-right so the upper-left void holds the
-        // inscription; guest is pushed clear of the host massif.
+        // Both landmarks sit on the one time axis. The guest apex also stays
+        // right of the inscription column (x >= 0.34) and clear of the host
+        // massif; when it cannot do both on its own side it crosses over.
         var peaks = mPeaks;
         var h0 = 0.6;
         var h1 = 0.5;
         var hostNx = 0.5;
         var guestNx = 0.25;
         if (peaks != null && peaks.size() >= 2) {
-            // 0.36..0.80: wide enough to read the peak's time, clear of the digits
-            hostNx = 0.36 + (peakX(peaks[0][0]) - 0.20) * 0.73;
-            guestNx = peakX(peaks[1][0]);
+            hostNx = axisX(peaks[0][0]);
+            guestNx = axisX(peaks[1][0]);
             h0 = peaks[0][1];
             h1 = peaks[1][1];
+            if (guestNx < 0.34) { guestNx = 0.34; }
             var dxp = hostNx - guestNx;
             if (dxp < 0.0) { dxp = -dxp; }
             if (dxp < 0.30) {
-                guestNx = (hostNx < 0.5) ? hostNx + 0.34 : hostNx - 0.34;
+                guestNx = (hostNx < 0.55) ? hostNx + 0.34 : hostNx - 0.34;
+                if (guestNx < 0.34) { guestNx = 0.34; }
+                if (guestNx > 0.84) { guestNx = 0.84; }
             }
-            if (guestNx < 0.16) { guestNx = 0.16; }
-            if (guestNx > 0.84) { guestNx = 0.84; }
         }
 
         // The foreground masses carry the two ends of the window: the oldest
@@ -346,20 +524,20 @@ class JapaneseInkHeartrateScene {
         }
 
         // 3. guest: the second landmark, recessed
+        var gH = h * 0.50 * (0.40 + 0.70 * h1);
+        var gY = h * 0.71 - gH;
         if (mGuest != null) {
-            var gH = h * 0.50 * (0.40 + 0.70 * h1);
             var gW = gH * (GUEST_W / GUEST_H);
             var gX = guestNx * w - GUEST_APEX_FRAC * gW;
-            var gY = h * 0.71 - gH;
             dc.drawScaledBitmap(gX, gY, gW, gH, mGuest);
         }
 
         // 4. host: the strongest landmark, the hero
+        var hH = hostHeight(h0, h);
+        var hY = h * 0.87 - hH;
         if (mHost != null) {
-            var hH = h * 0.70 * (0.50 + 0.60 * h0);
             var hW = hH * (HOST_W / HOST_H);
             var hX = hostNx * w - HOST_APEX_FRAC * hW;
-            var hY = h * 0.87 - hH;
             dc.drawScaledBitmap(hX, hY, hW, hH, mHost);
         }
 
@@ -384,10 +562,43 @@ class JapaneseInkHeartrateScene {
         if (mPaperGrain != null) {
             dc.drawScaledBitmap(0, 0, width, height, mPaperGrain);
         }
+
+        // 8. the data itself, for judging the painting against it
+        if (mShowTrace) {
+            drawTrace(dc, w, h, hostNx * w, hY, guestNx * w, gY);
+        }
+    }
+
+    // Every raw sample as a hairline on the landscape's own axis and scale:
+    // x by axisX, y by the host apex formula. Rings mark where the painting
+    // put its two landmarks. Where the line and the rings disagree, that is
+    // the artistic license, measured.
+    function drawTrace(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float,
+                       hostAx as Lang.Float, hostAy as Lang.Float,
+                       guestAx as Lang.Float, guestAy as Lang.Float) as Void {
+        var nxs = mTraceNx;
+        var hrs = mTraceHr;
+        if (nxs == null || hrs == null || nxs.size() < 2) { return; }
+        dc.setColor(mNight ? 0x7FAAFF : 0x2F62C8, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(1);
+        var px = (w * axisX(nxs[0])).toNumber();
+        var py = (h * 0.87 - hostHeight(heightForNorm(hrs[0]), h)).toNumber();
+        for (var i = 1; i < nxs.size(); i++) {
+            var x = (w * axisX(nxs[i])).toNumber();
+            var y = (h * 0.87 - hostHeight(heightForNorm(hrs[i]), h)).toNumber();
+            dc.drawLine(px, py, x, y);
+            px = x;
+            py = y;
+        }
+        dc.setPenWidth(2);
+        dc.drawCircle(hostAx.toNumber(), hostAy.toNumber(), 5);
+        dc.drawCircle(guestAx.toNumber(), guestAy.toNumber(), 5);
+        dc.setPenWidth(1);
     }
 
     function drawPaper(dc as Graphics.Dc) as Void {
-        dc.setColor(0xF2EEE6, 0xF2EEE6);
+        var paper = mNight ? 0x000000 : 0xF2EEE6;
+        dc.setColor(paper, paper);
         dc.clear();
     }
 

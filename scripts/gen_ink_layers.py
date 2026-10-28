@@ -20,6 +20,8 @@ Outputs (RGBA, straight alpha, one ink color per file):
     mist_band.png        416x110  paper-colored organic mist (band+puffs+wisps)
     mist_band_lite.png   same at 62% alpha (no runtime alpha knob on device)
     paper_grain.png      240x240  washi grain, upscaled on-device
+    *_night.png          every plane but the grain again as pale ink for the
+                         night mode's black paper (mist becomes black)
 
 Rendering happens at SS x supersample and is LANCZOS-downsampled. Every
 random draw goes through seeded numpy RNGs: regeneration is byte-identical.
@@ -497,6 +499,17 @@ def make_paper_grain(size, seed):
 
 # ---------------------------------------------------------------- main
 
+def write_pair(alpha, rgb, name, night_rgb, night_scale):
+    """Day plane plus its night twin: the same alpha, scaled, in pale ink.
+    On black paper the nearest plane carries the most ink and so the most
+    light, which keeps the depth order of the day painting."""
+    to_png(alpha, rgb, os.path.join(OUT_DIR, name + ".png"))
+    to_png(alpha * night_scale, night_rgb, os.path.join(OUT_DIR, name + "_night.png"))
+
+
+NIGHT_INK = (168, 164, 152)
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     ink_rgb = (12, 9, 7)
@@ -511,7 +524,7 @@ def main():
                        amp_frac=0.88, rough=0.18, ink=0.19, fade=0.0, seed=202,
                        y_base_frac=0.97, blur_1x=3.5, bleed=0.04, dry=False, fly=False,
                        edge_left=0.0, edge_right=0.0, base_fade=(0.72, 0.98))
-    to_png(over(ghost, far), (70, 66, 60), os.path.join(OUT_DIR, "far_range.png"))
+    write_pair(over(ghost, far), (70, 66, 60), "far_range", (120, 118, 110), 0.9)
 
     # Mid plane, second landmark: paler, softer, one tree or two.
     guest = render_plane(260, 190, [(0.42, 1.0, 0.16), (0.72, 0.52, 0.13)],
@@ -519,7 +532,7 @@ def main():
                          blur_1x=1.2, cun_count=70, tree_prob=0.012, bleed=0.10,
                          edge_left=0.14, edge_right=0.14, base_fade=(0.70, 0.97),
                          tree_size=(5.0, 10.0), crown=0.16)
-    to_png(guest, ink_rgb, os.path.join(OUT_DIR, "guest_mountain.png"))
+    write_pair(guest, ink_rgb, "guest_mountain", NIGHT_INK, 0.85)
 
     # Mid plane, strongest landmark: the hero. Benchmark mid ink .48, 1 px blur.
     host = render_plane(340, 260, [(0.47, 1.0, 0.14), (0.78, 0.60, 0.12), (0.20, 0.42, 0.11)],
@@ -527,7 +540,7 @@ def main():
                         blur_1x=0.9, cun_count=150, tree_prob=0.020, bleed=0.14,
                         edge_left=0.12, edge_right=0.12, base_fade=(0.72, 0.98),
                         tree_size=(5.0, 13.0), crown=0.30)
-    to_png(host, ink_rgb, os.path.join(OUT_DIR, "host_mountain.png"))
+    write_pair(host, ink_rgb, "host_mountain", NIGHT_INK, 0.80)
 
     # Foreground anchors: dark, textured, tree-lined. Left mass stays low so
     # the inscription keeps its upper-left void; right mass may rise higher.
@@ -537,7 +550,7 @@ def main():
                            blur_1x=0.5, cun_count=170, tree_prob=0.042, bleed=0.24,
                            edge_left=0.0, edge_right=0.22, base_fade=(0.90, 1.05),
                            tree_size=(6.0, 15.0), crown=0.25)
-    to_png(fg_left, (11, 8, 6), os.path.join(OUT_DIR, "fg_left.png"))
+    write_pair(fg_left, (11, 8, 6), "fg_left", NIGHT_INK, 0.75)
 
     fg_right = render_plane(280, 180, [(0.98, 0.66, 0.14), (0.78, 0.82, 0.13),
                                        (0.56, 0.58, 0.12), (0.36, 0.36, 0.10)],
@@ -545,12 +558,12 @@ def main():
                             blur_1x=0.5, cun_count=150, tree_prob=0.034, bleed=0.21,
                             edge_left=0.22, edge_right=0.0, base_fade=(0.90, 1.05),
                             tree_size=(6.0, 15.0), crown=0.25)
-    to_png(fg_right, (11, 8, 6), os.path.join(OUT_DIR, "fg_right.png"))
+    write_pair(fg_right, (11, 8, 6), "fg_right", NIGHT_INK, 0.75)
 
-    # Mist, paper-colored so it only ever erases ink.
+    # Mist, paper-colored so it only ever erases ink: black at night.
     mist = organic_mist(416, 110, seed=1001, alpha=0.58)
-    to_png(mist, PAPER, os.path.join(OUT_DIR, "mist_band.png"))
-    to_png(mist * 0.62, PAPER, os.path.join(OUT_DIR, "mist_band_lite.png"))
+    write_pair(mist, PAPER, "mist_band", (0, 0, 0), 1.0)
+    write_pair(mist * 0.62, PAPER, "mist_band_lite", (0, 0, 0), 1.0)
 
     make_paper_grain(240, seed=99).save(os.path.join(OUT_DIR, "paper_grain.png"))
 
