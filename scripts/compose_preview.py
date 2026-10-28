@@ -132,7 +132,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
     grain = Image.open(grain_p).convert("RGBA") if os.path.exists(grain_p) else None
 
     (host_nx, h0), (guest_nx, h1) = landmark_peaks(history)
-    hx = 0.36 + peak_x(host_nx) * 0.40          # host stays mid-right of center
+    hx = 0.36 + (peak_x(host_nx) - 0.20) * 0.73  # 0.36..0.80, clear of the digits
     gx = peak_x(guest_nx)
     if abs(hx - gx) < 0.30:                      # guest must clear the host massif
         gx = hx + 0.34 if hx < 0.5 else hx - 0.34
@@ -165,13 +165,13 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
 
     # 3. guest: second landmark, recessed
-    g_h = 0.50 * H * (0.55 + 0.45 * h1)
+    g_h = 0.50 * H * (0.40 + 0.70 * h1)
     g_w = g_h * (260.0 / 190.0)
     g_apex = 0.42
     base = paste_scaled(base, guest, gx * W - g_apex * g_w, 0.71 * H - g_h, g_w, g_h)
 
     # 4. host: strongest landmark, the hero
-    m_h = 0.70 * H * (0.72 + 0.38 * h0)
+    m_h = 0.70 * H * (0.50 + 0.60 * h0)
     m_w = m_h * (340.0 / 260.0)
     m_apex = 0.47
     base = paste_scaled(base, host, hx * W - m_apex * m_w, 0.87 * H - m_h, m_w, m_h)
@@ -180,10 +180,10 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None):
     base = paste_scaled(base, mist, -0.03 * W, 0.69 * H, 1.06 * W, 0.20 * H)
 
     # 6. foreground masses: left = oldest hour, right = newest
-    l_h = 0.58 * H * (0.80 + 0.20 * h_start)
+    l_h = 0.58 * H * (0.65 + 0.45 * h_start)
     l_w = 0.74 * W
     base = paste_scaled(base, fg_l, -0.04 * W, H - l_h + 0.03 * H, l_w, l_h)
-    r_h = 0.52 * H * (0.80 + 0.20 * h_end)
+    r_h = 0.52 * H * (0.65 + 0.45 * h_end)
     r_w = 0.68 * W
     base = paste_scaled(base, fg_r, W - r_w + 0.04 * W, H - r_h + 0.03 * H, r_w, r_h)
 

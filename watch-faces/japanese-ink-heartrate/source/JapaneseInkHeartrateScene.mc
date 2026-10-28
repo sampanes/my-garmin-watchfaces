@@ -313,7 +313,8 @@ class JapaneseInkHeartrateScene {
         var hostNx = 0.5;
         var guestNx = 0.25;
         if (peaks != null && peaks.size() >= 2) {
-            hostNx = 0.36 + peakX(peaks[0][0]) * 0.40;
+            // 0.36..0.80: wide enough to read the peak's time, clear of the digits
+            hostNx = 0.36 + (peakX(peaks[0][0]) - 0.20) * 0.73;
             guestNx = peakX(peaks[1][0]);
             h0 = peaks[0][1];
             h1 = peaks[1][1];
@@ -346,7 +347,7 @@ class JapaneseInkHeartrateScene {
 
         // 3. guest: the second landmark, recessed
         if (mGuest != null) {
-            var gH = h * 0.50 * (0.55 + 0.45 * h1);
+            var gH = h * 0.50 * (0.40 + 0.70 * h1);
             var gW = gH * (GUEST_W / GUEST_H);
             var gX = guestNx * w - GUEST_APEX_FRAC * gW;
             var gY = h * 0.71 - gH;
@@ -355,7 +356,7 @@ class JapaneseInkHeartrateScene {
 
         // 4. host: the strongest landmark, the hero
         if (mHost != null) {
-            var hH = h * 0.70 * (0.72 + 0.38 * h0);
+            var hH = h * 0.70 * (0.50 + 0.60 * h0);
             var hW = hH * (HOST_W / HOST_H);
             var hX = hostNx * w - HOST_APEX_FRAC * hW;
             var hY = h * 0.87 - hH;
@@ -369,12 +370,12 @@ class JapaneseInkHeartrateScene {
 
         // 6. foreground masses: left = oldest hour, right = newest
         if (mFgLeft != null) {
-            var lH = h * 0.58 * (0.80 + 0.20 * hStart);
+            var lH = h * 0.58 * (0.65 + 0.45 * hStart);
             var lW = w * 0.74;
             dc.drawScaledBitmap(-(w * 0.04), h - lH + h * 0.03, lW, lH, mFgLeft);
         }
         if (mFgRight != null) {
-            var rH = h * 0.52 * (0.80 + 0.20 * hEnd);
+            var rH = h * 0.52 * (0.65 + 0.45 * hEnd);
             var rW = w * 0.68;
             dc.drawScaledBitmap(w - rW + w * 0.04, h - rH + h * 0.03, rW, rH, mFgRight);
         }
