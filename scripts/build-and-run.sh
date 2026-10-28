@@ -59,7 +59,12 @@ KEY="${KEY//\\//}"
 DEVICE="fr265"
 PRG="$REPO/bin/mygarminwatchfaces.prg"
 JUNGLE="$REPO/monkey.jungle"
-CAPTURE_PS1="$REPO/watch-faces/japanese-ink-heartrate/art/checkpoints/procedural/save-sim-capture.ps1"
+# The screenshot helper. The tracked location is scripts/; the checkpoints
+# folder is gitignored, so a copy there exists only on the PC that wrote it.
+CAPTURE_PS1="$SCRIPT_DIR/save-sim-capture.ps1"
+if [[ ! -f "$CAPTURE_PS1" ]]; then
+  CAPTURE_PS1="$REPO/watch-faces/japanese-ink-heartrate/art/checkpoints/procedural/save-sim-capture.ps1"
+fi
 
 [[ -f "$SDK/bin/monkeyc.bat" ]] || { echo "Connect IQ compiler not found under $SDK." >&2; exit 1; }
 [[ -f "$KEY" ]] || { echo "Developer key not found; set MONKEYC_DEVELOPER_KEY." >&2; exit 1; }
@@ -83,6 +88,11 @@ MONKEYDO_PID=$!
 sleep 4
 
 if [[ -n "$CAPTURE_PATH" ]]; then
+  if [[ ! -f "$CAPTURE_PS1" ]]; then
+    echo "[capture] helper not found: scripts/save-sim-capture.ps1 (the build and push above succeeded)." >&2
+    echo "[capture] Take the shot by hand: simulator File > Save Screen Capture, or move the helper into scripts/ and commit it." >&2
+    exit 2
+  fi
   echo "[capture] $CAPTURE_PATH"
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$CAPTURE_PS1" -OutputPath "$CAPTURE_PATH"
 fi

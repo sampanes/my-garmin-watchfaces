@@ -379,7 +379,11 @@ class JapaneseInkHeartrateScene {
     }
 
     function latestHeartRateText() as Lang.String? {
-        return (mLatestHr == null) ? null : mLatestHr.format("%d");
+        // Local copy: the type checker narrows locals after a null test,
+        // not member variables.
+        var hr = mLatestHr;
+        if (hr == null) { return null; }
+        return hr.format("%d");
     }
 
     // ------------------------------------------------------------ mapping
