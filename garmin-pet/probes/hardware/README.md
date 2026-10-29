@@ -14,8 +14,30 @@ It currently covers:
   (the timestamp-sanity half of T8)
 - T14 VO2max profile values
 - T17 barometer / floors split
+- T15 complication subscribe from a DEVICE APP (written 2026-10-29, unbuilt):
+  SELECT registers the change callback and subscribes to Body Battery, stress
+  and heart rate (`SUB YNY` is one Y/N per `subscribeToUpdates` return), reads
+  each through `getComplication` (`null` = no value, `NF` = not found), and
+  `CB n` counts callbacks as they fire; watch it for a minute. Values present
+  with `CB` stuck at 0 = "read yes, subscribe no". Scrolling away unsubscribes.
+- T23 ANT master TX and T24 ANT slave RX (written 2026-10-29, unbuilt): one
+  generic channel on the Spike B parameters (`03-ble-live.md`: public network,
+  RF 66, device 0xBEEF, type 1, trans 1, 4 Hz). SELECT opens it and the lines
+  count live: `OPEN`, `TX n` (one `EVENT_TX` per transmission, so about 4/s
+  when the radio really sends) or `RX n` (broadcasts received), `N` the
+  counter byte (sent, or last received), `F` other RF events, `EV` the last
+  event code (`03` TX, `01` search timeout, `02` RX fail, `07` closed, `FF`
+  the wearer declined the connection prompt). SELECT again, or scrolling
+  away, closes and releases the channel and saves the numbers. T23 needs one
+  watch; T24 needs the other watch on the T23 row at the same time, then
+  swap roles (the 30 s search timeout is the maximum the API allows).
 
-The remaining rows in `11-hardware-test-plan.md` need specialized probes because they require background services, activity recording, ANT pairing, notifications, GPS walks, or web callbacks.
+New permissions in the manifest for those rows: `Ant` and
+`ComplicationSubscriber`. If the compiler says "Invalid permission provided"
+for the second, the SDK is older than the permission; remove the line and
+T15 reports whatever the runtime does without it.
+
+The remaining rows in `11-hardware-test-plan.md` need specialized probes because they require background services, activity recording, notifications, GPS walks, or web callbacks.
 
 ## VS Code Path
 

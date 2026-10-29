@@ -26,9 +26,11 @@ Turnkey first pass now lives at `garmin-pet/probes/hardware/`.
 - It builds `bin/hardware-probes/pet-hardware-probe-<device>.prg`, then you copy
   that file into the watch's `GARMIN/Apps/` folder over MTP.
 
-The runner currently covers the cheap first-pass probes: T0/T1/T2/T7/T8/T14/T17.
-Rows that need background services, GPS walks, ANT pairing, web callbacks, or
-Garmin Connect inspection still need specialized one-off probe bodies.
+The runner currently covers the cheap first-pass probes: T0/T1/T2/T7/T8/T14/T17,
+plus (2026-10-29, unbuilt) T15 complication-subscribe and the ANT pair T23 (master
+TX) / T24 (slave RX) as live-counting rows; see `probes/hardware/README.md`.
+Rows that need background services, GPS walks, web callbacks, or Garmin Connect
+inspection still need specialized one-off probe bodies.
 
 The runner saves the last displayed result for each probe in `Application.Storage`
 and shows it again when you return to that T-number. It does not export a text
