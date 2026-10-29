@@ -407,7 +407,11 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
         base = seal_font.draw(base, str(int(round(hr_now))), int(0.22 * W), sy0 + seal / 2.0,
                               (244, 238, 226))
 
-    # circular mask + dark surround (sim look)
+    return round_off(base)
+
+
+def round_off(base):
+    """Circular mask + dark surround (the sim look)."""
     mask = Image.new("L", (W, H), 0)
     ImageDraw.Draw(mask).ellipse([0, 0, W - 1, H - 1], fill=255)
     surround = Image.new("RGBA", (W, H), (24, 24, 24, 255))
@@ -415,14 +419,110 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     return surround.convert("RGB")
 
 
+# ---- the RENDERER_PLAN §13 probe card ---------------------------------------
+# What the Scene draws with PROBE = true, geometry 1:1 (fractions of the
+# screen, integer truncation as on the watch). The RIGHT tile of each pair is
+# rendered the way the API promises (Pillow's bilinear resample, half the
+# mist's alpha, the documented multiply), so the wrist photo has something to
+# be judged against: a tile that matches this is a row that survives, one
+# that matches its LEFT neighbor is a no-op, and the word ERR or n/a is the
+# firmware refusing the call. The labels use Pillow's default face; the
+# watch uses FONT_XTINY, so their width differs, and the title's API level
+# and buffer note ("full" = ALPHA_BLENDING_FULL accepted) are the watch's.
+MIST_W, MIST_H = 416, 110
+PROBE_GROUND = (0x5A, 0x55, 0x50, 255)
+PROBE_INK = (24, 18, 14, 255)
+
+
+def compose_probe():
+    from PIL import ImageChops, ImageFont
+    host = load("host_mountain.png")
+    guest = load("guest_mountain.png")
+    mist = load("mist_band.png")
+    mist_lite = load("mist_band_lite.png")
+    base = Image.new("RGBA", (W, H), PAPER)
+    d = ImageDraw.Draw(base, "RGBA")
+    try:
+        font = ImageFont.load_default(size=15)
+    except TypeError:     # Pillow < 10.1
+        font = ImageFont.load_default()
+
+    def frame(x, y, w, h):
+        d.rectangle([x - 1, y - 1, x + w, y + h], outline=PROBE_INK, width=1)
+
+    def ground(x, y, w, h):
+        d.rectangle([x, y, x + w - 1, y + h - 1], fill=PROBE_GROUND)
+
+    def label(cy, text):
+        d.text((W // 2, int(cy)), text, fill=PROBE_INK, font=font, anchor="mm")
+
+    def mist_middle(img, w, h):
+        ox, oy = (MIST_W - w) // 2, (MIST_H - h) // 2
+        return img.crop((ox, oy, ox + w, oy + h))
+
+    label(0.075 * H, "PROBE 5.2.1 full")
+
+    # A: the mist's middle over gray into FULL | PARTIAL | the screen; all
+    #    three the same when every surface blends 8-bit alpha
+    ax, ay, aw, ah, gap = int(W * 0.17), int(H * 0.14), int(W * 0.20), int(H * 0.15), int(W * 0.03)
+    for i in range(3):
+        x = ax + i * (aw + gap)
+        frame(x, ay, aw, ah)
+        ground(x, ay, aw, ah)
+        base.alpha_composite(mist_middle(mist, aw, ah), dest=(x, ay))
+    label(0.325 * H, "A: full | partial | screen")
+
+    # B: the host plane, point sampling | bilinear
+    bx, by, bw, bh = int(W * 0.08), int(H * 0.36), int(W * 0.40), int(H * 0.18)
+    bx2 = bx + bw + int(W * 0.04)
+    host_w = int(round(bh * 340.0 / 260.0))
+    inset = int((bw - host_w) / 2.0)
+    frame(bx, by, bw, bh)
+    frame(bx2, by, bw, bh)
+    base.alpha_composite(host.resize((host_w, bh), Image.NEAREST), dest=(bx + inset, by))
+    base.alpha_composite(host.resize((host_w, bh), Image.BILINEAR), dest=(bx2 + inset, by))
+    label(0.575 * H, "B: point | bilinear")
+
+    # C: mist_band_lite as baked | mist_band at half alpha (the tint)
+    cy, ch = int(H * 0.60), int(H * 0.11)
+    for x in (bx, bx2):
+        frame(x, cy, bw, ch)
+        ground(x, cy, bw, ch)
+    base.alpha_composite(mist_middle(mist_lite, bw, ch), dest=(bx, cy))
+    tinted = mist_middle(mist, bw, ch)
+    tinted.putalpha(tinted.getchannel("A").point(lambda v: v * 0x80 // 255))
+    base.alpha_composite(tinted, dest=(bx2, cy))
+    label(0.745 * H, "C: baked 62% | tint 50%")
+
+    # D: two guests overlapping by half, source-over | multiply
+    #    (multiply with an opaque destination: D * (S over white))
+    dx, dy, dw, dh = int(W * 0.235), int(H * 0.78), int(W * 0.25), int(H * 0.12)
+    dx2 = dx + dw + int(W * 0.03)
+    gh = dh * 0.9
+    gw = gh * 260.0 / 190.0
+    gy = int(round(dy + (dh - gh) / 2.0))
+    g = guest.resize((int(round(gw)), int(round(gh))), Image.LANCZOS)
+    g_over_white = Image.alpha_composite(Image.new("RGBA", g.size, (255, 255, 255, 255)), g)
+    for x in (dx, dx2):
+        frame(x, dy, dw, dh)
+    for off in (3.0, dw - 3.0 - gw):
+        base.alpha_composite(g, dest=(int(round(dx + off)), gy))
+        x = int(round(dx2 + off))
+        region = base.crop((x, gy, x + g.width, gy + g.height))
+        base.paste(ImageChops.multiply(region, g_over_white), (x, gy))
+    label(0.93 * H, "D: over | multiply")
+    return round_off(base)
+
+
 def main(argv):
     """compose_preview.py [out.png] [--night] [--no-trace] [--24h] [--time HH:MM]
-                          [--data hr.csv [--end YYYY-MM-DDTHH:MM]]
+                          [--data hr.csv [--end YYYY-MM-DDTHH:MM]] [--probe]
 
     Defaults: 14:42 by day, 22:15 by night, 12-hour clock, the mock window.
     --data composes a real window (see load_data); its clock is the window's
     end in Arizona time unless --time is given, and --end (Arizona local)
-    picks which four hours of the file to show."""
+    picks which four hours of the file to show. --probe writes the expected
+    RENDERER_PLAN §13 probe card instead of the painting."""
     valued = ("--time", "--data", "--end")
     args, opts = [], {}
     it = iter(argv[1:])
@@ -433,6 +533,10 @@ def main(argv):
             args.append(a)
     night = "--night" in argv
     out = args[0] if args else OUT
+    if "--probe" in argv:
+        compose_probe().save(out)
+        print("probe card ->", os.path.abspath(out))
+        return
     minute = 22 * 60 + 15 if night else 14 * 60 + 42
     if "--data" in opts:
         end_epoch = None

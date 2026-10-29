@@ -263,7 +263,7 @@ what the forums say about hardware behavior, which is the part that matters.
 
 | Feature (API level) | What it replaces here | Status |
 |---|---|---|
-| `createBufferedBitmap({... :alphaBlending => ALPHA_BLENDING_FULL})` (4.0.0) | Nothing yet: `ensureBuffer()` creates the scene buffer without it | Forum thread 340936: an 8-bit-alpha PNG drawn bitmap-over-bitmap rendered **1-bit** (opaque or clear) on a real epix 2, same AMOLED/5.2 generation, while the sim blended fine; `ALPHA_BLENDING_FULL` was the suggested fix and nobody tested it. This face's whole grammar is alpha PNGs into a BufferedBitmap, so whether the hardware blends 8-bit alpha is the first thing to know. John's verdict (2026-10-27): it looked bad on the wrist **and** in the sim, so this row is a hardware unknown to settle, not the explanation for the look. |
+| `createBufferedBitmap({... :alphaBlending => ALPHA_BLENDING_FULL})` (4.0.0) | Nothing yet: `ensureBuffer()` creates the scene buffer without it | Forum thread 340936: an 8-bit-alpha PNG drawn bitmap-over-bitmap rendered **1-bit** (opaque or clear) on a real epix 2, same AMOLED/5.2 generation, while the sim blended fine; `ALPHA_BLENDING_FULL` was the suggested fix and nobody tested it (and the docs make it the default, see the probe below). This face's whole grammar is alpha PNGs into a BufferedBitmap, so whether the hardware blends 8-bit alpha is the first thing to know. John's verdict (2026-10-27): it looked bad on the wrist **and** in the sim, so this row is a hardware unknown to settle, not the explanation for the look. |
 | `drawBitmap2(x, y, bmp, {:transform => AffineTransform, :filterMode => FILTER_MODE_BILINEAR})` (4.2.1) | `drawScaledBitmap` (point sampling): translation gap 3 ("device scaling is crisper than LANCZOS, thin strokes become a barcode"); horizontal flips and rotations without extra PNGs | Documented, device list not given. Bug CIQQA-3176 (`drawScaledBitmap` pixelated on a real vivoactive 6, fine in the sim) says scaling quality is a hardware question. Unverified on FR265. |
 | `drawBitmap2 ... :tintColor` (4.2.1) | `mist_band_lite.png` (alpha baked at 62% because there was no global-alpha knob); the parked time-of-day ink tints | Mixed reports: works for some, a no-op for others, and "Source must be native color format" crashes on cheaper AMOLEDs in the SDK 8.3 sim (venusq2, fr165, instinct 3). Needs `automaticPalette="false"` (already in the tuned-import contract). Probe. |
 | `setBlendMode(BLEND_MODE_MULTIPLY)` (4.2.1) | The ink glaze itself: overlapping washes darken like real ink instead of alpha-over going muddy | Docs: "Only supported on devices with GPU." Could not confirm the FR265 has one. Probe: two overlapping washes under multiply vs source-over. |
@@ -280,3 +280,27 @@ and keep whichever rows survive. Note that "on-device" in ART_PIPELINE.md
 means a simulator capture. John's verdict is that the current grammar looks
 bad in the sim and on the wrist alike, so the probe answers only "what can
 the hardware blend"; the art problem is upstream of it and stays open.
+
+**Probe written 2026-10-29, uncompiled** (`const PROBE` in
+`JapaneseInkHeartrateScene.mc`; the comment above it is the spec, the
+procedure is PROCEDURE.md §10 under the same date). Four rows on one card,
+each tile its image or the word `ERR` (threw, caught) / `n/a` (absent):
+
+| Row | Left | Right | Reads as |
+|---|---|---|---|
+| A | the mist's middle (8-bit alpha) into a buffer made with `ALPHA_BLENDING_FULL` | the same into a `PARTIAL` buffer, then the same straight onto the screen | soft everywhere = the surfaces blend 8-bit alpha; a hard cut-out in a tile = that surface is 1-bit (row 1) |
+| B | the host via `drawScaledBitmap` | `drawBitmap2` + `AffineTransform.scale` + `FILTER_MODE_BILINEAR` | barcode left, smooth right = row 2 is the fix |
+| C | `mist_band_lite` as baked (62%) | `mist_band` under `createColor(0x80, 255, 255, 255)` as `:tintColor` | paler right = the global-alpha knob exists (row 3); full density = the tint's alpha is ignored; a word = the "native color format" refusal |
+| D | two guests overlapping, source-over | the same under `BLEND_MODE_MULTIPLY` | darker overlap right = multiply works (row 4); identical = ignored, no GPU path |
+
+Facts from the API docs read while writing it: `ALPHA_BLENDING_FULL` (0) is
+"Default surface for buffered bitmap with maximum alpha blending support"
+and `PARTIAL` (1) "at least a 1-bit alpha channel"; there is no `NONE`. So
+row 1's suggested fix is a no-op by the docs and row A tests the three
+surfaces instead. `setBlendMode` is 4.0.0, `BLEND_MODE_MULTIPLY` 4.2.1
+(formula `S(1-Da) + D(1-Sa) + SD`, "only supported on devices with GPU"),
+`drawBitmap2` 4.2.1 (`:filterMode` defaults to `FILTER_MODE_POINT`;
+`:transform` is "applied to the source image while drawing", origin
+unstated, so the probe scales about the bitmap's own corner and a displaced
+right tile in row B is itself a finding), `AffineTransform` 4.2.0. Expected
+card: `python scripts/compose_preview.py --probe out.png`.

@@ -58,6 +58,11 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             drawAodRidge(dc, width, height);
         } else {
             mScene.draw(dc);
+            // The RENDERER_PLAN §13 probe card (Scene PROBE) takes the
+            // whole screen; no inscription over it.
+            if (mScene.isProbe()) {
+                return;
+            }
         }
 
         if (mIsLowPower && needsBurnInProtection()) {

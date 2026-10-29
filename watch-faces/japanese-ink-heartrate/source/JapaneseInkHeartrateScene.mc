@@ -39,6 +39,10 @@ using Toybox.WatchUi;
 //
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
+//
+// 2026-10-29, later: the RENDERER_PLAN §13 probe (PROBE below), a card of
+// four hardware comparisons in place of the painting, written blind for one
+// build at home and a wrist photo.
 
 class JapaneseInkHeartrateScene {
 
@@ -102,6 +106,44 @@ class JapaneseInkHeartrateScene {
     // the further, paler mountain). Until 2026-10-29 it stood on its own
     // higher base and out-topped the host even at a lower heart rate.
     const GUEST_RECESS = 0.03;
+    const MIST_W = 416;
+    const MIST_H = 110;
+
+    // ------------------------------------------------------- the §13 probe
+    // RENDERER_PLAN §13: what can the FR265 blend? Set PROBE to true, build,
+    // sideload, photograph the wrist, set it back (never commit it true).
+    // The card replaces the painting (the View skips the inscription) with
+    // four rows; each tile holds its image, or the word ERR (the call threw
+    // and the face stayed alive) or n/a (the API is absent at runtime). The
+    // DAY planes are used whatever the hour: multiply onto black paper is
+    // black, so the night set would answer nothing. The expected card is
+    // scripts/compose_preview.py --probe; a tile that matches it is a row
+    // that survives, a tile that matches its left neighbor is a no-op.
+    //   A  the mist band's middle (8-bit alpha, native scale) over dark gray,
+    //      painted into a buffer made with ALPHA_BLENDING_FULL, one made with
+    //      ALPHA_BLENDING_PARTIAL, and straight onto the screen. Soft = that
+    //      surface blends 8-bit alpha; a hard cut-out = 1-bit (forum 340936).
+    //      The docs make FULL the default, so the first tile is what the
+    //      painting already gets; the scene buffer itself is made with FULL
+    //      spelled out (the title says whether that call was accepted).
+    //   B  the host plane 75 px tall: drawScaledBitmap (point sampling) beside
+    //      drawBitmap2 with an AffineTransform scale and FILTER_MODE_BILINEAR.
+    //      Barcode strokes left and smooth ones right = §13 row 2 is the fix.
+    //   C  mist_band_lite as baked (62% alpha) beside mist_band under a white
+    //      50%-alpha :tintColor, the same crop over the same gray. A paler
+    //      right tile = the tint is the global-alpha knob; the same density
+    //      as the full band = the tint's alpha is ignored here.
+    //   D  two guest planes overlapping by half: source-over beside
+    //      BLEND_MODE_MULTIPLY. A darker overlap on the right = multiply
+    //      works (the docs want a GPU); identical tiles = it is ignored.
+    const PROBE = false;
+    const PROBE_GROUND = 0x5A5550;
+    const PROBE_INK = 0x18120E;
+    var mProbeFull as Graphics.BufferedBitmap?;
+    var mProbePartial as Graphics.BufferedBitmap?;
+    // How the scene buffer was made in probe mode: full (ALPHA_BLENDING_FULL
+    // accepted), plain (that call threw; made without the option), none.
+    var mProbeBufferNote as Lang.String = "none";
 
     function initialize() {
         readSettings();
@@ -158,6 +200,10 @@ class JapaneseInkHeartrateScene {
         return mNight;
     }
 
+    function isProbe() as Lang.Boolean {
+        return PROBE;
+    }
+
     // Settings changed (or anything else that must repaint before the next
     // five-minute key): forget the buffer's key so the next draw re-renders.
     function invalidate() as Void {
@@ -167,9 +213,10 @@ class JapaneseInkHeartrateScene {
     // -------------------------------------------------------------- planes
 
     // Only one set sits in the graphics pool at a time: the other set's
-    // references are dropped before the new one loads.
+    // references are dropped before the new one loads. The probe card is
+    // always the day set (see PROBE).
     function loadPlanes(night as Lang.Boolean) as Void {
-        var set = night ? 1 : 0;
+        var set = (night && !PROBE) ? 1 : 0;
         if (set == mLoadedSet) { return; }
         mFar = null;
         mHost = null;
@@ -472,6 +519,9 @@ class JapaneseInkHeartrateScene {
         if (buffer != null) {
             dc.drawBitmap(0, 0, buffer);
         }
+        if (PROBE) {
+            drawProbeScreenTile(dc, dc.getWidth().toFloat(), dc.getHeight().toFloat());
+        }
     }
 
     // Five-minute key. The night window flips on an hour, which is always a
@@ -489,7 +539,23 @@ class JapaneseInkHeartrateScene {
 
         var options = { :width => width, :height => height };
         if (Graphics has :createBufferedBitmap) {
-            mBuffer = Graphics.createBufferedBitmap(options).get() as Graphics.BufferedBitmap;
+            mBuffer = null;
+            if (PROBE) {
+                // §13 row 1: the option spelled out (the documented default).
+                try {
+                    mBuffer = Graphics.createBufferedBitmap({
+                        :width => width, :height => height,
+                        :alphaBlending => Graphics.ALPHA_BLENDING_FULL
+                    }).get() as Graphics.BufferedBitmap;
+                    mProbeBufferNote = (mBuffer != null) ? "full" : "null";
+                } catch (ex) {
+                    mBuffer = null;
+                    mProbeBufferNote = "plain";
+                }
+            }
+            if (mBuffer == null) {
+                mBuffer = Graphics.createBufferedBitmap(options).get() as Graphics.BufferedBitmap;
+            }
         } else if (Graphics has :BufferedBitmap) {
             mBuffer = new Graphics.BufferedBitmap(options);
         } else {
@@ -522,6 +588,10 @@ class JapaneseInkHeartrateScene {
     function renderScene(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
         if (dc has :setAntiAlias) {
             dc.setAntiAlias(true);
+        }
+        if (PROBE) {
+            renderProbe(dc, width, height);
+            return;
         }
 
         var w = width.toFloat();
@@ -682,6 +752,228 @@ class JapaneseInkHeartrateScene {
         var paper = mNight ? 0x000000 : 0xF2EEE6;
         dc.setColor(paper, paper);
         dc.clear();
+    }
+
+    // ------------------------------------------------------- the §13 probe
+    // (see PROBE above for what each row asks; geometry in fractions of the
+    // screen, every tile inside the circle: the top row's corners are the
+    // tightest at 64..352 px on 416)
+
+    // Row A geometry, shared with the screen tile: [x0, y, tileW, tileH, gap].
+    function probeRowA(w as Lang.Float, h as Lang.Float) as Lang.Array<Lang.Number> {
+        return [
+            (w * 0.17).toNumber(), (h * 0.14).toNumber(),
+            (w * 0.20).toNumber(), (h * 0.15).toNumber(),
+            (w * 0.03).toNumber()
+        ] as Lang.Array<Lang.Number>;
+    }
+
+    function renderProbe(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
+        var w = width.toFloat();
+        var h = height.toFloat();
+        dc.setColor(0xF2EEE6, 0xF2EEE6);
+        dc.clear();
+
+        // Title: the firmware's API level and how the scene buffer was made.
+        var version = "?";
+        var settings = System.getDeviceSettings();
+        if (settings has :monkeyVersion) {
+            var v = settings.monkeyVersion;
+            version = v[0].format("%d") + "." + v[1].format("%d") + "." + v[2].format("%d");
+        }
+        probeLabel(dc, w * 0.5, h * 0.075, "PROBE " + version + " " + mProbeBufferNote);
+
+        // A. 8-bit alpha into a FULL surface, a PARTIAL surface (and, drawn
+        //    later by drawProbeScreenTile, the screen).
+        var a = probeRowA(w, h);
+        if (mProbeFull == null) { mProbeFull = probeBuffer(a[2], a[3], true); }
+        if (mProbePartial == null) { mProbePartial = probeBuffer(a[2], a[3], false); }
+        probeAlphaTile(dc, a[0], a[1], a[2], a[3], mProbeFull);
+        probeAlphaTile(dc, a[0] + a[2] + a[4], a[1], a[2], a[3], mProbePartial);
+        probeFrame(dc, a[0] + 2 * (a[2] + a[4]), a[1], a[2], a[3]);
+        probeLabel(dc, w * 0.5, h * 0.325, "A: full | partial | screen");
+
+        // B. the host plane, point sampling beside bilinear.
+        var bX = (w * 0.08).toNumber();
+        var bY = (h * 0.36).toNumber();
+        var bW = (w * 0.40).toNumber();
+        var bH = (h * 0.18).toNumber();
+        var bX2 = bX + bW + (w * 0.04).toNumber();
+        probeFrame(dc, bX, bY, bW, bH);
+        probeFrame(dc, bX2, bY, bW, bH);
+        if (mHost != null) {
+            var hostH = bH.toFloat();
+            var hostW = hostH * (HOST_W / HOST_H);
+            var inset = (bW.toFloat() - hostW) / 2.0;
+            dc.drawScaledBitmap(bX.toFloat() + inset, bY.toFloat(), hostW, hostH, mHost);
+            if ((Graphics has :AffineTransform) && (dc has :drawBitmap2)) {
+                try {
+                    var t = new Graphics.AffineTransform();
+                    t.scale(hostW / HOST_W, hostH / HOST_H);
+                    dc.drawBitmap2(bX2.toFloat() + inset, bY.toFloat(), mHost,
+                                   { :transform => t, :filterMode => Graphics.FILTER_MODE_BILINEAR });
+                } catch (ex) {
+                    probeWord(dc, bX2, bY, bW, bH, "ERR");
+                }
+            } else {
+                probeWord(dc, bX2, bY, bW, bH, "n/a");
+            }
+        }
+        probeLabel(dc, w * 0.5, h * 0.575, "B: point | bilinear");
+
+        // C. the baked 62% mist beside the full mist under a 50% white tint,
+        //    the same crop of the band's middle over the same gray (the mist
+        //    is paper-colored, so on paper it would be invisible).
+        var cY = (h * 0.60).toNumber();
+        var cH = (h * 0.11).toNumber();
+        var offX = (MIST_W - bW) / 2;
+        var offY = (MIST_H - cH) / 2;
+        probeFrame(dc, bX, cY, bW, cH);
+        probeFrame(dc, bX2, cY, bW, cH);
+        dc.setColor(PROBE_GROUND, PROBE_GROUND);
+        dc.fillRectangle(bX, cY, bW, cH);
+        dc.fillRectangle(bX2, cY, bW, cH);
+        if (mMistLite != null) {
+            dc.setClip(bX, cY, bW, cH);
+            dc.drawBitmap(bX - offX, cY - offY, mMistLite);
+            dc.clearClip();
+        }
+        if (mMist != null) {
+            if (dc has :drawBitmap2) {
+                try {
+                    dc.setClip(bX2, cY, bW, cH);
+                    dc.drawBitmap2(bX2 - offX, cY - offY, mMist,
+                                   { :tintColor => Graphics.createColor(0x80, 255, 255, 255) });
+                    dc.clearClip();
+                } catch (ex) {
+                    dc.clearClip();
+                    probeWord(dc, bX2, cY, bW, cH, "ERR");
+                }
+            } else {
+                probeWord(dc, bX2, cY, bW, cH, "n/a");
+            }
+        }
+        probeLabel(dc, w * 0.5, h * 0.745, "C: baked 62% | tint 50%");
+
+        // D. two guests overlapping by half, source-over beside multiply.
+        var dX = (w * 0.235).toNumber();
+        var dY = (h * 0.78).toNumber();
+        var dW = (w * 0.25).toNumber();
+        var dH = (h * 0.12).toNumber();
+        var dX2 = dX + dW + (w * 0.03).toNumber();
+        probeFrame(dc, dX, dY, dW, dH);
+        probeFrame(dc, dX2, dY, dW, dH);
+        if (mGuest != null) {
+            var gH = dH.toFloat() * 0.9;
+            var gW = gH * (GUEST_W / GUEST_H);
+            var gY = dY.toFloat() + (dH.toFloat() - gH) / 2.0;
+            var second = dW.toFloat() - 3.0 - gW;
+            dc.drawScaledBitmap(dX.toFloat() + 3.0, gY, gW, gH, mGuest);
+            dc.drawScaledBitmap(dX.toFloat() + second, gY, gW, gH, mGuest);
+            if (dc has :setBlendMode) {
+                var failed = false;
+                try {
+                    dc.setBlendMode(Graphics.BLEND_MODE_MULTIPLY);
+                    dc.drawScaledBitmap(dX2.toFloat() + 3.0, gY, gW, gH, mGuest);
+                    dc.drawScaledBitmap(dX2.toFloat() + second, gY, gW, gH, mGuest);
+                } catch (ex) {
+                    failed = true;
+                }
+                probeBlendDefault(dc);
+                if (failed) {
+                    probeWord(dc, dX2, dY, dW, dH, "ERR");
+                }
+            } else {
+                probeWord(dc, dX2, dY, dW, dH, "n/a");
+            }
+        }
+        probeLabel(dc, w * 0.5, h * 0.93, "D: over | multiply");
+    }
+
+    // Row A's third tile, straight onto the screen after the buffer blit.
+    function drawProbeScreenTile(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float) as Void {
+        var a = probeRowA(w, h);
+        var x = a[0] + 2 * (a[2] + a[4]);
+        var y = a[1];
+        if (mMist == null) {
+            probeWord(dc, x, y, a[2], a[3], "ERR");
+            return;
+        }
+        try {
+            dc.setColor(PROBE_GROUND, PROBE_GROUND);
+            dc.fillRectangle(x, y, a[2], a[3]);
+            dc.setClip(x, y, a[2], a[3]);
+            dc.drawBitmap(x - (MIST_W - a[2]) / 2, y - (MIST_H - a[3]) / 2, mMist);
+            dc.clearClip();
+        } catch (ex) {
+            dc.clearClip();
+            probeWord(dc, x, y, a[2], a[3], "ERR");
+        }
+    }
+
+    // A small surface for row A with the alpha-blending level asked for,
+    // or null when the call is refused.
+    function probeBuffer(width as Lang.Number, height as Lang.Number,
+                         full as Lang.Boolean) as Graphics.BufferedBitmap? {
+        if (!(Graphics has :createBufferedBitmap)) { return null; }
+        try {
+            var mode = full ? Graphics.ALPHA_BLENDING_FULL : Graphics.ALPHA_BLENDING_PARTIAL;
+            return Graphics.createBufferedBitmap({
+                :width => width, :height => height, :alphaBlending => mode
+            }).get() as Graphics.BufferedBitmap;
+        } catch (ex) {
+            return null;
+        }
+    }
+
+    // Row A: the mist's middle at native scale over dark gray, painted into
+    // the given small surface and then placed on the card.
+    function probeAlphaTile(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number,
+                            w as Lang.Number, h as Lang.Number,
+                            surface as Graphics.BufferedBitmap?) as Void {
+        probeFrame(dc, x, y, w, h);
+        if (surface == null || mMist == null) {
+            probeWord(dc, x, y, w, h, "ERR");
+            return;
+        }
+        try {
+            var sdc = surface.getDc();
+            sdc.setColor(PROBE_GROUND, PROBE_GROUND);
+            sdc.clear();
+            sdc.drawBitmap(-((MIST_W - w) / 2), -((MIST_H - h) / 2), mMist);
+            dc.drawBitmap(x, y, surface);
+        } catch (ex) {
+            probeWord(dc, x, y, w, h, "ERR");
+        }
+    }
+
+    function probeBlendDefault(dc as Graphics.Dc) as Void {
+        try {
+            dc.setBlendMode(Graphics.BLEND_MODE_DEFAULT);
+        } catch (ex) {
+            // nothing to restore: the mode never took
+        }
+    }
+
+    function probeFrame(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number,
+                        w as Lang.Number, h as Lang.Number) as Void {
+        dc.setColor(PROBE_INK, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(1);
+        dc.drawRectangle(x - 1, y - 1, w + 2, h + 2);
+    }
+
+    function probeWord(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number,
+                       w as Lang.Number, h as Lang.Number, word as Lang.String) as Void {
+        dc.setColor(PROBE_INK, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x + w / 2, y + h / 2, Graphics.FONT_XTINY, word,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    function probeLabel(dc as Graphics.Dc, cx as Lang.Float, cy as Lang.Float,
+                        text as Lang.String) as Void {
+        dc.setColor(PROBE_INK, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx.toNumber(), cy.toNumber(), Graphics.FONT_XTINY, text,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     // Sun arcs 06:00-18:00, moon 18:00-06:00, west-to-east sin parabola.
