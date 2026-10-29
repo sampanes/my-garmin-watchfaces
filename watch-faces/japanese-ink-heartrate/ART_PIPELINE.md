@@ -186,12 +186,20 @@ host → mist → fg_left → fg_right → grain → (View) inscription + seal.
   ago..now, places both landmarks clear of the inscription; the guest apex
   is also floored at x 0.34 and pushed ≥ 0.30 from the host (crossing to the
   host's other side when its own side has no room).
-- **True-HR overlay** (setting `trueHrOverlay`, default on): every raw
-  sample of the window (≤ 240, thinned by group maximum so peaks survive)
-  drawn as a hairline on `axisX` and the host apex formula, with rings on
-  the painting's two apexes. Where the line and the rings disagree is the
-  artistic license, measured. The guest ring will usually sit off the line:
-  it is recessed on purpose (smaller height formula) and often moved.
+- **True-HR overlay** (setting `trueHrOverlay`, default on): the data as a
+  silhouette in the painting's own grammar. The window's samples (≤ 58
+  columns, thinned by group maximum so peaks survive; `fillPolygon` takes at
+  most 64 points) are drawn on `axisX` and the host's **crest scale**
+  (`traceY`: the y the host crest would have if the host were sized for that
+  HR; the crest sits 31% down the host bitmap, `HOST_APEX_Y`) as a
+  translucent vermilion wash whose floor hugs the lowest sample, a 2 px edge
+  along the skyline, and a dot on each painted crest (`HOST_APEX_Y`,
+  `GUEST_APEX_Y` = 12%). Where the wash rises above the ink the painting
+  under-states; where ink stands above the edge it over-states. The guest
+  dot will usually sit off the data: it is recessed on purpose (smaller
+  height formula) and often moved along the axis. The 2026-10-28 cut was a
+  hairline plotted against the top of the host's bitmap rectangle, which put
+  it in the sky 100 px above the paint.
 - **Night mode** (settings `nightStart`/`nightEnd`, hours, default 21–6,
   equal = off): black paper, the `*_night.png` plane set (pale ink, no
   grain), pale inscription ink, dimmed seal. `loadPlanes()` keeps only one

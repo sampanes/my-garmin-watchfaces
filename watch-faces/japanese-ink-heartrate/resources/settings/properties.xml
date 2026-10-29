@@ -1,6 +1,7 @@
 <properties>
-    <!-- Draw every raw HR sample of the window as a hairline on the landscape's
-         own axis, with rings on the painting's two landmarks. -->
+    <!-- Draw the window's HR samples as a translucent silhouette on the
+         landscape's own axis and crest scale, with a dot on each painted
+         crest: the data against the painting. -->
     <property id="trueHrOverlay" type="boolean">true</property>
     <!-- Night mode window (hours, 0-24): black paper, pale ink. Equal = off. -->
     <property id="nightStart" type="number">21</property>

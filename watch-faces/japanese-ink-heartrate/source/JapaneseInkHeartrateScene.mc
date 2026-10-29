@@ -20,11 +20,17 @@ using Toybox.WatchUi;
 //
 // 2026-10-28: one time axis for both landmarks (x = 0.36..0.80 of the width,
 // four hours ago to now, clear of the inscription); an optional true-HR
-// overlay that draws every raw sample on that same axis and scale so the
-// gap between the data and the painting is visible at a glance; and a night
-// mode (settings: nightStart/nightEnd hours) that swaps in the moonlit
-// negative plane set (pale ink on black paper) so the face stops lighting
-// the bedroom.
+// overlay so the gap between the data and the painting is visible at a
+// glance; and a night mode (settings: nightStart/nightEnd hours) that swaps
+// in the moonlit negative plane set (pale ink on black paper) so the face
+// stops lighting the bedroom.
+//
+// 2026-10-29: the overlay is a silhouette, not a hairline. The first cut
+// plotted the samples against the top of the host's bitmap RECTANGLE, which
+// put the line in the sky 100 px above the paint. Now the data is drawn on
+// the host's CREST scale (the apex pixel sits 31% down the host bitmap) as
+// a translucent vermilion wash under a brush edge, with a dot on each
+// painted crest, so it reads as a mountain against a mountain.
 //
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
@@ -70,15 +76,23 @@ class JapaneseInkHeartrateScene {
     const HR_MAX = 160.0;
     const HISTORY_BUCKETS = 16;
     const HISTORY_SECONDS = 4 * 3600;
-    const TRACE_MAX = 240;
+    // Dc.fillPolygon takes at most 64 points (common/graphics/DC_PART1); the
+    // wash is the trace plus two floor corners. 58 columns on a 183 px axis
+    // is about one point every 3 px, which is the display's resolution.
+    const TRACE_MAX = 58;
+    const TRACE_FLOOR_PAD = 0.02;     // wash floor this far under the lowest sample
 
-    // Asset native dimensions (must match gen_ink_layers.py outputs).
+    // Asset native dimensions (must match gen_ink_layers.py outputs) and
+    // where the painted crest sits inside each bitmap (alpha >= 40, measured
+    // 2026-10-29, identical on the day and night sets).
     const HOST_W = 340.0;
     const HOST_H = 260.0;
-    const HOST_APEX_FRAC = 0.47;      // main peak x within the host bitmap
+    const HOST_APEX_FRAC = 0.47;      // crest x within the host bitmap
+    const HOST_APEX_Y = 0.31;         // crest y: 31% down the host bitmap
     const GUEST_W = 260.0;
     const GUEST_H = 190.0;
-    const GUEST_APEX_FRAC = 0.42;
+    const GUEST_APEX_FRAC = 0.46;     // crest x (0.42 sat 8 px off the axis)
+    const GUEST_APEX_Y = 0.12;        // crest y: 12% down the guest bitmap
 
     function initialize() {
         readSettings();
@@ -408,6 +422,15 @@ class JapaneseInkHeartrateScene {
         return h * 0.70 * (0.50 + 0.60 * hNorm);
     }
 
+    // The overlay's vertical scale is the host's CREST scale: the y the host
+    // crest would have if the host were sized for that HR (45 bpm -> 0.527 h,
+    // 160 bpm -> 0.337 h). The painting is honest at its hero crest, so the
+    // data and the paint share a scale there and the rest of the painting's
+    // license shows against it.
+    function traceY(norm as Lang.Float, h as Lang.Float) as Lang.Float {
+        return h * 0.87 - (1.0 - HOST_APEX_Y) * hostHeight(heightForNorm(norm), h);
+    }
+
     // ------------------------------------------------------ buffer plumbing
 
     function onLayout(dc as Graphics.Dc) as Void {
@@ -567,37 +590,65 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(0, 0, width, height, mPaperGrain);
         }
 
-        // 8. the data itself, for judging the painting against it
+        // 8. the data itself, for judging the painting against it. The dots
+        //    go on the painted crests (the apex pixel inside each plane, not
+        //    the top of its rectangle).
         if (mShowTrace) {
-            drawTrace(dc, w, h, hostNx * w, hY, guestNx * w, gY);
+            drawTrace(dc, w, h,
+                      hostNx * w, hY + HOST_APEX_Y * hH,
+                      guestNx * w, gY + GUEST_APEX_Y * gH);
         }
     }
 
-    // Every raw sample as a hairline on the landscape's own axis and scale:
-    // x by axisX, y by the host apex formula. Rings mark where the painting
-    // put its two landmarks. Where the line and the rings disagree, that is
-    // the artistic license, measured.
+    // The data as a SILHOUETTE in the painting's own grammar: a translucent
+    // vermilion wash under the data's skyline on the host crest scale, a
+    // crisp brush edge along the skyline, and a dot on each painted crest.
+    // Where the wash rises above the ink the painting under-states; where
+    // ink stands above the edge it over-states. The wash's floor hugs the
+    // window's lowest sample, so it is the data's own relief, not a box.
     function drawTrace(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float,
                        hostAx as Lang.Float, hostAy as Lang.Float,
                        guestAx as Lang.Float, guestAy as Lang.Float) as Void {
         var nxs = mTraceNx;
         var hrs = mTraceHr;
         if (nxs == null || hrs == null || nxs.size() < 2) { return; }
-        dc.setColor(mNight ? 0x7FAAFF : 0x2F62C8, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(1);
-        var px = (w * axisX(nxs[0])).toNumber();
-        var py = (h * 0.87 - hostHeight(heightForNorm(hrs[0]), h)).toNumber();
-        for (var i = 1; i < nxs.size(); i++) {
+
+        // Numeric, the element type fillPolygon/drawLine declare, so the
+        // level-2 type checker has no subtyping to reason about.
+        var pts = [] as Lang.Array<Lang.Array<Lang.Numeric>>;
+        var floor = 0;
+        for (var i = 0; i < nxs.size(); i++) {
             var x = (w * axisX(nxs[i])).toNumber();
-            var y = (h * 0.87 - hostHeight(heightForNorm(hrs[i]), h)).toNumber();
-            dc.drawLine(px, py, x, y);
-            px = x;
-            py = y;
+            var y = traceY(hrs[i], h).toNumber();
+            if (y > floor) { floor = y; }
+            pts.add([x, y] as Lang.Array<Lang.Numeric>);
         }
+        floor += (h * TRACE_FLOOR_PAD).toNumber();
+
+        // The wash: trace plus two floor corners, at most TRACE_MAX + 2 points.
+        var poly = [] as Lang.Array<Lang.Array<Lang.Numeric>>;
+        for (var i = 0; i < pts.size(); i++) { poly.add(pts[i]); }
+        poly.add([pts[pts.size() - 1][0], floor] as Lang.Array<Lang.Numeric>);
+        poly.add([pts[0][0], floor] as Lang.Array<Lang.Numeric>);
+        if (mNight) {
+            dc.setFill(Graphics.createColor(0x50, 200, 70, 50));
+        } else {
+            dc.setFill(Graphics.createColor(0x3C, 176, 52, 38));
+        }
+        dc.fillPolygon(poly);
+
+        // The edge and the crest dots, opaque (setFill explicitly, so the
+        // dots never inherit the wash's alpha).
+        var edge = mNight ? 0xEC6E54 : 0xA62C1E;
+        dc.setColor(edge, Graphics.COLOR_TRANSPARENT);
+        dc.setFill(edge);
         dc.setPenWidth(2);
-        dc.drawCircle(hostAx.toNumber(), hostAy.toNumber(), 5);
-        dc.drawCircle(guestAx.toNumber(), guestAy.toNumber(), 5);
+        for (var i = 1; i < pts.size(); i++) {
+            dc.drawLine(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+        }
         dc.setPenWidth(1);
+        dc.fillCircle(hostAx.toNumber(), hostAy.toNumber(), 4);
+        dc.fillCircle(guestAx.toNumber(), guestAy.toNumber(), 4);
     }
 
     function drawPaper(dc as Graphics.Dc) as Void {

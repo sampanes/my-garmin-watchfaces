@@ -153,20 +153,52 @@ def kanji_hour(hour):
     return out
 
 
-def draw_trace(base, trace, hx, host_apex_y, gx, guest_apex_y, night):
-    """The true-HR overlay as the Scene draws it: every sample as a hairline
-    on the landscape's axis (axis_x) and scale (the host apex formula), with
-    rings on the painting's two landmarks. Drawn at 2x for antialiasing."""
+# Where the painted crest sits inside each plane bitmap (alpha >= 40, measured
+# 2026-10-29 on the day and night sets alike): the host apex is 31% down its
+# bitmap, the guest 12%. The overlay is plotted on the HOST'S CREST SCALE, the
+# y the host crest would have if the host were sized for that HR, so the data
+# and the painting share a scale where the painting is honest (the hero
+# crest) and the rest of the painting's license shows against it.
+HOST_APEX_Y = 0.31
+GUEST_APEX_Y = 0.12
+TRACE_COLS = 58          # fillPolygon takes at most 64 points (DC_PART1)
+TRACE_FLOOR_PAD = 0.02   # the wash's floor sits this far under the lowest sample
+
+
+def trace_y(norm):
+    """Crest scale: 45 bpm -> 0.527 H, 160 bpm -> 0.337 H."""
+    return 0.87 * H - (1.0 - HOST_APEX_Y) * host_height(height_for_norm(norm))
+
+
+def thin_trace(trace, cols=TRACE_COLS):
+    """At most `cols` samples, each group reduced to its HIGHEST sample so a
+    peak survives the thinning (storeTrace in the Scene)."""
+    if len(trace) <= cols:
+        return list(trace)
+    stride = (len(trace) + cols - 1) // cols
+    return [max(trace[i:i + stride], key=lambda t: t[1]) for i in range(0, len(trace), stride)]
+
+
+def draw_trace(base, trace, host_crest, guest_crest, night):
+    """The true-HR overlay as the Scene draws it: the data as a SILHOUETTE in
+    the painting's own grammar, a translucent vermilion wash under the data's
+    skyline on the host crest scale, with a crisp brush edge, and a dot on
+    each painted crest. Where the wash rises above the ink the painting
+    under-states; where ink stands above the edge it over-states. Drawn at
+    2x for antialiasing."""
     S = 2
     layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer, "RGBA")
-    color = (127, 170, 255, 255) if night else (47, 98, 200, 255)
-    pts = [(W * axis_x(nx) * S, (0.87 * H - host_height(height_for_norm(norm))) * S)
-           for nx, norm in trace]
-    d.line(pts, fill=color, width=S)
-    for cx, cy in ((hx * W, host_apex_y), (gx * W, guest_apex_y)):
-        d.ellipse([(cx - 5) * S, (cy - 5) * S, (cx + 5) * S, (cy + 5) * S],
-                  outline=color, width=2 * S)
+    wash = (200, 70, 50, 0x50) if night else (176, 52, 38, 0x3C)
+    edge = (236, 110, 84, 0xF0) if night else (166, 44, 30, 0xF0)
+    pts = [(W * axis_x(nx) * S, trace_y(norm) * S) for nx, norm in thin_trace(trace)]
+    # The floor hugs the window's lowest sample, so the wash is the data's
+    # own relief rather than a box: no flat band, short sides.
+    floor = max(y for _, y in pts) + TRACE_FLOOR_PAD * H * S
+    d.polygon(pts + [(pts[-1][0], floor), (pts[0][0], floor)], fill=wash)
+    d.line(pts, fill=edge, width=2 * S, joint="curve")
+    for cx, cy in (host_crest, guest_crest):
+        d.ellipse([(cx - 4) * S, (cy - 4) * S, (cx + 4) * S, (cy + 4) * S], fill=edge)
     layer = layer.resize((W, H), Image.LANCZOS)
     return Image.alpha_composite(base, layer)
 
@@ -228,7 +260,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 3. guest: second landmark, recessed
     g_h = 0.50 * H * (0.40 + 0.70 * h1)
     g_w = g_h * (260.0 / 190.0)
-    g_apex = 0.42
+    g_apex = 0.46          # measured crest column (was 0.42, 8 px off the axis)
     base = paste_scaled(base, guest, gx * W - g_apex * g_w, 0.71 * H - g_h, g_w, g_h)
 
     # 4. host: strongest landmark, the hero
@@ -252,9 +284,12 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     if grain is not None:
         base = paste_scaled(base, grain, 0, 0, W, H)
 
-    # 8. the data itself, for judging the painting against it
+    # 8. the data itself, for judging the painting against it: dots on the
+    #    painted crests (the apex pixel inside each plane, not its rect top)
     if trace is not None:
-        base = draw_trace(base, trace, hx, 0.87 * H - m_h, gx, 0.71 * H - g_h, night)
+        base = draw_trace(base, trace,
+                          (hx * W, 0.87 * H - m_h + HOST_APEX_Y * m_h),
+                          (gx * W, 0.71 * H - g_h + GUEST_APEX_Y * g_h), night)
 
     # 9. inscription column + seal (upper-left void), as the View draws them:
     #    the hour as brush kanji stacked on a 0.10 H pitch, bottom glyph at
