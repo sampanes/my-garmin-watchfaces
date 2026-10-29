@@ -30,7 +30,12 @@ using Toybox.WatchUi;
 // put the line in the sky 100 px above the paint. Now the data is drawn on
 // the host's CREST scale (the apex pixel sits 31% down the host bitmap) as
 // a translucent vermilion wash under a brush edge, with a dot on each
-// painted crest, so it reads as a mountain against a mountain.
+// painted crest, so it reads as a mountain against a mountain. Composing
+// John's real logs through the preview then showed two defects the mock
+// never could: the guest picker accepted an empty bucket, and the guest's
+// own higher base let it out-top the host at a lower heart rate. Now the
+// guest needs a data bucket an hour away or is not drawn, and its crest
+// sits on the host's crest scale (crestY), a little lower.
 //
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
@@ -93,6 +98,10 @@ class JapaneseInkHeartrateScene {
     const GUEST_H = 190.0;
     const GUEST_APEX_FRAC = 0.46;     // crest x (0.42 sat 8 px off the axis)
     const GUEST_APEX_Y = 0.12;        // crest y: 12% down the guest bitmap
+    // The guest crest sits on the host's crest scale, this much lower (it is
+    // the further, paler mountain). Until 2026-10-29 it stood on its own
+    // higher base and out-topped the host even at a lower heart rate.
+    const GUEST_RECESS = 0.03;
 
     function initialize() {
         readSettings();
@@ -285,15 +294,19 @@ class JapaneseInkHeartrateScene {
         return 0.5;
     }
 
-    // Pick the strongest two 15-minute landmarks, separated by at least one
-    // hour. Their x positions remain their true locations in the window.
+    // The host is the strongest 15-minute bucket. The guest is the strongest
+    // bucket WITH DATA at least an hour away; an empty bucket is not a
+    // landmark (until 2026-10-29 a window missing its first hours after a
+    // reboot grew a full-size guest out of nothing). With no such bucket
+    // there is no guest: one episode, one mountain. Each x stays its true
+    // location in the window.
     function landmarkPeaks(history as Lang.Array<Lang.Float>) as Lang.Array<Lang.Array<Lang.Float>> {
         var host = 0;
         for (var i = 1; i < history.size(); i++) {
             if (history[i] > history[host]) { host = i; }
         }
         var guest = -1;
-        var guestHr = -1.0;
+        var guestHr = 0.0;
         for (var i = 0; i < history.size(); i++) {
             var distance = i - host;
             if (distance < 0) { distance = -distance; }
@@ -302,12 +315,14 @@ class JapaneseInkHeartrateScene {
                 guestHr = history[i];
             }
         }
-        if (guest < 0) { guest = (host < HISTORY_BUCKETS / 2) ? HISTORY_BUCKETS - 1 : 0; }
         var denom = (HISTORY_BUCKETS - 1).toFloat();
-        return [
-            [host.toFloat() / denom, heightForHr(history[host]), 0.15] as Lang.Array<Lang.Float>,
-            [guest.toFloat() / denom, heightForHr(history[guest]), 0.15] as Lang.Array<Lang.Float>
+        var peaks = [
+            [host.toFloat() / denom, heightForHr(history[host]), 0.15] as Lang.Array<Lang.Float>
         ] as Lang.Array<Lang.Array<Lang.Float>>;
+        if (guest >= 0) {
+            peaks.add([guest.toFloat() / denom, heightForHr(history[guest]), 0.15] as Lang.Array<Lang.Float>);
+        }
+        return peaks;
     }
 
     function refreshHistory() as Void {
@@ -422,13 +437,16 @@ class JapaneseInkHeartrateScene {
         return h * 0.70 * (0.50 + 0.60 * hNorm);
     }
 
-    // The overlay's vertical scale is the host's CREST scale: the y the host
-    // crest would have if the host were sized for that HR (45 bpm -> 0.527 h,
-    // 160 bpm -> 0.337 h). The painting is honest at its hero crest, so the
-    // data and the paint share a scale there and the rest of the painting's
-    // license shows against it.
+    // The host's CREST scale: the y the host crest has when the host is sized
+    // for a landmark height (45 bpm -> 0.527 h, 160 bpm -> 0.337 h). The
+    // guest crest and the overlay both sit on it, so one height means one
+    // heart rate everywhere in the painting.
+    function crestY(hNorm as Lang.Float, h as Lang.Float) as Lang.Float {
+        return h * 0.87 - (1.0 - HOST_APEX_Y) * hostHeight(hNorm, h);
+    }
+
     function traceY(norm as Lang.Float, h as Lang.Float) as Lang.Float {
-        return h * 0.87 - (1.0 - HOST_APEX_Y) * hostHeight(heightForNorm(norm), h);
+        return crestY(heightForNorm(norm), h);
     }
 
     // ------------------------------------------------------ buffer plumbing
@@ -512,15 +530,20 @@ class JapaneseInkHeartrateScene {
         // Both landmarks sit on the one time axis. The guest apex also stays
         // right of the inscription column (x >= 0.34) and clear of the host
         // massif; when it cannot do both on its own side it crosses over.
+        // No second landmark (landmarkPeaks) means no guest plane.
         var peaks = mPeaks;
         var h0 = 0.6;
         var h1 = 0.5;
         var hostNx = 0.5;
         var guestNx = 0.25;
-        if (peaks != null && peaks.size() >= 2) {
+        var hasGuest = false;
+        if (peaks != null && peaks.size() >= 1) {
             hostNx = axisX(peaks[0][0]);
-            guestNx = axisX(peaks[1][0]);
             h0 = peaks[0][1];
+        }
+        if (peaks != null && peaks.size() >= 2) {
+            hasGuest = true;
+            guestNx = axisX(peaks[1][0]);
             h1 = peaks[1][1];
             if (guestNx < 0.34) { guestNx = 0.34; }
             var dxp = hostNx - guestNx;
@@ -550,10 +573,11 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(-(w * 0.10), h * 0.50, w * 1.20, h * 0.17, mMistLite);
         }
 
-        // 3. guest: the second landmark, recessed
+        // 3. guest: the second landmark, its crest on the host's crest scale
+        //    and GUEST_RECESS lower, so a lower heart rate is a lower peak
         var gH = h * 0.50 * (0.40 + 0.70 * h1);
-        var gY = h * 0.71 - gH;
-        if (mGuest != null) {
+        var gY = crestY(h1, h) + h * GUEST_RECESS - GUEST_APEX_Y * gH;
+        if (hasGuest && mGuest != null) {
             var gW = gH * (GUEST_W / GUEST_H);
             var gX = guestNx * w - GUEST_APEX_FRAC * gW;
             dc.drawScaledBitmap(gX, gY, gW, gH, mGuest);
@@ -596,7 +620,7 @@ class JapaneseInkHeartrateScene {
         if (mShowTrace) {
             drawTrace(dc, w, h,
                       hostNx * w, hY + HOST_APEX_Y * hH,
-                      guestNx * w, gY + GUEST_APEX_Y * gH);
+                      guestNx * w, hasGuest ? gY + GUEST_APEX_Y * gH : -1.0);
         }
     }
 
@@ -606,6 +630,7 @@ class JapaneseInkHeartrateScene {
     // Where the wash rises above the ink the painting under-states; where
     // ink stands above the edge it over-states. The wash's floor hugs the
     // window's lowest sample, so it is the data's own relief, not a box.
+    // guestAy < 0 means the painting has no guest this window.
     function drawTrace(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float,
                        hostAx as Lang.Float, hostAy as Lang.Float,
                        guestAx as Lang.Float, guestAy as Lang.Float) as Void {
@@ -648,7 +673,9 @@ class JapaneseInkHeartrateScene {
         }
         dc.setPenWidth(1);
         dc.fillCircle(hostAx.toNumber(), hostAy.toNumber(), 4);
-        dc.fillCircle(guestAx.toNumber(), guestAy.toNumber(), 4);
+        if (guestAy >= 0.0) {
+            dc.fillCircle(guestAx.toNumber(), guestAy.toNumber(), 4);
+        }
     }
 
     function drawPaper(dc as Graphics.Dc) as Void {

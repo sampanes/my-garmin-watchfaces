@@ -173,6 +173,14 @@ Plane order (both sides): paper → sun/moon → far_range → mist_lite → gue
 host → mist → fg_left → fg_right → grain → (View) inscription + seal.
 
 `compose_preview.py [out.png]` writes `art/kit_preview.png` by default.
+Flags: `--night`, `--no-trace`, `--24h`, `--time HH:MM`, and `--data hr.csv
+[--end YYYY-MM-DDTHH:MM]` to compose a **real window** instead of the mock:
+`epoch,hr_avg[,hr_max]` rows (one per live bucket; the merged Friend logs
+or any HR export), binned by time exactly as `refreshHistory` does, averages
+into the sixteen buckets, maxima into the overlay, leading and trailing
+emptiness left empty, the clock set to the window's end in Arizona time. It
+is the only way to see what the painting does with a window that starts
+empty or holds one episode, which is what real days look like.
 
 ---
 
@@ -180,8 +188,14 @@ host → mist → fg_left → fg_right → grain → (View) inscription + seal.
 
 - `JapaneseInkHeartrateScene.mc` places the planes into the 5-minute-keyed
   `BufferedBitmap`. HR: real 4 h history → 16 fifteen-minute buckets →
-  `landmarkPeaks()` (strongest bucket = host, strongest ≥ 1 h away = guest),
-  `edgeHr()` (oldest / newest bucket with data → fg_left / fg_right height).
+  `landmarkPeaks()` (strongest bucket = host; strongest bucket **with data**
+  ≥ 1 h away = guest, else no guest plane at all: an empty bucket is not a
+  landmark, and until 2026-10-29 a window missing its first hours grew a
+  full-size guest out of nothing), `edgeHr()` (oldest / newest bucket with
+  data → fg_left / fg_right height). The guest crest sits on the host's
+  crest scale (`crestY`) and `GUEST_RECESS` (3% of the height) lower, so a
+  lower heart rate is always a lower peak; before 2026-10-29 it stood on
+  its own base at 0.71 H and out-topped the host even at a lower rate.
   **One time axis**, `axisX(nx)` = 0.36..0.80 of the width for four hours
   ago..now, places both landmarks clear of the inscription; the guest apex
   is also floored at x 0.34 and pushed ≥ 0.30 from the host (crossing to the
