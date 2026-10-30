@@ -708,23 +708,24 @@ class JapaneseInkHeartrateScene {
         var hrs = mTraceHr;
         if (nxs == null || hrs == null || nxs.size() < 2) { return; }
 
-        // Numeric, the element type fillPolygon/drawLine declare, so the
-        // level-2 type checker has no subtyping to reason about.
-        var pts = [] as Lang.Array<Lang.Array<Lang.Numeric>>;
+        // A two-element tuple per point: fillPolygon declares
+        // Array<[Numeric, Numeric]>, and SDK 9.1 rejects an open
+        // Array<Array<Numeric>> there (compiled 2026-10-30).
+        var pts = [] as Lang.Array<[Lang.Number, Lang.Number]>;
         var floor = 0;
         for (var i = 0; i < nxs.size(); i++) {
             var x = (w * axisX(nxs[i])).toNumber();
             var y = traceY(hrs[i], h).toNumber();
             if (y > floor) { floor = y; }
-            pts.add([x, y] as Lang.Array<Lang.Numeric>);
+            pts.add([x, y] as [Lang.Number, Lang.Number]);
         }
         floor += (h * TRACE_FLOOR_PAD).toNumber();
 
         // The wash: trace plus two floor corners, at most TRACE_MAX + 2 points.
-        var poly = [] as Lang.Array<Lang.Array<Lang.Numeric>>;
+        var poly = [] as Lang.Array<[Lang.Number, Lang.Number]>;
         for (var i = 0; i < pts.size(); i++) { poly.add(pts[i]); }
-        poly.add([pts[pts.size() - 1][0], floor] as Lang.Array<Lang.Numeric>);
-        poly.add([pts[0][0], floor] as Lang.Array<Lang.Numeric>);
+        poly.add([pts[pts.size() - 1][0], floor] as [Lang.Number, Lang.Number]);
+        poly.add([pts[0][0], floor] as [Lang.Number, Lang.Number]);
         if (mNight) {
             dc.setFill(Graphics.createColor(0x50, 200, 70, 50));
         } else {
