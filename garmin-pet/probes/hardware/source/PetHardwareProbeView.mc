@@ -2,7 +2,6 @@ using Toybox.ActivityMonitor;
 using Toybox.Ant;
 using Toybox.Application;
 using Toybox.Attention;
-using Toybox.Complications;
 using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.Sensor;
@@ -17,11 +16,6 @@ class PetHardwareProbeView extends WatchUi.View {
     var mLines as Lang.Array<Lang.String>;
 
     const PROBE_COUNT = 10;
-
-    // T15: complication subscriptions (the callback counts prove they fire).
-    var mCompSubscribed as Lang.Boolean = false;
-    var mCompCallbacks as Lang.Number = 0;
-    var mCompLast as Lang.String = "-";
 
     // T23/T24: one generic ANT channel, master (TX) or slave (RX). Spike B
     // parameters (03-ble-live.md): public network, RF 66 (not 57), a fixed
@@ -103,16 +97,7 @@ class PetHardwareProbeView extends WatchUi.View {
     // away, so the next probe runs on a clean watch and the final numbers
     // are saved.
     function leaveProbe() as Void {
-        if (mProbeIndex == 7) {
-            if (mCompSubscribed) {
-                try {
-                    Complications.unsubscribeFromAllUpdates();
-                } catch (e) {
-                    System.println("unsubscribe failed: " + e.getErrorMessage());
-                }
-                mCompSubscribed = false;
-            }
-        } else if (mProbeIndex == 8 || mProbeIndex == 9) {
+        if (mProbeIndex == 8 || mProbeIndex == 9) {
             if (mAnt != null) {
                 releaseAnt();
                 setResult(antLines("DONE"));
@@ -419,90 +404,14 @@ class PetHardwareProbeView extends WatchUi.View {
         }
     }
 
-    // T15: can a DEVICE APP subscribe to complications, or only a watch face
-    // (the docs say "watch faces can register a callback and subscribe")?
-    // First SELECT registers the callback and subscribes to Body Battery,
-    // stress and heart rate (SUB is one Y/N per subscribeToUpdates return),
-    // then reads each through getComplication. Every callback bumps CB and
-    // repaints; the number growing over a minute is the answer, a CB stuck
-    // at 0 with values present is "read yes, subscribe no". Leaving the
-    // probe unsubscribes. Needs the ComplicationSubscriber permission.
+    // T15: can a DEVICE APP subscribe to complications, or only a watch face?
+    // Answered by the compiler (SDK 9.1, 2026-10-30): a watch-app may not
+    // declare ComplicationSubscriber ("permission is invalid for app type
+    // 'watch-app'"), and without it every Toybox.Complications reference is
+    // a compile error. So a device app can neither subscribe nor read; the
+    // row only reports that.
     function probeComplications() as Void {
-        try {
-            if (!((Toybox has :Complications) && (Complications has :subscribeToUpdates))) {
-                setResult([ "NO API" ] as Lang.Array<Lang.String>);
-                return;
-            }
-            var subs = "";
-            if (!mCompSubscribed) {
-                mCompCallbacks = 0;
-                mCompLast = "-";
-                Complications.registerComplicationChangeCallback(method(:onComplicationChanged));
-                var types = [
-                    Complications.COMPLICATION_TYPE_BODY_BATTERY,
-                    Complications.COMPLICATION_TYPE_STRESS,
-                    Complications.COMPLICATION_TYPE_HEART_RATE
-                ] as Lang.Array<Complications.Type>;
-                for (var i = 0; i < types.size(); i += 1) {
-                    var ok = false;
-                    try {
-                        ok = Complications.subscribeToUpdates(new Complications.Id(types[i]));
-                    } catch (e) {
-                        // not found / too many: that is the datum, keep going
-                        ok = false;
-                    }
-                    subs += ok ? "Y" : "N";
-                }
-                mCompSubscribed = true;
-            } else {
-                subs = "on";
-            }
-            setResult(complicationLines("SUB " + subs));
-        } catch (e) {
-            setResult([ "ERROR", shortText(e.getErrorMessage(), 16) ] as Lang.Array<Lang.String>);
-        }
-    }
-
-    function complicationLines(first as Lang.String) as Lang.Array<Lang.String> {
-        return [
-            first,
-            "BB " + complicationValue(Complications.COMPLICATION_TYPE_BODY_BATTERY),
-            "ST " + complicationValue(Complications.COMPLICATION_TYPE_STRESS),
-            "HR " + complicationValue(Complications.COMPLICATION_TYPE_HEART_RATE),
-            "CB " + mCompCallbacks + " " + mCompLast
-        ] as Lang.Array<Lang.String>;
-    }
-
-    // The complication's current value as text: "null" when the watch has
-    // none, "NF" when getComplication throws ComplicationNotFound.
-    function complicationValue(type as Complications.Type) as Lang.String {
-        try {
-            var complication = Complications.getComplication(new Complications.Id(type));
-            var value = complication.value;
-            if (value == null) {
-                return "null";
-            }
-            return value.toString();
-        } catch (e) {
-            return "NF";
-        }
-    }
-
-    function onComplicationChanged(id as Complications.Id) as Void {
-        mCompCallbacks += 1;
-        var type = id.getType();
-        var tag = "?";
-        if (type == Complications.COMPLICATION_TYPE_BODY_BATTERY) {
-            tag = "BB";
-        } else if (type == Complications.COMPLICATION_TYPE_STRESS) {
-            tag = "ST";
-        } else if (type == Complications.COMPLICATION_TYPE_HEART_RATE) {
-            tag = "HR";
-        }
-        mCompLast = tag;
-        if (mProbeIndex == 7) {
-            showLines(complicationLines("SUB on"));
-        }
+        setResult([ "NO: compiler", "watch-app may", "not use", "Complications" ] as Lang.Array<Lang.String>);
     }
 
     // T23 (master, TX) and T24 (slave, RX): one generic ANT channel on the

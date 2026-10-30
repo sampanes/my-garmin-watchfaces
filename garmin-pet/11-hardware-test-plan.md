@@ -27,8 +27,9 @@ Turnkey first pass now lives at `garmin-pet/probes/hardware/`.
   that file into the watch's `GARMIN/Apps/` folder over MTP.
 
 The runner currently covers the cheap first-pass probes: T0/T1/T2/T7/T8/T14/T17,
-plus (2026-10-29, unbuilt) T15 complication-subscribe and the ANT pair T23 (master
-TX) / T24 (slave RX) as live-counting rows; see `probes/hardware/README.md`.
+plus the ANT pair T23 (master TX) / T24 (slave RX) as live-counting rows (built
+2026-10-30, not yet run on a watch) and T15, which the compiler answered (see the
+results log); see `probes/hardware/README.md`.
 Rows that need background services, GPS walks, web callbacks, or Garmin Connect
 inspection still need specialized one-off probe bodies.
 
@@ -172,6 +173,7 @@ resolves, update the matching ⚠️ VERIFY in `10-power-roster.md` and/or `open
 | T8 | 2026 | FR265 / fw not recorded | PASS (live half) — `ActivityMonitor.getInfo().stressScore` reads in a device app | Stress populated in multiple hardware sessions; it was often `null` (`-1`) in the first seconds after opening. The history-timestamp half is now logged by Friend 0.4.0 (`stress_age_s` on each check-in). |
 | T19 | 2026-10-25 | FR265 / SW 29.05 / CIQ VM 5.2.0 | PASS — app-recorded walks reach Connect with accurate maps and HR | Two START-saved walks rendered accurately in Garmin Connect. Decoded FIT data also contained `pet_mood`. |
 | T20 | 2026-10-24 | FR265 / SW 29.05 / CIQ VM 5.2.0 | FAIL — `CLOSED` save is not durable | `onStop` logged a successful save, but no corresponding FIT file existed afterward. Temporary screen hides could continue receiving fixes; a true close could not be recovered. |
+| T15 | 2026-10-30 | compiler: SDK 9.1.0, fr265 + vivoactive6 | FAIL - a device app cannot use Complications at all | The manifest refuses `ComplicationSubscriber` for a `watch-app`, and without it every `Toybox.Complications` reference is a compile error, reads included. Watch-face-only. Device apps use `ActivityMonitor` / `SensorHistory` (T7, T8). This also closes the Complications half of T7. |
 |  |  |  |  |  |
 
 > ⚠️ **T1 needs a re-test.** The 2026-06-25 FAIL was logged before the runner reported the

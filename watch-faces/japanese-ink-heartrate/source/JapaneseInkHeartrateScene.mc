@@ -708,24 +708,23 @@ class JapaneseInkHeartrateScene {
         var hrs = mTraceHr;
         if (nxs == null || hrs == null || nxs.size() < 2) { return; }
 
-        // A two-element tuple per point: fillPolygon declares
-        // Array<[Numeric, Numeric]>, and SDK 9.1 rejects an open
-        // Array<Array<Numeric>> there (compiled 2026-10-30).
-        var pts = [] as Lang.Array<[Lang.Number, Lang.Number]>;
+        // fillPolygon declares Array<Graphics.Point2D> (a two-element tuple);
+        // SDK 9.1 rejects an open Array<Array<Numeric>> there.
+        var pts = [] as Lang.Array<Graphics.Point2D>;
         var floor = 0;
         for (var i = 0; i < nxs.size(); i++) {
             var x = (w * axisX(nxs[i])).toNumber();
             var y = traceY(hrs[i], h).toNumber();
             if (y > floor) { floor = y; }
-            pts.add([x, y] as [Lang.Number, Lang.Number]);
+            pts.add([x, y] as Graphics.Point2D);
         }
         floor += (h * TRACE_FLOOR_PAD).toNumber();
 
         // The wash: trace plus two floor corners, at most TRACE_MAX + 2 points.
-        var poly = [] as Lang.Array<[Lang.Number, Lang.Number]>;
+        var poly = [] as Lang.Array<Graphics.Point2D>;
         for (var i = 0; i < pts.size(); i++) { poly.add(pts[i]); }
-        poly.add([pts[pts.size() - 1][0], floor] as [Lang.Number, Lang.Number]);
-        poly.add([pts[0][0], floor] as [Lang.Number, Lang.Number]);
+        poly.add([pts[pts.size() - 1][0], floor] as Graphics.Point2D);
+        poly.add([pts[0][0], floor] as Graphics.Point2D);
         if (mNight) {
             dc.setFill(Graphics.createColor(0x50, 200, 70, 50));
         } else {
@@ -733,11 +732,13 @@ class JapaneseInkHeartrateScene {
         }
         dc.fillPolygon(poly);
 
-        // The edge and the crest dots, opaque (setFill explicitly, so the
-        // dots never inherit the wash's alpha).
+        // The edge and the crest dots, opaque. setFill takes 0xAARRGGBB, so a
+        // bare 0xRRGGBB there is alpha 0 and the dots vanish (seen in the
+        // sim 2026-10-30); createColor carries the alpha.
         var edge = mNight ? 0xEC6E54 : 0xA62C1E;
         dc.setColor(edge, Graphics.COLOR_TRANSPARENT);
-        dc.setFill(edge);
+        dc.setFill(mNight ? Graphics.createColor(0xFF, 0xEC, 0x6E, 0x54)
+                          : Graphics.createColor(0xFF, 0xA6, 0x2C, 0x1E));
         dc.setPenWidth(2);
         for (var i = 1; i < pts.size(); i++) {
             dc.drawLine(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);

@@ -14,13 +14,15 @@ It currently covers:
   (the timestamp-sanity half of T8)
 - T14 VO2max profile values
 - T17 barometer / floors split
-- T15 complication subscribe from a DEVICE APP (written 2026-10-29, unbuilt):
-  SELECT registers the change callback and subscribes to Body Battery, stress
-  and heart rate (`SUB YNY` is one Y/N per `subscribeToUpdates` return), reads
-  each through `getComplication` (`null` = no value, `NF` = not found), and
-  `CB n` counts callbacks as they fire; watch it for a minute. Values present
-  with `CB` stuck at 0 = "read yes, subscribe no". Scrolling away unsubscribes.
-- T23 ANT master TX and T24 ANT slave RX (written 2026-10-29, unbuilt): one
+- T15 complication subscribe from a DEVICE APP: answered by the compiler on
+  2026-10-30, so the row only shows that answer. SDK 9.1 refuses the
+  `ComplicationSubscriber` permission for a `watch-app` ("permission is
+  invalid for app type 'watch-app'"), and without the permission every
+  `Toybox.Complications` reference (subscribe, read, even the type
+  constants) is a compile error. A device app can neither subscribe to nor
+  read complications; use `ActivityMonitor` / `SensorHistory`.
+- T23 ANT master TX and T24 ANT slave RX (written 2026-10-29, first built
+  2026-10-30, not yet run on a watch): one
   generic channel on the Spike B parameters (`03-ble-live.md`: public network,
   RF 66, device 0xBEEF, type 1, trans 1, 4 Hz). SELECT opens it and the lines
   count live: `OPEN`, `TX n` (one `EVENT_TX` per transmission, so about 4/s
@@ -32,10 +34,7 @@ It currently covers:
   watch; T24 needs the other watch on the T23 row at the same time, then
   swap roles (the 30 s search timeout is the maximum the API allows).
 
-New permissions in the manifest for those rows: `Ant` and
-`ComplicationSubscriber`. If the compiler says "Invalid permission provided"
-for the second, the SDK is older than the permission; remove the line and
-T15 reports whatever the runtime does without it.
+New permission in the manifest for those rows: `Ant`.
 
 The remaining rows in `11-hardware-test-plan.md` need specialized probes because they require background services, activity recording, notifications, GPS walks, or web callbacks.
 
