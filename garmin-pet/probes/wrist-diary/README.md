@@ -5,7 +5,7 @@ installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.6.0`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.7.0`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
 dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
 build that never reached git, and `0.4.0` was built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
@@ -26,6 +26,12 @@ before (a constant 1000 ms means interpolated beats, not HRV), the min and max i
 same count/changes pair taken while a Friend Walk was recording. Export format 5. If the watch
 refuses the option, Friend logs `FRIEND_RR_ERROR`, records `rr_count` −1 and falls back to the
 motion-only listener 0.4.0 ran with.
+
+**0.7.0 -- Export on every exit:** the watch firmware encrypts Connect IQ app storage
+(`GARMIN/Apps/DATA/*.DAT` reads as random bytes over USB), so the log export is the only readable
+copy. Friend now writes the same export the DEBUG DATA card does every time it exits, Back or
+watch-closed, after the session summary is saved. A failed export logs `FRIEND_AUTO_EXPORT_ERROR`
+and changes nothing stored. The DEBUG DATA card still works for an export mid-session.
 
 ## What it does
 
@@ -123,8 +129,8 @@ Reconnect the watch and run:
 .\scripts\read-friend.ps1
 ```
 
-Before reconnecting, open Friend, use Up/Down to reach `DEBUG DATA`, then press START so the newest
-complete export is in the log. The reader copies both the live log and rotated backup, writes parsed CSV files under the
+Since 0.7.0 every exit already left the newest export in the log; on older builds, open Friend,
+use Up/Down to reach `DEBUG DATA` and press START before reconnecting. The reader copies both the live log and rotated backup, writes parsed CSV files under the
 ignored `bin/friend/downloads/` directory, and leaves on-watch data untouched. Every read also
 merges its rows into `bin/friend/archive/` (no duplicates), so reading after each session builds
 the full history that no single export can carry. `scripts/test-friend-export.ps1` checks the

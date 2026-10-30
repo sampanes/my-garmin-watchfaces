@@ -130,7 +130,9 @@ Cap: **AUTO** = stub self-reports · **MAN** = you observe & record.
 | ⭐ T19 | **"Walk with me" lands in Connect with a map + HR** | `createSession({:sport=>SPORT_WALKING})`; `Position.enableLocationEvents(LOCATION_CONTINUOUS,cb)`; `Sensor.setEnabledSensors([SENSOR_HEARTRATE])`; add a `FitContributor` field; walk ~3 min; `save()` | After sync: activity in Garmin Connect **with a route map**? HR graph present? Custom field visible? | 🔵🟢 |
 | ▫ T20 | GPS track stops when app backgrounds | start T19, then background the app mid-walk | Straight-line gap in the route where it backgrounded? (confirms FG-only) | 🔵🟢 |
 
-Probe app for T19/T20: [`probes/walk/`](probes/walk/README.md) (build with `scripts/build-walk-probe.ps1`; outdoor procedure, Connect checklist and results table in its README).
+T19/T20 ran on a standalone Walk Probe app. It was removed on 2026-10-30 once Friend Walk
+([`probes/wrist-diary/`](probes/wrist-diary/README.md), Friend 0.5.0) took over its recorder; its
+code, outdoor procedure and full results table remain in git history under `garmin-pet/probes/walk/`.
 
 **FR265 result:** T19 passed. Two recordings ended explicitly with START and appeared in
 Garmin Connect as accurate walks; decoded FIT data contained the expected GPS, HR and

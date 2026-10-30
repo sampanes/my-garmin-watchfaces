@@ -1,6 +1,0 @@
-<resources>
-    <string id="AppName">Walk Probe</string>
-    <string id="MoodLabel">Pet mood</string>
-    <string id="MoodChartTitle">Pet mood</string>
-    <string id="MoodUnits">lvl</string>
-</resources>

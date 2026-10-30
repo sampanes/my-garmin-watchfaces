@@ -82,7 +82,6 @@ Add ""
 $projects = @(
     @{ Name = "japanese-ink-heartrate"; Dir = "watch-faces\japanese-ink-heartrate" },
     @{ Name = "friend (wrist-diary)"; Dir = "garmin-pet\probes\wrist-diary" },
-    @{ Name = "walk-probe"; Dir = "garmin-pet\probes\walk" },
     @{ Name = "pet-hardware-probe"; Dir = "garmin-pet\probes\hardware" }
 )
 Add "## Builds (``monkeyc -w -l 2``)"

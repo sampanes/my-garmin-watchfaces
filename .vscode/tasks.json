@@ -114,38 +114,6 @@
                 "-OpenFolders"
             ],
             "problemMatcher": []
-        },
-        {
-            "label": "Walk probe: build FR265",
-            "type": "shell",
-            "command": "powershell",
-            "args": [
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}\\scripts\\build-walk-probe.ps1",
-                "-Device",
-                "fr265",
-                "-OpenFolders"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Walk probe: build VA6",
-            "type": "shell",
-            "command": "powershell",
-            "args": [
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}\\scripts\\build-walk-probe.ps1",
-                "-Device",
-                "vivoactive6",
-                "-OpenFolders"
-            ],
-            "problemMatcher": []
         }
     ]
 }

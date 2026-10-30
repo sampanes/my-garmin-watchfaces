@@ -13,7 +13,7 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.6.0";
+    const APP_VERSION = "0.7.0";
     const SCHEMA = 3;           // On-watch storage layout.
     const EXPORT_FORMAT = 5;    // Log export layout; friend-export.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;
@@ -625,6 +625,14 @@ class WristDiaryView extends WatchUi.View {
             captureLive();
             if (mChapterState == CHAPTER_ACTIVE) { finishChapter(1); }
             saveSessionSummary();
+        }
+        // Storage on the watch is encrypted by the firmware, so the log export is
+        // the only readable copy. Write it on every exit, after the summary is safe,
+        // so plugging in after a session never needs the DEBUG DATA step first.
+        try {
+            exportAllRecords();
+        } catch (e3) {
+            System.println("FRIEND_AUTO_EXPORT_ERROR," + e3.getErrorMessage());
         }
     }
 
