@@ -41,8 +41,9 @@ events before raw touch.
 This is the reason to do it on Garmin specifically. Tie pet wellbeing to the
 wearer's real activity. Available inputs (confirmed in `beyond_faces/SENSORS_AND_GPS.md`):
 
-- **Steps** → food/energy. Use `ActivityMonitor.getInfo()`, or the **`Complications`
-  STEPS** subscription (System 7+, battery-efficient — OS pushes updates).
+- **Steps** → food/energy. Use `ActivityMonitor.getInfo()`. (The `Complications` STEPS
+  subscription is watch-face-only: a device app cannot even declare the permission,
+  `11` T15, compiler 2026-10-30.)
 - **Workouts / intensity minutes** → play & happiness (`ActivityMonitor`).
 - **Sleep tracking** → pet sleeps when you do.
 - **Heart rate** → mood: `Sensor.getInfo().heartRate` live, or `SensorHistory`
@@ -62,8 +63,8 @@ session**, and no live IPC between the native activity and the pet.
   buddy" foreground session (25 Hz accel, `04`), so the pet senses + roasts in real time.
   This is the live experience.
 - **Walks / runs → AFTER THE FACT.** The pet reads the day's **aggregates** on next open
-  (or a ≥5-min background poll): steps / distance / active-minutes via the `Complications`
-  STEPS subscription (battery-cheap, OS-pushed) + `ActivityMonitor`. So *"you ran today —
+  (or a ≥5-min background poll): steps / distance / active-minutes via `ActivityMonitor`
+  (not a `Complications` subscription: device apps cannot, `11` T15). So *"you ran today —
   strong work"* works **retroactively**. No route, no live presence, but the cardio still
   feeds the pet.
 - **Stretch — "Walk/Run with [pet]" mode (an *unlock*, later):** to have the pet actually

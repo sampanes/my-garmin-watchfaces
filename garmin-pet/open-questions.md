@@ -33,7 +33,8 @@ which trails your unpushed local — re-confirm against the local repo.
       → `beyond_faces/BLUETOOTH_BLE.md`
 - [x] **Sensor inputs for pet mechanics** — `Sensor.getInfo()` (HR, cadence, temp;
       pressure **FR265 only**); `SensorHistory` (HR last ~4 h, elevation, pressure);
-      `Complications` STEPS subscription (battery-efficient). → `beyond_faces/SENSORS_AND_GPS.md`
+      (`Complications` STEPS is watch-face-only, `11` T15 2026-10-30: the pet reads
+      `ActivityMonitor`). → `beyond_faces/SENSORS_AND_GPS.md`
 - [x] **BLE peripheral / watch↔watch** — ❌ **NOT POSSIBLE.** CIQ BLE is central-only
       (GATTC since API 3.1.0); no advertising / GATT server. Two watches **cannot**
       connect directly over BLE. → [BLE API docs](https://developer.garmin.com/connect-iq/api-docs/Toybox/BluetoothLowEnergy.html),
@@ -125,7 +126,10 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
       - **T23/T24** — ANT generic-channel TX on FR265/VA6 + two-watch payload exchange (the encounter
         power; extends `03 §Spike B`).
       - **T7/T11/T15** — can a **device app** read Body Battery / DIY-HRV beat-intervals / subscribe to
-        Complications (or is subscribe watchface-only)? Decides the richest sense powers.
+        Complications? Decides the richest sense powers. T7 ✅ (history reads, Friend). T15 ❌
+        (2026-10-30: the compiler refuses `ComplicationSubscriber` for a watch-app, so a device
+        app cannot read or subscribe; `ActivityMonitor`/`SensorHistory` are the senses). T11 open
+        (Friend 0.6.0 built 2026-10-30, not yet worn).
       - **Device-split** — T2 FR265 vibration resolved: flat single buzz / no pattern on
         SW 28.05. T1 FR265 `TONE_SUCCESS` produced no audible beep on SW 28.05; retest
         sound settings + custom `ToneProfile` before relying on tones. Remaining:

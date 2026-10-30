@@ -51,14 +51,19 @@ class JapaneseInkHeartrateScene {
     var mBufferHeight as Lang.Number = 0;
     var mLastSceneKey as Lang.Number = -1;
 
-    var mFar;
-    var mHost;
-    var mGuest;
-    var mMist;
-    var mMistLite;
-    var mFgLeft;
-    var mFgRight;
-    var mPaperGrain;
+    // The baked planes. Typed so the checker sees them (untyped members made
+    // every draw call "Passing 'Any'", 20 warnings per build, and hid real
+    // type errors). The checker does not narrow a member after a null test
+    // (COMPILER_FACTS 1.4), so every draw site copies the plane to a local
+    // first.
+    var mFar as Graphics.BitmapType?;
+    var mHost as Graphics.BitmapType?;
+    var mGuest as Graphics.BitmapType?;
+    var mMist as Graphics.BitmapType?;
+    var mMistLite as Graphics.BitmapType?;
+    var mFgLeft as Graphics.BitmapType?;
+    var mFgRight as Graphics.BitmapType?;
+    var mPaperGrain as Graphics.BitmapType?;
     // Which plane set is in the graphics pool: -1 none, 0 day, 1 night.
     var mLoadedSet as Lang.Number = -1;
 
@@ -154,7 +159,7 @@ class JapaneseInkHeartrateScene {
 
     // ------------------------------------------------------------ settings
 
-    function propValue(key as Lang.String) {
+    function propValue(key as Lang.String) as Lang.Object? {
         var value = null;
         try {
             value = Application.Properties.getValue(key);
@@ -228,23 +233,23 @@ class JapaneseInkHeartrateScene {
         mPaperGrain = null;
         if (WatchUi has :loadResource) {
             if (night) {
-                mFar = WatchUi.loadResource(Rez.Drawables.FarRangeNight);
-                mHost = WatchUi.loadResource(Rez.Drawables.HostMountainNight);
-                mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainNight);
-                mMist = WatchUi.loadResource(Rez.Drawables.MistBandNight);
-                mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteNight);
-                mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftNight);
-                mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightNight);
+                mFar = WatchUi.loadResource(Rez.Drawables.FarRangeNight) as Graphics.BitmapType;
+                mHost = WatchUi.loadResource(Rez.Drawables.HostMountainNight) as Graphics.BitmapType;
+                mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainNight) as Graphics.BitmapType;
+                mMist = WatchUi.loadResource(Rez.Drawables.MistBandNight) as Graphics.BitmapType;
+                mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteNight) as Graphics.BitmapType;
+                mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftNight) as Graphics.BitmapType;
+                mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightNight) as Graphics.BitmapType;
                 // No grain on the night paper: black stays black.
             } else {
-                mFar = WatchUi.loadResource(Rez.Drawables.FarRangeTuned);
-                mHost = WatchUi.loadResource(Rez.Drawables.HostMountainTuned);
-                mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainTuned);
-                mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned);
-                mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned);
-                mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftTuned);
-                mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightTuned);
-                mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned);
+                mFar = WatchUi.loadResource(Rez.Drawables.FarRangeTuned) as Graphics.BitmapType;
+                mHost = WatchUi.loadResource(Rez.Drawables.HostMountainTuned) as Graphics.BitmapType;
+                mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainTuned) as Graphics.BitmapType;
+                mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned) as Graphics.BitmapType;
+                mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned) as Graphics.BitmapType;
+                mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftTuned) as Graphics.BitmapType;
+                mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightTuned) as Graphics.BitmapType;
+                mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned) as Graphics.BitmapType;
             }
         }
         mLoadedSet = set;
@@ -634,54 +639,62 @@ class JapaneseInkHeartrateScene {
         drawCelestial(dc, width, height);
 
         // 1. far plane: ghost and far ridges, the horizon haze
-        if (mFar != null) {
-            dc.drawScaledBitmap(-(w * 0.02), h * 0.33, w * 1.04, h * 0.29, mFar);
+        var far = mFar;
+        if (far != null) {
+            dc.drawScaledBitmap(-(w * 0.02), h * 0.33, w * 1.04, h * 0.29, far);
         }
 
         // 2. light mist between the far and mid planes
-        if (mMistLite != null) {
-            dc.drawScaledBitmap(-(w * 0.10), h * 0.50, w * 1.20, h * 0.17, mMistLite);
+        var mistLite = mMistLite;
+        if (mistLite != null) {
+            dc.drawScaledBitmap(-(w * 0.10), h * 0.50, w * 1.20, h * 0.17, mistLite);
         }
 
         // 3. guest: the second landmark, its crest on the host's crest scale
         //    and GUEST_RECESS lower, so a lower heart rate is a lower peak
         var gH = h * 0.50 * (0.40 + 0.70 * h1);
         var gY = crestY(h1, h) + h * GUEST_RECESS - GUEST_APEX_Y * gH;
-        if (hasGuest && mGuest != null) {
+        var guest = mGuest;
+        if (hasGuest && guest != null) {
             var gW = gH * (GUEST_W / GUEST_H);
             var gX = guestNx * w - GUEST_APEX_FRAC * gW;
-            dc.drawScaledBitmap(gX, gY, gW, gH, mGuest);
+            dc.drawScaledBitmap(gX, gY, gW, gH, guest);
         }
 
         // 4. host: the strongest landmark, the hero
         var hH = hostHeight(h0, h);
         var hY = h * 0.87 - hH;
-        if (mHost != null) {
+        var host = mHost;
+        if (host != null) {
             var hW = hH * (HOST_W / HOST_H);
             var hX = hostNx * w - HOST_APEX_FRAC * hW;
-            dc.drawScaledBitmap(hX, hY, hW, hH, mHost);
+            dc.drawScaledBitmap(hX, hY, hW, hH, host);
         }
 
         // 5. full mist dissolving the mid-plane bases
-        if (mMist != null) {
-            dc.drawScaledBitmap(-(w * 0.03), h * 0.69, w * 1.06, h * 0.20, mMist);
+        var mist = mMist;
+        if (mist != null) {
+            dc.drawScaledBitmap(-(w * 0.03), h * 0.69, w * 1.06, h * 0.20, mist);
         }
 
         // 6. foreground masses: left = oldest hour, right = newest
-        if (mFgLeft != null) {
+        var fgLeft = mFgLeft;
+        if (fgLeft != null) {
             var lH = h * 0.58 * (0.65 + 0.45 * hStart);
             var lW = w * 0.74;
-            dc.drawScaledBitmap(-(w * 0.04), h - lH + h * 0.03, lW, lH, mFgLeft);
+            dc.drawScaledBitmap(-(w * 0.04), h - lH + h * 0.03, lW, lH, fgLeft);
         }
-        if (mFgRight != null) {
+        var fgRight = mFgRight;
+        if (fgRight != null) {
             var rH = h * 0.52 * (0.65 + 0.45 * hEnd);
             var rW = w * 0.68;
-            dc.drawScaledBitmap(w - rW + w * 0.04, h - rH + h * 0.03, rW, rH, mFgRight);
+            dc.drawScaledBitmap(w - rW + w * 0.04, h - rH + h * 0.03, rW, rH, fgRight);
         }
 
         // 7. paper grain over everything: converts "screen" to "paper"
-        if (mPaperGrain != null) {
-            dc.drawScaledBitmap(0, 0, width, height, mPaperGrain);
+        var grain = mPaperGrain;
+        if (grain != null) {
+            dc.drawScaledBitmap(0, 0, width, height, grain);
         }
 
         // 8. the data itself, for judging the painting against it. The dots
@@ -803,16 +816,17 @@ class JapaneseInkHeartrateScene {
         var bX2 = bX + bW + (w * 0.04).toNumber();
         probeFrame(dc, bX, bY, bW, bH);
         probeFrame(dc, bX2, bY, bW, bH);
-        if (mHost != null) {
+        var host = mHost;
+        if (host != null) {
             var hostH = bH.toFloat();
             var hostW = hostH * (HOST_W / HOST_H);
             var inset = (bW.toFloat() - hostW) / 2.0;
-            dc.drawScaledBitmap(bX.toFloat() + inset, bY.toFloat(), hostW, hostH, mHost);
+            dc.drawScaledBitmap(bX.toFloat() + inset, bY.toFloat(), hostW, hostH, host);
             if ((Graphics has :AffineTransform) && (dc has :drawBitmap2)) {
                 try {
                     var t = new Graphics.AffineTransform();
                     t.scale(hostW / HOST_W, hostH / HOST_H);
-                    dc.drawBitmap2(bX2.toFloat() + inset, bY.toFloat(), mHost,
+                    dc.drawBitmap2(bX2.toFloat() + inset, bY.toFloat(), host,
                                    { :transform => t, :filterMode => Graphics.FILTER_MODE_BILINEAR });
                 } catch (ex) {
                     probeWord(dc, bX2, bY, bW, bH, "ERR");
@@ -835,16 +849,18 @@ class JapaneseInkHeartrateScene {
         dc.setColor(PROBE_GROUND, PROBE_GROUND);
         dc.fillRectangle(bX, cY, bW, cH);
         dc.fillRectangle(bX2, cY, bW, cH);
-        if (mMistLite != null) {
+        var mistLite = mMistLite;
+        if (mistLite != null) {
             dc.setClip(bX, cY, bW, cH);
-            dc.drawBitmap(bX - offX, cY - offY, mMistLite);
+            dc.drawBitmap(bX - offX, cY - offY, mistLite);
             dc.clearClip();
         }
-        if (mMist != null) {
+        var mist = mMist;
+        if (mist != null) {
             if (dc has :drawBitmap2) {
                 try {
                     dc.setClip(bX2, cY, bW, cH);
-                    dc.drawBitmap2(bX2 - offX, cY - offY, mMist,
+                    dc.drawBitmap2(bX2 - offX, cY - offY, mist,
                                    { :tintColor => Graphics.createColor(0x80, 255, 255, 255) });
                     dc.clearClip();
                 } catch (ex) {
@@ -865,19 +881,20 @@ class JapaneseInkHeartrateScene {
         var dX2 = dX + dW + (w * 0.03).toNumber();
         probeFrame(dc, dX, dY, dW, dH);
         probeFrame(dc, dX2, dY, dW, dH);
-        if (mGuest != null) {
+        var guest = mGuest;
+        if (guest != null) {
             var gH = dH.toFloat() * 0.9;
             var gW = gH * (GUEST_W / GUEST_H);
             var gY = dY.toFloat() + (dH.toFloat() - gH) / 2.0;
             var second = dW.toFloat() - 3.0 - gW;
-            dc.drawScaledBitmap(dX.toFloat() + 3.0, gY, gW, gH, mGuest);
-            dc.drawScaledBitmap(dX.toFloat() + second, gY, gW, gH, mGuest);
+            dc.drawScaledBitmap(dX.toFloat() + 3.0, gY, gW, gH, guest);
+            dc.drawScaledBitmap(dX.toFloat() + second, gY, gW, gH, guest);
             if (dc has :setBlendMode) {
                 var failed = false;
                 try {
                     dc.setBlendMode(Graphics.BLEND_MODE_MULTIPLY);
-                    dc.drawScaledBitmap(dX2.toFloat() + 3.0, gY, gW, gH, mGuest);
-                    dc.drawScaledBitmap(dX2.toFloat() + second, gY, gW, gH, mGuest);
+                    dc.drawScaledBitmap(dX2.toFloat() + 3.0, gY, gW, gH, guest);
+                    dc.drawScaledBitmap(dX2.toFloat() + second, gY, gW, gH, guest);
                 } catch (ex) {
                     failed = true;
                 }
@@ -897,7 +914,8 @@ class JapaneseInkHeartrateScene {
         var a = probeRowA(w, h);
         var x = a[0] + 2 * (a[2] + a[4]);
         var y = a[1];
-        if (mMist == null) {
+        var mist = mMist;
+        if (mist == null) {
             probeWord(dc, x, y, a[2], a[3], "ERR");
             return;
         }
@@ -905,7 +923,7 @@ class JapaneseInkHeartrateScene {
             dc.setColor(PROBE_GROUND, PROBE_GROUND);
             dc.fillRectangle(x, y, a[2], a[3]);
             dc.setClip(x, y, a[2], a[3]);
-            dc.drawBitmap(x - (MIST_W - a[2]) / 2, y - (MIST_H - a[3]) / 2, mMist);
+            dc.drawBitmap(x - (MIST_W - a[2]) / 2, y - (MIST_H - a[3]) / 2, mist);
             dc.clearClip();
         } catch (ex) {
             dc.clearClip();
@@ -934,7 +952,8 @@ class JapaneseInkHeartrateScene {
                             w as Lang.Number, h as Lang.Number,
                             surface as Graphics.BufferedBitmap?) as Void {
         probeFrame(dc, x, y, w, h);
-        if (surface == null || mMist == null) {
+        var mist = mMist;
+        if (surface == null || mist == null) {
             probeWord(dc, x, y, w, h, "ERR");
             return;
         }
@@ -942,7 +961,7 @@ class JapaneseInkHeartrateScene {
             var sdc = surface.getDc();
             sdc.setColor(PROBE_GROUND, PROBE_GROUND);
             sdc.clear();
-            sdc.drawBitmap(-((MIST_W - w) / 2), -((MIST_H - h) / 2), mMist);
+            sdc.drawBitmap(-((MIST_W - w) / 2), -((MIST_H - h) / 2), mist);
             dc.drawBitmap(x, y, surface);
         } catch (ex) {
             probeWord(dc, x, y, w, h, "ERR");

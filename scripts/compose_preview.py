@@ -173,6 +173,17 @@ def load(name):
     return Image.open(os.path.join(DRAW, name)).convert("RGBA")
 
 
+def blend_ellipse(base, cx, cy, r, rgba):
+    """A translucent disk source-over the paper, like fillCircle after
+    setFill(createColor(a, r, g, b)). ImageDraw on an RGBA image REPLACES
+    pixels, alpha included, and the final circle mask then shows that color
+    opaque: the sun's 0x40 halo came out as a solid red disk until the
+    2026-10-30 simulator sheet caught it."""
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    ImageDraw.Draw(layer).ellipse([cx - r, cy - r, cx + r, cy + r], fill=rgba)
+    return Image.alpha_composite(base, layer)
+
+
 class BmFont:
     """Reads a baked .fnt/.png pair exactly as the resource compiler will, and
     draws a string the way dc.drawText(..., CENTER | VCENTER) places it: the
@@ -321,7 +332,6 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     base = Image.new("RGBA", (W, H), (0, 0, 0, 255) if night else PAPER)
 
     # sun / moon on the day arc (sun 06:00-18:00 west to east)
-    d = ImageDraw.Draw(base, "RGBA")
     # (moon, not night: night mode is the settings window passed in, and it
     # must not be shadowed here or the ink goes pale on day paper after
     # 18:00, which the watch never does)
@@ -332,11 +342,11 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     sy = int(H * 0.14 - math.sin(t * math.pi) * H * 0.06)
     r_halo, r_core = int(W * 0.046), int(W * 0.034)
     if moon:
-        d.ellipse([sx - r_halo, sy - r_halo, sx + r_halo, sy + r_halo], fill=(240, 235, 220, 0x30))
-        d.ellipse([sx - r_core, sy - r_core, sx + r_core, sy + r_core], fill=(248, 244, 232, 0xC0))
+        halo, core = (240, 235, 220, 0x30), (248, 244, 232, 0xC0)
     else:
-        d.ellipse([sx - r_halo, sy - r_halo, sx + r_halo, sy + r_halo], fill=(200, 70, 50, 0x40))
-        d.ellipse([sx - r_core, sy - r_core, sx + r_core, sy + r_core], fill=(175, 38, 28, 0xCC))
+        halo, core = (200, 70, 50, 0x40), (175, 38, 28, 0xCC)
+    base = blend_ellipse(base, sx, sy, r_halo, halo)
+    base = blend_ellipse(base, sx, sy, r_core, core)
 
     # 1. far plane (ghost + far ridges), the horizon haze
     base = paste_scaled(base, far, -0.02 * W, 0.33 * H, 1.04 * W, 0.29 * H)
@@ -400,9 +410,11 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     base = ink_font.draw(base, "%02d" % (minute_of_day % 60), int(0.22 * W), int(0.375 * H), ink)
     seal = int(W * 0.085)
     sx0, sy0 = int(0.22 * W) - seal // 2, int(0.465 * H)
-    ImageDraw.Draw(base, "RGBA").rounded_rectangle(
+    seal_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(seal_layer).rounded_rectangle(
         [sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7,
         fill=(150, 44, 32, 235) if night else (176, 52, 38, 235))
+    base = Image.alpha_composite(base, seal_layer)
     if hr_now is not None:
         base = seal_font.draw(base, str(int(round(hr_now))), int(0.22 * W), sy0 + seal / 2.0,
                               (244, 238, 226))

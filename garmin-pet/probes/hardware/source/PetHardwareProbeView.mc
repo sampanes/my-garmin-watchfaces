@@ -299,7 +299,10 @@ class PetHardwareProbeView extends WatchUi.View {
                 setResult([ "NO API" ] as Lang.Array<Lang.String>);
                 return;
             }
-            var history = SensorHistory.getBodyBatteryHistory({});
+            // Typed non-null in the SDK, so the null branch read as
+            // unreachable; the cast keeps the firmware-returned-null case
+            // (what NO ITER reports) without the warning.
+            var history = SensorHistory.getBodyBatteryHistory({}) as SensorHistory.SensorHistoryIterator?;
             if (history == null) {
                 setResult([ "NO ITER" ] as Lang.Array<Lang.String>);
                 return;
@@ -328,7 +331,7 @@ class PetHardwareProbeView extends WatchUi.View {
             var sampleText = "NO API";
             var ageText = "AGE n/a";
             if ((Toybox has :SensorHistory) && (Toybox.SensorHistory has :getStressHistory)) {
-                var history = SensorHistory.getStressHistory({});
+                var history = SensorHistory.getStressHistory({}) as SensorHistory.SensorHistoryIterator?;
                 if (history == null) {
                     sampleText = "NO ITER";
                 } else {
@@ -381,11 +384,15 @@ class PetHardwareProbeView extends WatchUi.View {
             var altitude = "n/a";
             // Format floats compactly: raw Float toString overflows the 8-char
             // display clip (e.g. "101325.123456") and hides the reading.
-            if ((sensorInfo != null) && (sensorInfo has :pressure) && (sensorInfo.pressure != null)) {
-                pressure = sensorInfo.pressure.format("%.0f");
+            // Copied to locals: the checker narrows a local after a null
+            // test, never a member (COMPILER_FACTS 1.4).
+            if ((sensorInfo != null) && (sensorInfo has :pressure)) {
+                var p = sensorInfo.pressure;
+                if (p != null) { pressure = p.format("%.0f"); }
             }
-            if ((sensorInfo != null) && (sensorInfo has :altitude) && (sensorInfo.altitude != null)) {
-                altitude = sensorInfo.altitude.format("%.1f");
+            if ((sensorInfo != null) && (sensorInfo has :altitude)) {
+                var alt = sensorInfo.altitude;
+                if (alt != null) { altitude = alt.format("%.1f"); }
             }
 
             var activityInfo = ActivityMonitor.getInfo();

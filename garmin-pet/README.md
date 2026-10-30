@@ -180,5 +180,5 @@ Two hard truths that recur below:
 - **Background service** (`Toybox.Background`) — throttled periodic code (sync); 64 KB, 5 min, 30 s.
 - **`Communications.makeWebRequest` / `makeOAuthRequest`** — HTTP / OAuth via the phone bridge.
 - **`Application.Storage` / `Properties`** — persistent save state / settings.
-- **`Toybox.Sensor` / `SensorHistory` / `ActivityMonitor` / `Complications`** — body-data inputs.
+- **`Toybox.Sensor` / `SensorHistory` / `ActivityMonitor`** — body-data inputs. (`Complications` reads are watch-face-only; a device app may only publish, `11` T15.)
 - **`Toybox.BluetoothLowEnergy` / `Toybox.Ant`** — radio APIs (Track 3).
