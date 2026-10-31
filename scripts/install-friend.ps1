@@ -72,27 +72,32 @@ if ($existing) {
     Write-Host "[verified] $prgName staged at $copiedSize bytes."
 }
 
-# Garmin writes System.println output only to a log file that already exists.
-# Friend keeps Wrist Diary's UUID, so Garmin keeps the original sideload basename.
-# Create it only when missing: an existing one may hold an export not yet read.
+# Garmin writes System.println output only to a log file that already exists,
+# named after the basename the app was first sideloaded under. A watch that ran
+# Wrist Diary keeps wrist-diary-fr265; a fresh install (any watch reset since,
+# like the FR265 on 2026-10-26) uses friend-fr265, matching its DATA files.
+# Create both so either identity logs. Only when missing: an existing one may
+# hold an export not yet read.
 $logs = $apps.GetFolder.Items() | Where-Object Name -eq "LOGS" | Select-Object -First 1
 if (-not $logs) {
     Write-Warning "GARMIN/Apps/LOGS was not found; Friend's export will not be logged."
 } else {
-    $logItem = $logs.GetFolder.Items() |
-        Where-Object { $_.ExtendedProperty("System.FileName") -ieq "wrist-diary-fr265.txt" } |
-        Select-Object -First 1
-    if ($logItem) {
-        Write-Host "[log] wrist-diary-fr265.txt already exists; left as is."
-    } else {
+    foreach ($logName in @("friend-fr265.txt", "wrist-diary-fr265.txt")) {
+        $logItem = $logs.GetFolder.Items() |
+            Where-Object { $_.ExtendedProperty("System.FileName") -ieq $logName } |
+            Select-Object -First 1
+        if ($logItem) {
+            Write-Host "[log] $logName already exists; left as is."
+            continue
+        }
         $tempLogDir = Join-Path ([System.IO.Path]::GetTempPath()) ("friend-log-" + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tempLogDir | Out-Null
-        $tempLog = Join-Path $tempLogDir "wrist-diary-fr265.txt"
+        $tempLog = Join-Path $tempLogDir $logName
         [System.IO.File]::WriteAllText($tempLog, "")
         $logs.GetFolder.CopyHere($tempLog, 16)
         Start-Sleep -Seconds 2
         Remove-Item -LiteralPath $tempLogDir -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "[log] Created an empty wrist-diary-fr265.txt so Friend's export is kept."
+        Write-Host "[log] Created an empty $logName so Friend's export is kept."
     }
 }
 
