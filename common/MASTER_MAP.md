@@ -48,6 +48,7 @@ Welcome to the linked knowledge tree for Garmin development. This map connects t
 ## Getting Started
 
 - **Writing Monkey C on a machine with no SDK?** Read the [Compiler Facts](language/COMPILER_FACTS.md) and the newest [home verify report](home-verify/README.md) first.
+- **Does the ink landscape match the HR graph?** Read the newest [fidelity report](fidelity/README.md), or run `scripts/fidelity_test.py`.
 - **Newcomer?** Start with the [Workflow & Sideloading Guide](workflow/BUILD_AND_SIDELOAD.md).
 - **Tooling setup?** Read the [VS Code for Dummies Guide](workflow/VS_CODE_FOR_DUMMIES.md).
 - **Pre-coding facts?** Read the [Web-Verified Research Brief](workflow/WEB_RESEARCH_BRIEF_FORERUNNER265_VIVOACTIVE6.md).

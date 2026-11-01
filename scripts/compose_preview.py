@@ -123,7 +123,12 @@ def load_data(path, end_epoch=None):
             if avg <= 0:
                 continue
             rows.append((int(d["epoch"]), avg, float(d.get("hr_max") or avg)))
-    rows.sort()
+    return window_from_rows(rows, end_epoch)
+
+
+def window_from_rows(rows, end_epoch=None):
+    """load_data's binning on in-memory (epoch, hr_avg, hr_max) rows."""
+    rows = sorted(rows)
     if end_epoch is None:
         end_epoch = rows[-1][0]
     start = end_epoch - HISTORY_SECONDS
@@ -294,6 +299,43 @@ def draw_trace(base, trace, host_crest, guest_crest, night):
     return Image.alpha_composite(base, layer)
 
 
+def mid_plane_layout(history):
+    """Where the two landmark planes go for a window, as (x, y, w, h) pixel
+    rects plus their crest points: {"host": rect, "host_crest": (x, y),
+    "guest": rect or None, "guest_crest": (x, y) or None}. compose() and
+    scripts/fidelity_test.py both use it, so the scored skyline is the
+    painted one.
+
+    Both landmarks on the one time axis. The guest apex also stays right of
+    the inscription column (x >= 0.34) and clear of the host massif; when
+    it cannot do both on its own side of the host it crosses over. No
+    second landmark means no guest plane."""
+    peaks = landmark_peaks(history)
+    host_nx, h0 = peaks[0]
+    hx = axis_x(host_nx)
+    out = {"guest": None, "guest_crest": None}
+    if len(peaks) > 1:
+        guest_nx, h1 = peaks[1]
+        gx = max(axis_x(guest_nx), 0.34)
+        if abs(hx - gx) < 0.30:
+            gx = hx + 0.34 if hx < 0.55 else hx - 0.34
+            gx = min(max(gx, 0.34), 0.84)
+        # the guest's crest on the host's crest scale, GUEST_RECESS lower, so
+        # a lower heart rate is a lower peak
+        g_h = 0.50 * H * (0.40 + 0.70 * h1)
+        g_w = g_h * (260.0 / 190.0)
+        g_apex = 0.46      # measured crest column (was 0.42, 8 px off the axis)
+        g_y = crest_y(h1) + GUEST_RECESS * H - GUEST_APEX_Y * g_h
+        out["guest"] = (gx * W - g_apex * g_w, g_y, g_w, g_h)
+        out["guest_crest"] = (gx * W, g_y + GUEST_APEX_Y * g_h)
+    m_h = host_height(h0)
+    m_w = m_h * (340.0 / 260.0)
+    m_apex = 0.47
+    out["host"] = (hx * W - m_apex * m_w, 0.87 * H - m_h, m_w, m_h)
+    out["host_crest"] = (hx * W, 0.87 * H - m_h + HOST_APEX_Y * m_h)
+    return out
+
+
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
             hour24=False):
     """night: the moonlit negative set (pale ink on black paper, no grain).
@@ -309,20 +351,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     grain_p = os.path.join(DRAW, "paper_grain.png")
     grain = Image.open(grain_p).convert("RGBA") if os.path.exists(grain_p) and not night else None
 
-    # Both landmarks on the one time axis. The guest apex also stays right of
-    # the inscription column (x >= 0.34) and clear of the host massif; when
-    # it cannot do both on its own side of the host it crosses over. No
-    # second landmark means no guest plane.
-    peaks = landmark_peaks(history)
-    host_nx, h0 = peaks[0]
-    hx = axis_x(host_nx)
-    gx, h1 = None, None
-    if len(peaks) > 1:
-        guest_nx, h1 = peaks[1]
-        gx = max(axis_x(guest_nx), 0.34)
-        if abs(hx - gx) < 0.30:
-            gx = hx + 0.34 if hx < 0.55 else hx - 0.34
-            gx = min(max(gx, 0.34), 0.84)
+    layout = mid_plane_layout(history)
     # Foreground masses carry the two ends of the window: the oldest and the
     # newest bucket WITH DATA (a window missing its first hours after a
     # reboot keeps those buckets at zero, and zero is not a heart rate).
@@ -354,22 +383,12 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 2. light mist between far and mid planes
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
 
-    # 3. guest: second landmark, its crest on the host's crest scale and
-    #    GUEST_RECESS lower, so a lower heart rate is a lower peak
-    guest_crest = None
-    if gx is not None:
-        g_h = 0.50 * H * (0.40 + 0.70 * h1)
-        g_w = g_h * (260.0 / 190.0)
-        g_apex = 0.46      # measured crest column (was 0.42, 8 px off the axis)
-        g_y = crest_y(h1) + GUEST_RECESS * H - GUEST_APEX_Y * g_h
-        base = paste_scaled(base, guest, gx * W - g_apex * g_w, g_y, g_w, g_h)
-        guest_crest = (gx * W, g_y + GUEST_APEX_Y * g_h)
+    # 3. guest: second landmark (mid_plane_layout has the placement)
+    if layout["guest"] is not None:
+        base = paste_scaled(base, guest, *layout["guest"])
 
     # 4. host: strongest landmark, the hero
-    m_h = host_height(h0)
-    m_w = m_h * (340.0 / 260.0)
-    m_apex = 0.47
-    base = paste_scaled(base, host, hx * W - m_apex * m_w, 0.87 * H - m_h, m_w, m_h)
+    base = paste_scaled(base, host, *layout["host"])
 
     # 5. full mist dissolving the mid-plane bases
     base = paste_scaled(base, mist, -0.03 * W, 0.69 * H, 1.06 * W, 0.20 * H)
@@ -389,8 +408,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 8. the data itself, for judging the painting against it: dots on the
     #    painted crests (the apex pixel inside each plane, not its rect top)
     if trace is not None:
-        base = draw_trace(base, trace,
-                          (hx * W, 0.87 * H - m_h + HOST_APEX_Y * m_h), guest_crest, night)
+        base = draw_trace(base, trace, layout["host_crest"], layout["guest_crest"], night)
 
     # 9. inscription column + seal (upper-left void), as the View draws them:
     #    the hour as brush kanji stacked on a 0.10 H pitch, bottom glyph at
