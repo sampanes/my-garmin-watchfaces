@@ -46,6 +46,7 @@ a foreground end confirmation, and moves the debug export to its own Up/Down car
 Version 0.6 asks the hardware test plan's T11 question on every wear: beat-to-beat intervals
 ride on the existing sensor listener and each session summary records how many arrived and how
 many varied, at rest and inside a walk.
+Anonymized exports from the real watch are in [field-logs/](field-logs/).
 
 **Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer
 progression/ownership model (how the pet "scales up" without becoming a paralyzing
