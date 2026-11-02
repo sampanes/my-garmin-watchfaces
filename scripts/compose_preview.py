@@ -6,16 +6,17 @@ ported straight into JapaneseInkHeartrateScene.mc as the same fraction.
 Writes art/kit_preview.png (circular-masked, on dark surround like the sim).
 
 Planes, back to front (same order on the watch):
-    paper -> sun/moon -> horizon -> mist_lite -> hills -> masses (pale ones,
-    then the host) -> mist -> fg_left -> fg_right -> paper grain
+    paper -> sun/moon -> horizon -> mist_lite -> masses (pale ones, then the
+    host) -> near range -> mist -> fg_left -> fg_right -> paper grain
     -> (View) inscription + seal
 
-The relief (round 4, 2026-11-02): the window's floor is a level far horizon;
+The relief (round 5, 2026-11-02): the window's floor is a level far horizon;
 every run of buckets standing RUN_MIN over it is a mass as wide as its run,
-spire / massif / wide mountain by duration, its crest on the crest scale;
-a run too low for a mountain, and the gap between two masses, get little
-hills under the horizon line. Every mass is a paper cutout (paper_backed),
-so the horizon stays straight and hides behind it.
+spire / broad peak / wide mountain by duration, its crest on the crest
+scale; a third layer, the near range, fills whichever third of the screen
+the masses leave empty, under the half-way line, in front of them. Every
+mass is a paper cutout (paper_backed), so the horizon stays straight and
+hides behind it.
 
 The inscription uses the baked BMFont pairs in resources/fonts (read from the
 .fnt exactly as the resource compiler reads them), so the preview's digits
@@ -147,24 +148,29 @@ def window_from_rows(rows, end_epoch=None):
     return history, trace, hr_now, end_epoch, len(rows)
 
 
-# ---- the relief: a horizon and masses (round 4, 2026-11-02) -----------------
-# John on round 3: the far line should have stayed straight and hidden behind
-# the mountain; a long effort wants a wide, fat mountain, not a zigzag
-# horizon; little hills can fill the gap between two masses, lower than the
-# horizon. So the window's floor is the horizon, every run over it is a mass
-# as wide as its run, and the hills are composition under the line.
+# ---- the relief: a horizon, masses, a near range (round 5, 2026-11-02) ----
+# John on round 3: the far line should have stayed straight and hidden
+# behind the mountain; a long effort wants a wide, fat mountain, not a
+# zigzag horizon. On round 4: a 45-minute workout is ONE wide peak, not
+# two; the little hills are trash; the heart rate wants a THIRD layer, a
+# nearer one under the half-way line, drawn to fill empty space and
+# balance the picture; the wide mountain's peak and flat part should line
+# up with the data's.
 FLOOR_RANK = 8           # the floor is the (n // FLOOR_RANK)-th lowest data bucket (3rd of 16)
 RUN_MIN = 6.0            # bpm over the floor for a bucket to belong to a run
-HILL_MAX = 20.0          # a run lower than this over the floor is hills, not a mountain
+MASS_MIN = 15.0          # bpm a run's crest must stand over the floor to be a mass at all
 GUEST_PROMINENCE = 8.0   # bpm a valley must drop under both summits to split a run in two
 SPIRE_UPTO = 2           # buckets: a run this short takes the spire plane (30 min)
 WIDE_FROM = 6            # buckets: a run this long takes the wide plane (90 min)
 SHOULDER_PX = 40.0       # a mass's slope beyond its run's buckets, each side
 MIST_Y = 0.72            # a mass's foot reaches at least here, so the mist takes it
-HILL_DROP = 6.0          # px the hills' crest sits under the horizon line
-HILL_BASE_H = 26.0       # the hills' height over a gap at the floor ...
-HILL_PER_BPM = 1.0       # ... plus this per bpm the gap stands over the floor
-HILL_STEP = 0.82         # hills tiles advance by this share of their width
+WIDE_BODY = 0.84         # the wide plane's body (its width less the edge fades) spans the run
+WIDE_END_TOL = 5.0       # bpm: a run whose ends differ by less keeps its summit at its start
+NEAR_CREST_Y = 0.585     # the near range's crest, under the lowest horizon (0.58 H)
+NEAR_H = 0.15            # its height (fraction of H) ...
+NEAR_HR_SPAN = 30.0      # ... up by almost half over this many bpm of its third over the floor
+NEAR_EMPTY = 0.25        # a third of the screen with less mass cover than this is empty
+NEAR_LEAN = (-0.05, 0.03, 0.05)   # the near hills lean outward from their third's center (W)
 KNOCKOUT = (0.02, 0.12)  # a mass's paper cutout is opaque where its ink is over 12%
                          # and gone under 2% (paper_backed): the washes are faint
 
@@ -209,28 +215,39 @@ def split_runs(history, floor):
     return runs
 
 
-def run_mass(history, floor, lo, hi, denom):
-    """A run as a mass: its peak heart rate, its height over the floor, and
-    its place on the axis (the centroid of its height over the floor, so a
-    plateau sits on its middle whichever noisy bucket is its highest and a
-    climb leans toward its high end)."""
+def run_mass(history, floor, lo, hi, denom, trace=None):
+    """A run as a mass: its crest heart rate (the highest thinned sample
+    inside its buckets, so a five-minute flight of stairs paints its spike
+    and not its fifteen-minute average; the highest bucket without a
+    trace), its height over the floor, its place on the axis (the centroid
+    of its height over the floor, so a plateau sits on its middle whichever
+    noisy bucket is its highest) and which end stands higher."""
     peak_hr = max(history[lo:hi + 1])
+    if trace:
+        x0, x1 = (lo - 0.5) / denom, (hi + 0.5) / denom
+        inside = [HR_MIN + norm * (HR_MAX - HR_MIN)
+                  for nx, norm in thin_trace(trace) if x0 <= nx <= x1]
+        if inside:
+            peak_hr = max(peak_hr, max(inside))
     weights = [max(history[i] - floor, 0.0) for i in range(lo, hi + 1)]
     cx = sum(i * w for i, w in zip(range(lo, hi + 1), weights)) / max(sum(weights), 1e-9)
+    start = sum(history[lo:lo + 2]) / len(history[lo:lo + 2])
+    end = sum(history[max(lo, hi - 1):hi + 1]) / len(history[max(lo, hi - 1):hi + 1])
     return {"lo": lo, "hi": hi, "buckets": hi - lo + 1, "peak_hr": peak_hr,
-            "elev": peak_hr - floor, "nx": cx / denom}
+            "elev": peak_hr - floor, "nx": cx / denom,
+            "lean": "end" if end - start > WIDE_END_TOL else "start"}
 
 
 def mass_role(buckets, pale):
     """Which plane a mass gets, by its duration: the spire for a short
-    effort, the massif for a middling one, the wide mountain for a long
+    effort, the broad peak for a middling one, the wide mountain for a long
     one. The tallest mass is the host and takes the dark planes; every
     other mass takes the pale twin."""
     if buckets <= SPIRE_UPTO:
         return "spire_pale" if pale else "spire"
     if buckets >= WIDE_FROM:
         return "wide_pale" if pale else "wide"
-    return "guest" if pale else "host"
+    return "broad_pale" if pale else "broad"
 
 
 def measure_apex(name):
@@ -322,31 +339,22 @@ def kanji_hour(hour):
     return out
 
 
-# Where the painted crest sits inside each plane bitmap (alpha >= 40, measured
-# 2026-10-29 on the day and night sets alike): the host apex is 31% down its
-# bitmap, the guest 12%. The overlay is plotted on the HOST'S CREST SCALE, the
-# y the host crest would have if the host were sized for that HR, so the data
-# and the painting share a scale where the painting is honest (the hero
-# crest) and the rest of the painting's license shows against it.
-HOST_APEX_Y = 0.31
-HOST_APEX_FRAC = 0.47    # crest column inside the host bitmap
 CREST_LO_Y = 0.58        # the crest scale: 45 bpm sits here (fraction of H) ...
 CREST_HI_Y = 0.26        # ... and 160 bpm here (round 3: 1.7x the 10-29 scale)
-GUEST_APEX_Y = 0.12
-GUEST_APEX_FRAC = 0.46   # measured crest column (was 0.42, 8 px off the axis)
 
-# The mid planes by role: the massif and the spire for each. "apex" is the
-# crest (x frac, y frac) inside the bitmap; the 10-29 massif numbers are the
-# measured, simulator-confirmed ones, the spires are measured from the PNG.
+# The planes by role. "apex" is the crest (x frac, y frac) inside the
+# bitmap, measured from the PNG (measure_apex) the first time it is used.
+# The 10-29 host_mountain / guest_mountain / far_range are what the watch
+# still draws; the mock no longer uses them.
 PLANES = {
-    "host": {"name": "host_mountain", "aspect": 340.0 / 260.0, "apex": (HOST_APEX_FRAC, HOST_APEX_Y)},
-    "guest": {"name": "guest_mountain", "aspect": 260.0 / 190.0, "apex": (GUEST_APEX_FRAC, GUEST_APEX_Y)},
     "spire": {"name": "spire", "aspect": 180.0 / 300.0, "apex": None},
     "spire_pale": {"name": "spire_pale", "aspect": 180.0 / 300.0, "apex": None},
+    "broad": {"name": "broad", "aspect": 300.0 / 200.0, "apex": None},
+    "broad_pale": {"name": "broad_pale", "aspect": 300.0 / 200.0, "apex": None},
     "wide": {"name": "wide_mountain", "aspect": 480.0 / 200.0, "apex": None},
     "wide_pale": {"name": "wide_mountain_pale", "aspect": 480.0 / 200.0, "apex": None},
-    "hills": {"name": "hills", "aspect": 320.0 / 96.0, "apex": None},
-    "hills2": {"name": "hills2", "aspect": 320.0 / 96.0, "apex": None},
+    "near_hill": {"name": "near_hill", "aspect": 320.0 / 100.0, "apex": None},
+    "near_hill2": {"name": "near_hill2", "aspect": 320.0 / 100.0, "apex": None},
     "horizon": {"name": "horizon", "aspect": 416.0 / 56.0, "apex": None},
 }
 
@@ -356,6 +364,8 @@ def plane(role):
     if p["apex"] is None:
         p["apex"] = measure_apex(p["name"] + ".png")
     return p
+
+
 TRACE_COLS = 58          # fillPolygon takes at most 64 points (DC_PART1)
 TRACE_FLOOR_PAD = 0.02   # the wash's floor sits this far under the lowest sample
 
@@ -405,10 +415,15 @@ def paper_backed(img, night):
     return Image.fromarray(out, "RGBA")
 
 
-def mass_image(name, night):
-    key = (name, night)
+def mass_image(name, night, flip=False):
+    """The cutout of a plane, mirrored when asked (the wide mountain with
+    its summit on the right: drawBitmap2 with a flip, or a baked twin)."""
+    key = (name, night, flip)
     if key not in _MASS_CACHE:
-        _MASS_CACHE[key] = paper_backed(load(name + ("_night" if night else "") + ".png"), night)
+        img = paper_backed(load(name + ("_night" if night else "") + ".png"), night)
+        if flip:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+        _MASS_CACHE[key] = img
     return _MASS_CACHE[key]
 
 
@@ -424,14 +439,18 @@ def paint_horizon(base, layout, night):
 
 
 def paint_masses(base, layout, night):
-    """The hills, then the masses in their depth order (mid_plane_layout):
-    pale ones first, the host last. scripts/fidelity_test.py paints the
-    scored skyline with the same two calls."""
-    for hill in layout["hills"]:
-        for name, rect in hill["tiles"]:
-            base = paste_scaled(base, mass_image(name, night), *rect)
+    """The masses in their depth order (mid_plane_layout): pale ones first,
+    the host last. scripts/fidelity_test.py paints the scored skyline with
+    paint_horizon and this."""
     for m in layout["masses"]:
-        base = paste_scaled(base, mass_image(m["plane"], night), *m["rect"])
+        base = paste_scaled(base, mass_image(m["plane"], night, m["flip"]), *m["rect"])
+    return base
+
+
+def paint_near(base, layout, night):
+    """The near range, in front of the masses and under the horizon."""
+    for n in layout["near"]:
+        base = paste_scaled(base, mass_image(n["plane"], night), *n["rect"])
     return base
 
 
@@ -459,22 +478,26 @@ def draw_trace(base, trace, crests, night):
     return Image.alpha_composite(base, layer)
 
 
-def mid_plane_layout(history):
+def mid_plane_layout(history, trace=None):
     """The relief for a window: {"floor": bpm, "horizon_y": px or None,
-    "masses": [{"rect": (x, y, w, h), "crest": (x, y), "plane": name, "host":
-    bool, "run": (lo, hi)}] in draw order, "hills": [{"tiles": [(plane,
-    rect)], "span": (x0, x1)}]}, plus "host"/"host_crest"/"host_plane" and "guest"/... for
-    the tallest and second-tallest mass (None without one). compose() and
-    scripts/fidelity_test.py both use it, so the scored skyline is the
-    painted one.
+    "masses": [{"rect": (x, y, w, h), "crest": (x, y), "plane": name, "flip":
+    bool, "host": bool, "run": (lo, hi)}] in draw order, "near": [{"plane":
+    name, "rect": ...}]}, plus "host"/"host_crest"/"host_plane" and
+    "guest"/... for the tallest and second-tallest mass (None without one).
+    compose() and scripts/fidelity_test.py both use it, so the scored
+    skyline is the painted one.
 
     A mass takes its plane's own aspect: its width is its run's buckets
     plus a shoulder each side, its height whatever that needs, but at least
     enough for its foot to reach the mist (MIST_Y), so a tall short effort
-    is a tall spire and not a floating island. Its crest sits on the crest
-    scale at its run's centroid."""
+    is a tall spire and not a floating island. A spire or broad peak stands
+    its crest at the run's centroid; the wide mountain's body spans the run
+    with its summit at the run's higher end (mirrored for the right end)
+    and its flat shoulder over the rest. Every crest sits on the crest
+    scale. The near range then takes any third of the screen the masses
+    leave empty (both outer thirds when all three are)."""
     floor = floor_level(history)
-    out = {"floor": floor, "horizon_y": None, "masses": [], "hills": [],
+    out = {"floor": floor, "horizon_y": None, "masses": [], "near": [],
            "host": None, "host_crest": None, "host_plane": None,
            "guest": None, "guest_crest": None, "guest_plane": None}
     if floor <= 0.0:
@@ -482,60 +505,60 @@ def mid_plane_layout(history):
     out["horizon_y"] = crest_y(height_for_hr(floor))
     denom = len(history) - 1
     bucket_px = W / float(denom)
-    runs = [run_mass(history, floor, lo, hi, denom) for lo, hi in split_runs(history, floor)]
-    tall = [r for r in runs if r["elev"] >= HILL_MAX]
-    low = [r for r in runs if r["elev"] < HILL_MAX]
-    host = max(tall, key=lambda r: r["peak_hr"]) if tall else None
+    runs = [run_mass(history, floor, lo, hi, denom, trace) for lo, hi in split_runs(history, floor)]
+    runs = [r for r in runs if r["elev"] >= MASS_MIN]
+    host = max(runs, key=lambda r: r["peak_hr"]) if runs else None
     masses = []
-    for r in tall:
-        p = plane(mass_role(r["buckets"], r is not host))
+    for r in runs:
+        role = mass_role(r["buckets"], r is not host)
+        p = plane(role)
         ax, ay = p["apex"]
         cy = crest_y(height_for_hr(r["peak_hr"]))
         want = r["buckets"] * bucket_px + 2.0 * SHOULDER_PX
-        h = max(want / p["aspect"], MIST_Y * H - cy)
-        w = p["aspect"] * h
-        cx = axis_x(r["nx"]) * W
-        masses.append({"rect": (cx - ax * w, cy - ay * h, w, h), "crest": (cx, cy),
-                       "plane": p["name"], "host": r is host, "run": (r["lo"], r["hi"])})
+        flip = False
+        if role.startswith("wide"):
+            w = max(want / WIDE_BODY, p["aspect"] * (MIST_Y * H - cy))
+            h = w / p["aspect"]
+            left = (r["lo"] + r["hi"]) * 0.5 * bucket_px - 0.5 * w
+            flip = r["lean"] == "end"
+            crest_x = left + ((1.0 - ax) if flip else ax) * w
+        else:
+            h = max(want / p["aspect"], MIST_Y * H - cy)
+            w = p["aspect"] * h
+            crest_x = axis_x(r["nx"]) * W
+            left = crest_x - ax * w
+        masses.append({"rect": (left, cy - ay * h, w, h), "crest": (crest_x, cy),
+                       "plane": p["name"], "flip": flip, "host": r is host,
+                       "run": (r["lo"], r["hi"])})
     # depth: pale masses first (the taller farther), the host nearest, last
     masses.sort(key=lambda m: (m["host"], m["crest"][1]))
     out["masses"] = masses
 
-    # hills: the gap between two masses, and a low run outside any gap
-    gaps = []
-    by_x = sorted(masses, key=lambda m: m["run"][0])
-    for a, b in zip(by_x, by_x[1:]):
-        lo_b, hi_b = a["run"][1] + 1, b["run"][0] - 1
-        if hi_b >= lo_b:
-            gaps.append((lo_b, hi_b))
-    spans = []
-    for lo_b, hi_b in gaps:
-        vals = [history[i] for i in range(lo_b, hi_b + 1) if history[i] > 0.0]
-        elev = max(0.0, sum(vals) / len(vals) - floor) if vals else 0.0
-        spans.append((lo_b, hi_b, elev))
-    for r in low:
-        if any(r["hi"] >= g_lo and r["lo"] <= g_hi for g_lo, g_hi in gaps):
-            continue
-        spans.append((r["lo"], r["hi"], r["elev"]))
-    for lo_b, hi_b, elev in spans:
-        x0 = max(0.0, (lo_b - 0.5) * bucket_px)
-        x1 = min(float(W), (hi_b + 0.5) * bucket_px)
-        h = HILL_BASE_H + HILL_PER_BPM * elev
-        w = plane("hills")["aspect"] * h
-        if x1 - x0 <= w:
-            xs = [0.5 * (x0 + x1) - 0.5 * w]
-        else:
-            xs, x = [], x0
-            while x + w < x1:
-                xs.append(x)
-                x += HILL_STEP * w
-            xs.append(x1 - w)
-        tiles = []
-        for k, x in enumerate(xs):   # the two hill rows alternate
-            hp = plane("hills" if k % 2 == 0 else "hills2")
-            top = out["horizon_y"] + HILL_DROP - hp["apex"][1] * h
-            tiles.append((hp["name"], (x, top, w, h)))
-        out["hills"].append({"tiles": tiles, "span": (x0, x1)})
+    # the near range: a third of the screen the masses leave empty gets a
+    # near hill, its height nudged by that third's heart rate over the floor
+    thirds = [(k * W / 3.0, (k + 1) * W / 3.0) for k in range(3)]
+    cover = []
+    for a, b in thirds:
+        covered = 0.0
+        for m in masses:
+            x, _, w, _ = m["rect"]
+            covered += max(0.0, min(b, x + 0.85 * w) - max(a, x + 0.15 * w))
+        cover.append(min(covered / (b - a), 1.0))
+    empty = [k for k in range(3) if cover[k] < NEAR_EMPTY]
+    if len(empty) == 3:
+        empty = [0, 2]
+    for k in empty:
+        a, b = thirds[k]
+        lo_b, hi_b = int(round(a / bucket_px)), int(round(b / bucket_px))
+        vals = [history[i] for i in range(max(0, lo_b), min(len(history), hi_b + 1))
+                if history[i] > 0.0]
+        over = max(0.0, sum(vals) / len(vals) - floor) if vals else 0.0
+        p = plane("near_hill2" if k == 1 else "near_hill")
+        h = NEAR_H * H * (0.85 + 0.45 * min(over / NEAR_HR_SPAN, 1.0))
+        w = p["aspect"] * h
+        cx = 0.5 * (a + b) + NEAR_LEAN[k] * W
+        out["near"].append({"plane": p["name"],
+                            "rect": (cx - p["apex"][0] * w, NEAR_CREST_Y * H - p["apex"][1] * h, w, h)})
 
     # the two tallest, for the fidelity test's peak timing and crest dots
     ranked = sorted(masses, key=lambda m: m["crest"][1])
@@ -558,7 +581,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     grain_p = os.path.join(DRAW, "paper_grain.png")
     grain = Image.open(grain_p).convert("RGBA") if os.path.exists(grain_p) and not night else None
 
-    layout = mid_plane_layout(history)
+    layout = mid_plane_layout(history, trace)
     # Foreground masses carry the two ends of the window: the oldest and the
     # newest bucket WITH DATA (a window missing its first hours after a
     # reboot keeps those buckets at zero, and zero is not a heart rate).
@@ -591,9 +614,13 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 2. light mist between far and mid planes
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
 
-    # 3-4. the hills under the horizon line, then the masses: pale ones
-    #      first, the host last (none of either on a flat day)
+    # 3. the masses: pale ones first, the host last (none on a flat day)
     base = paint_masses(base, layout, night)
+
+    # 4. the near range (round 5): a near hill in each third of the screen
+    #    the masses leave empty, under the half-way line, to balance the
+    #    picture; both outer thirds on a flat day
+    base = paint_near(base, layout, night)
 
     # 5. full mist dissolving the mid-plane bases
     base = paste_scaled(base, mist, -0.03 * W, 0.69 * H, 1.06 * W, 0.20 * H)

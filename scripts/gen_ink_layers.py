@@ -22,12 +22,15 @@ Outputs (RGBA, straight alpha, one ink color per file):
     paper_grain.png      240x240  washi grain, upscaled on-device
     horizon.png          416x56   the far range as a level line at the window's
                                   floor (round 4): a soft crest, a haze under it
-    wide_mountain.png    480x200  a broad two-headed massif for an effort of 90
-                                  minutes or more; wide_mountain_pale.png its
-                                  paler twin for a second such effort
-    hills.png            320x96   little hills with trees that fill the gap
-    hills2.png                    between two masses, under the horizon line
-                                  (tiled, the two rows alternating)
+    broad.png            300x200  one wide peak for an effort of 45-75 minutes;
+                                  broad_pale.png its paler twin for a second one
+    wide_mountain.png    480x200  a summit near the left end and a long flat
+                                  shoulder, for an effort of 90 minutes or more
+                                  (mirrored when the run's high end is on the
+                                  right); wide_mountain_pale.png its paler twin
+    near_hill.png        320x100  the near range: a low broad hill with trees,
+    near_hill2.png                placed under the half-way line where the
+                                  masses leave a third of the screen empty
     spire.png            180x300  a narrow peak for an effort shorter than the
                                   massif is wide (host ink)
     spire_pale.png       180x300  the same role for the guest (paler, softer)
@@ -539,41 +542,60 @@ def write_extras():
                            crown=0.45, crown_k=0.16)
     write_pair(horizon, (70, 66, 60), "horizon", (120, 118, 110), 0.9)
 
-    # The wide mountain: a broad two-headed massif with a long top, for an
-    # effort of 90 minutes or more (a walk, a tense evening, a whole
-    # afternoon awake), so a long plateau is one fat mass, not a zigzag.
-    wide = render_plane(480, 200, [(0.37, 1.0, 0.19), (0.63, 0.95, 0.19),
-                                   (0.16, 0.52, 0.11), (0.86, 0.48, 0.11)],
-                        amp_frac=0.76, rough=0.22, ink=0.62, fade=0.0, seed=1212,
+    # Round 5 (John on round 4): a 45-minute workout is ONE wide peak; the
+    # wide mountain has a peak and a flat part that line up with the
+    # data's; the little hills are gone; a nearer range under the half-way
+    # line fills empty space and balances the picture.
+    # The broad peak: one summit, broad shoulders, for 45-75 minutes.
+    broad = render_plane(300, 200, [(0.50, 1.0, 0.23), (0.21, 0.40, 0.10), (0.80, 0.38, 0.10)],
+                         amp_frac=0.80, rough=0.24, ink=0.62, fade=0.0, seed=1212,
+                         blur_1x=0.9, cun_count=150, tree_prob=0.020, bleed=0.14,
+                         edge_left=0.10, edge_right=0.10, base_fade=(0.72, 0.98),
+                         tree_size=(5.0, 12.0), crown=0.30)
+    write_pair(broad, (12, 9, 7), "broad", NIGHT_INK, 0.80)
+    broad_pale = render_plane(300, 200, [(0.50, 1.0, 0.24), (0.20, 0.38, 0.10), (0.81, 0.36, 0.10)],
+                              amp_frac=0.76, rough=0.22, ink=0.36, fade=0.0, seed=1313,
+                              blur_1x=1.2, cun_count=80, tree_prob=0.012, bleed=0.10,
+                              edge_left=0.11, edge_right=0.11, base_fade=(0.70, 0.97),
+                              tree_size=(5.0, 10.0), crown=0.16)
+    write_pair(broad_pale, (12, 9, 7), "broad_pale", NIGHT_INK, 0.85)
+
+    # The wide mountain: a summit near its left end and a long, high, flat
+    # shoulder to the right, for an effort of 90 minutes or more. The mock
+    # places its summit at the run's higher end (mirrored when that is the
+    # right end) and its shoulder over the rest.
+    wide = render_plane(480, 200, [(0.27, 1.0, 0.12), (0.47, 0.90, 0.15), (0.67, 0.88, 0.15),
+                                   (0.85, 0.74, 0.11), (0.09, 0.48, 0.08)],
+                        amp_frac=0.76, rough=0.20, ink=0.62, fade=0.0, seed=1616,
                         blur_1x=0.9, cun_count=190, tree_prob=0.018, bleed=0.14,
-                        edge_left=0.09, edge_right=0.09, base_fade=(0.72, 0.98),
+                        edge_left=0.08, edge_right=0.08, base_fade=(0.72, 0.98),
                         tree_size=(5.0, 12.0), crown=0.30)
     write_pair(wide, (12, 9, 7), "wide_mountain", NIGHT_INK, 0.80)
-    wide_pale = render_plane(480, 200, [(0.36, 1.0, 0.20), (0.64, 0.94, 0.20),
-                                        (0.15, 0.50, 0.11), (0.86, 0.46, 0.11)],
-                             amp_frac=0.72, rough=0.20, ink=0.36, fade=0.0, seed=1313,
+    wide_pale = render_plane(480, 200, [(0.27, 1.0, 0.13), (0.47, 0.89, 0.15), (0.67, 0.87, 0.15),
+                                        (0.85, 0.72, 0.11), (0.09, 0.46, 0.08)],
+                             amp_frac=0.72, rough=0.18, ink=0.36, fade=0.0, seed=1717,
                              blur_1x=1.2, cun_count=90, tree_prob=0.012, bleed=0.10,
-                             edge_left=0.10, edge_right=0.10, base_fade=(0.70, 0.97),
+                             edge_left=0.09, edge_right=0.09, base_fade=(0.70, 0.97),
                              tree_size=(5.0, 10.0), crown=0.16)
     write_pair(wide_pale, (12, 9, 7), "wide_mountain_pale", NIGHT_INK, 0.85)
 
-    # The hills: a row of little rounded hills with a few trees, to fill
-    # the gap between two masses, sitting under the horizon line.
-    hills = render_plane(320, 96, [(0.13, 0.80, 0.11), (0.38, 1.0, 0.13),
-                                   (0.62, 0.70, 0.11), (0.85, 0.88, 0.12)],
-                         amp_frac=0.62, rough=0.11, ink=0.52, fade=0.0, seed=1414,
-                         blur_1x=0.9, cun_count=70, tree_prob=0.032, bleed=0.12,
-                         edge_left=0.07, edge_right=0.07, base_fade=(0.68, 0.98),
-                         tree_size=(4.0, 9.0), crown=0.26)
-    write_pair(hills, (12, 9, 7), "hills", NIGHT_INK, 0.80)
-    # ... and a second row, so tiled hills do not repeat one silhouette.
-    hills2 = render_plane(320, 96, [(0.18, 0.92, 0.12), (0.45, 0.78, 0.11),
-                                    (0.68, 1.0, 0.13), (0.90, 0.70, 0.10)],
-                          amp_frac=0.62, rough=0.12, ink=0.52, fade=0.0, seed=1515,
-                          blur_1x=0.9, cun_count=70, tree_prob=0.030, bleed=0.12,
-                          edge_left=0.07, edge_right=0.07, base_fade=(0.68, 0.98),
-                          tree_size=(4.0, 9.0), crown=0.26)
-    write_pair(hills2, (12, 9, 7), "hills2", NIGHT_INK, 0.80)
+    # The near range: two low, broad hills with trees, nearer than the
+    # masses (more ink) and farther than the foregrounds (less), placed
+    # under the half-way line wherever the masses leave a third of the
+    # screen empty.
+    near = render_plane(320, 100, [(0.50, 1.0, 0.25), (0.17, 0.52, 0.10), (0.84, 0.48, 0.10)],
+                        amp_frac=0.70, rough=0.16, ink=0.74, fade=0.02, seed=1818,
+                        blur_1x=0.7, cun_count=110, tree_prob=0.045, bleed=0.16,
+                        edge_left=0.08, edge_right=0.08, base_fade=(0.76, 0.99),
+                        tree_size=(6.0, 14.0), crown=0.30)
+    write_pair(near, (11, 8, 6), "near_hill", NIGHT_INK, 0.78)
+    near2 = render_plane(320, 100, [(0.34, 1.0, 0.15), (0.66, 0.90, 0.15), (0.10, 0.42, 0.09),
+                                    (0.91, 0.40, 0.09)],
+                         amp_frac=0.70, rough=0.16, ink=0.74, fade=0.02, seed=1919,
+                         blur_1x=0.7, cun_count=110, tree_prob=0.045, bleed=0.16,
+                         edge_left=0.08, edge_right=0.08, base_fade=(0.76, 0.99),
+                         tree_size=(6.0, 14.0), crown=0.30)
+    write_pair(near2, (11, 8, 6), "near_hill2", NIGHT_INK, 0.78)
     print("extras written to", os.path.abspath(OUT_DIR))
 
 

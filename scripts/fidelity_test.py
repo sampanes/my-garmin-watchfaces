@@ -3,7 +3,7 @@
 
 Feeds many four-hour HR windows through compose_preview.py (the 1:1 offline
 mock of the watch recipe), reads the PAINTED skyline of the two landmark
-planes (host + guest) column by column along the face's time axis, and
+relief (horizon + masses) column by column along the face's time axis, and
 scores it against the true curve:
 
     r          Pearson correlation of painted height and true HR per column
@@ -175,9 +175,10 @@ def smooth(series, radius):
 
 
 def skyline(history, trace):
-    """Top inked row of the horizon + hills + masses per screen column, as
-    painted (the same two painters compose() uses)."""
-    layout = cp.mid_plane_layout(history)
+    """Top inked row of the horizon + masses per screen column, as painted
+    (the same painters compose() uses; the near range sits under the
+    horizon and is not relief)."""
+    layout = cp.mid_plane_layout(history, trace)
     canvas = Image.new("RGBA", (cp.W, cp.H), (0, 0, 0, 0))
     canvas = cp.paint_horizon(canvas, layout, False)
     canvas = cp.paint_masses(canvas, layout, False)
@@ -387,9 +388,9 @@ def write_report(results, md_path, sheet_name, stamp):
     lines = [
         "# Ink face fidelity: %s" % stamp,
         "",
-        "How well the painted landscape (host + guest planes) shows the four-hour",
+        "How well the painted landscape (horizon + masses) shows the four-hour",
         "heart-rate graph, per `scripts/fidelity_test.py`. Columns are the face's",
-        "time axis (0.36..0.80 of the width). See [README](README.md) for the metrics.",
+        "time axis (the full width). See [README](README.md) for the metrics.",
         "",
         "| Case | What | r | Peak off (min) | Peaks true / painted | Overlay gap (px) | True range (bpm) | Painted relief (px) |",
         "|---|---|---|---|---|---|---|---|",
