@@ -20,6 +20,14 @@ Outputs (RGBA, straight alpha, one ink color per file):
     mist_band.png        416x110  paper-colored organic mist (band+puffs+wisps)
     mist_band_lite.png   same at 62% alpha (no runtime alpha knob on device)
     paper_grain.png      240x240  washi grain, upscaled on-device
+    horizon.png          416x56   the far range as a level line at the window's
+                                  floor (round 4): a soft crest, a haze under it
+    wide_mountain.png    480x200  a broad two-headed massif for an effort of 90
+                                  minutes or more; wide_mountain_pale.png its
+                                  paler twin for a second such effort
+    hills.png            320x96   little hills with trees that fill the gap
+    hills2.png                    between two masses, under the horizon line
+                                  (tiled, the two rows alternating)
     spire.png            180x300  a narrow peak for an effort shorter than the
                                   massif is wide (host ink)
     spire_pale.png       180x300  the same role for the guest (paler, softer)
@@ -519,6 +527,53 @@ def write_extras():
                         edge_left=0.12, edge_right=0.12, base_fade=(0.70, 0.97),
                         tree_size=(5.0, 10.0), crown=0.16)
     write_pair(pale, (12, 9, 7), "spire_pale", NIGHT_INK, 0.85)
+
+    # Round 4 (2026-11-02, John: "we need to make more assets"):
+    # The horizon: the far range as a nearly level line at the window's
+    # floor, a soft crest with a haze under it, nothing lumpy. It stays
+    # straight and hides behind every mass.
+    horizon = render_plane(416, 56, [(0.30, 1.0, 0.9), (0.72, 0.92, 0.9)],
+                           amp_frac=0.12, rough=0.10, ink=0.22, fade=0.0, seed=1111,
+                           y_base_frac=0.30, blur_1x=2.2, dry=False, fly=False,
+                           edge_left=0.0, edge_right=0.0, base_fade=(0.45, 0.92),
+                           crown=0.45, crown_k=0.16)
+    write_pair(horizon, (70, 66, 60), "horizon", (120, 118, 110), 0.9)
+
+    # The wide mountain: a broad two-headed massif with a long top, for an
+    # effort of 90 minutes or more (a walk, a tense evening, a whole
+    # afternoon awake), so a long plateau is one fat mass, not a zigzag.
+    wide = render_plane(480, 200, [(0.37, 1.0, 0.19), (0.63, 0.95, 0.19),
+                                   (0.16, 0.52, 0.11), (0.86, 0.48, 0.11)],
+                        amp_frac=0.76, rough=0.22, ink=0.62, fade=0.0, seed=1212,
+                        blur_1x=0.9, cun_count=190, tree_prob=0.018, bleed=0.14,
+                        edge_left=0.09, edge_right=0.09, base_fade=(0.72, 0.98),
+                        tree_size=(5.0, 12.0), crown=0.30)
+    write_pair(wide, (12, 9, 7), "wide_mountain", NIGHT_INK, 0.80)
+    wide_pale = render_plane(480, 200, [(0.36, 1.0, 0.20), (0.64, 0.94, 0.20),
+                                        (0.15, 0.50, 0.11), (0.86, 0.46, 0.11)],
+                             amp_frac=0.72, rough=0.20, ink=0.36, fade=0.0, seed=1313,
+                             blur_1x=1.2, cun_count=90, tree_prob=0.012, bleed=0.10,
+                             edge_left=0.10, edge_right=0.10, base_fade=(0.70, 0.97),
+                             tree_size=(5.0, 10.0), crown=0.16)
+    write_pair(wide_pale, (12, 9, 7), "wide_mountain_pale", NIGHT_INK, 0.85)
+
+    # The hills: a row of little rounded hills with a few trees, to fill
+    # the gap between two masses, sitting under the horizon line.
+    hills = render_plane(320, 96, [(0.13, 0.80, 0.11), (0.38, 1.0, 0.13),
+                                   (0.62, 0.70, 0.11), (0.85, 0.88, 0.12)],
+                         amp_frac=0.62, rough=0.11, ink=0.52, fade=0.0, seed=1414,
+                         blur_1x=0.9, cun_count=70, tree_prob=0.032, bleed=0.12,
+                         edge_left=0.07, edge_right=0.07, base_fade=(0.68, 0.98),
+                         tree_size=(4.0, 9.0), crown=0.26)
+    write_pair(hills, (12, 9, 7), "hills", NIGHT_INK, 0.80)
+    # ... and a second row, so tiled hills do not repeat one silhouette.
+    hills2 = render_plane(320, 96, [(0.18, 0.92, 0.12), (0.45, 0.78, 0.11),
+                                    (0.68, 1.0, 0.13), (0.90, 0.70, 0.10)],
+                          amp_frac=0.62, rough=0.12, ink=0.52, fade=0.0, seed=1515,
+                          blur_1x=0.9, cun_count=70, tree_prob=0.030, bleed=0.12,
+                          edge_left=0.07, edge_right=0.07, base_fade=(0.68, 0.98),
+                          tree_size=(4.0, 9.0), crown=0.26)
+    write_pair(hills2, (12, 9, 7), "hills2", NIGHT_INK, 0.80)
     print("extras written to", os.path.abspath(OUT_DIR))
 
 

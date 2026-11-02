@@ -6,8 +6,16 @@ ported straight into JapaneseInkHeartrateScene.mc as the same fraction.
 Writes art/kit_preview.png (circular-masked, on dark surround like the sim).
 
 Planes, back to front (same order on the watch):
-    paper -> sun/moon -> far_range -> mist_lite -> guest -> host -> mist
-    -> fg_left -> fg_right -> paper grain -> (View) inscription + seal
+    paper -> sun/moon -> horizon -> mist_lite -> hills -> masses (pale ones,
+    then the host) -> mist -> fg_left -> fg_right -> paper grain
+    -> (View) inscription + seal
+
+The relief (round 4, 2026-11-02): the window's floor is a level far horizon;
+every run of buckets standing RUN_MIN over it is a mass as wide as its run,
+spire / massif / wide mountain by duration, its crest on the crest scale;
+a run too low for a mountain, and the gap between two masses, get little
+hills under the horizon line. Every mass is a paper cutout (paper_backed),
+so the horizon stays straight and hides behind it.
 
 The inscription uses the baked BMFont pairs in resources/fonts (read from the
 .fnt exactly as the resource compiler reads them), so the preview's digits
@@ -57,12 +65,6 @@ def axis_x(nx):
     overlay all use it, so a departure of the art from the data is visible
     as such."""
     return min(max(nx, 0.0), 1.0)
-
-
-def host_height(h_norm):
-    """Host plane height for a landmark height (height_for_hr output):
-    whatever stands its crest on the crest scale."""
-    return (0.87 * H - crest_y(h_norm)) / (1.0 - HOST_APEX_Y)
 
 
 def bucket_history(data, count=16):
@@ -145,88 +147,90 @@ def window_from_rows(rows, end_epoch=None):
     return history, trace, hr_now, end_epoch, len(rows)
 
 
-GUEST_PROMINENCE = 8.0   # bpm a guest must stand above the valley between it and the host
-HOST_PROMINENCE = 20.0   # bpm the host must stand above the window's resting level (the
-                         # far ridge shows every bump; a foreground mountain marks an effort)
-SHOULDER_PX = 40.0       # a landmark's slope beyond its effort's buckets, each side
-SPIRE_BELOW = 0.80       # an effort narrower than this share of the massif's width gets a spire
-RIDGE_BASE_Y = 0.74      # the far ridge's foot, under the mist
-# Ribbons that follow the ridge line as (top px, bottom px or None = the
-# foot, alpha): darkest just under the crest line, haze toward the foot, a
-# faint lead above the line so the edge is soft, like the blurred 10-29
-# far_range.png and unlike a slab.
-RIDGE_RIBBONS = ((-2, 5, 0x16), (0, 14, 0x2A), (10, 34, 0x1C), (28, None, 0x10))
-RIDGE_CHUNK = 15         # samples per ribbon polygon: 2 x 16 points, under the 64 cap
+# ---- the relief: a horizon and masses (round 4, 2026-11-02) -----------------
+# John on round 3: the far line should have stayed straight and hidden behind
+# the mountain; a long effort wants a wide, fat mountain, not a zigzag
+# horizon; little hills can fill the gap between two masses, lower than the
+# horizon. So the window's floor is the horizon, every run over it is a mass
+# as wide as its run, and the hills are composition under the line.
+FLOOR_RANK = 8           # the floor is the (n // FLOOR_RANK)-th lowest data bucket (3rd of 16)
+RUN_MIN = 6.0            # bpm over the floor for a bucket to belong to a run
+HILL_MAX = 20.0          # a run lower than this over the floor is hills, not a mountain
+GUEST_PROMINENCE = 8.0   # bpm a valley must drop under both summits to split a run in two
+SPIRE_UPTO = 2           # buckets: a run this short takes the spire plane (30 min)
+WIDE_FROM = 6            # buckets: a run this long takes the wide plane (90 min)
+SHOULDER_PX = 40.0       # a mass's slope beyond its run's buckets, each side
+MIST_Y = 0.72            # a mass's foot reaches at least here, so the mist takes it
+HILL_DROP = 6.0          # px the hills' crest sits under the horizon line
+HILL_BASE_H = 26.0       # the hills' height over a gap at the floor ...
+HILL_PER_BPM = 1.0       # ... plus this per bpm the gap stands over the floor
+HILL_STEP = 0.82         # hills tiles advance by this share of their width
+KNOCKOUT = (0.02, 0.12)  # a mass's paper cutout is opaque where its ink is over 12%
+                         # and gone under 2% (paper_backed): the washes are faint
 
 
-def resting_level(history):
-    """The window's resting level: the median of the buckets with data
-    (0.0 for an empty window)."""
+def floor_level(history):
+    """The window's floor: the third-lowest of sixteen data buckets, so one
+    odd bucket cannot drag it (0.0 for an empty window)."""
     vals = sorted(h for h in history if h > 0.0)
     if not vals:
         return 0.0
-    n = len(vals)
-    return vals[n // 2] if n % 2 else 0.5 * (vals[n // 2 - 1] + vals[n // 2])
+    return vals[len(vals) // FLOOR_RANK]
 
 
-def effort_run(history, peak, level):
-    """How many contiguous buckets around `peak` stand at least halfway from
-    the resting level to the peak: the effort's duration, which sets the
-    landmark's width (landmark_width)."""
-    half = level + 0.5 * (history[peak] - level)
-    lo = peak
-    while lo - 1 >= 0 and history[lo - 1] >= half:
-        lo -= 1
-    hi = peak
-    while hi + 1 < len(history) and history[hi + 1] >= half:
-        hi += 1
-    return hi - lo + 1
+def split_at_valleys(history, lo, hi):
+    """[(lo, hi)] for a run of buckets: cut at the deepest interior valley
+    that drops GUEST_PROMINENCE under the summits on both sides, again on
+    each side. The valley bucket goes to both halves (it is both slopes)."""
+    best = None
+    for v in range(lo + 1, hi):
+        drop = min(max(history[lo:v]), max(history[v + 1:hi + 1])) - history[v]
+        if drop >= GUEST_PROMINENCE and (best is None or drop > best[0]):
+            best = (drop, v)
+    if best is None:
+        return [(lo, hi)]
+    v = best[1]
+    return split_at_valleys(history, lo, v) + split_at_valleys(history, v, hi)
 
 
-def landmark_peaks(history):
-    """(nx, height, effort buckets) for the host and, behind it, the guest;
-    empty when the window has no landmark. The host is the strongest bucket,
-    and a landmark only when it stands HOST_PROMINENCE above the resting
-    level: a flat day paints no mountain, its level band says flat
-    (2026-11-02). The guest is the strongest bucket WITH DATA at least an
-    hour away that stands GUEST_PROMINENCE above the lowest data bucket
-    between them: not an empty bucket, not the host's shoulder, not resting
-    noise (the 2026-10-31 fidelity baseline painted a guest in 12 of 13
-    windows, a flat 62 bpm one included)."""
-    level = resting_level(history)
-    host = max(range(len(history)), key=lambda i: history[i])
-    if history[host] <= 0.0 or history[host] - level < HOST_PROMINENCE:
-        return []
-    guest, guest_hr = -1, 0.0
-    for i, hr in enumerate(history):
-        if abs(i - host) < 4 or hr <= guest_hr:
-            continue
-        lo, hi = (i + 1, host) if i < host else (host + 1, i)
-        between = [h for h in history[lo:hi] if h > 0.0]
-        valley = min(between) if between else hr   # no data between: no valley
-        if hr - valley >= GUEST_PROMINENCE:
-            guest, guest_hr = i, hr
-    denom = len(history) - 1
-    peaks = [(host / denom, height_for_hr(history[host]), effort_run(history, host, level))]
-    if guest >= 0:
-        peaks.append((guest / denom, height_for_hr(history[guest]),
-                      effort_run(history, guest, level)))
-    return peaks
+def split_runs(history, floor):
+    """Maximal runs of data buckets RUN_MIN over the floor, each split at its
+    valleys: [(lo, hi)] in time order."""
+    runs, i, n = [], 0, len(history)
+    while i < n:
+        if history[i] > 0.0 and history[i] - floor >= RUN_MIN:
+            j = i
+            while j + 1 < n and history[j + 1] > 0.0 and history[j + 1] - floor >= RUN_MIN:
+                j += 1
+            runs.extend(split_at_valleys(history, i, j))
+            i = j + 1
+        else:
+            i += 1
+    return runs
 
 
-def landmark_plane(run_buckets, bucket_px, plane_h, massif, spire):
-    """Which plane a landmark gets and how wide: as wide as its effort (its
-    buckets plus a shoulder each side). An effort narrower than SPIRE_BELOW
-    of the massif's native width takes the spire plane (its own brushwork,
-    not a squeezed massif) at the spire's aspect or a little wider; a long
-    one takes the massif at its native aspect, so a 40-minute workout is no
-    longer a massif four hours wide (2026-11-02). Returns (plane, w)."""
-    want = run_buckets * bucket_px + 2.0 * SHOULDER_PX
-    massif_w = massif["aspect"] * plane_h
-    if want < SPIRE_BELOW * massif_w:
-        spire_w = spire["aspect"] * plane_h
-        return spire, min(max(want, spire_w), 1.25 * spire_w)
-    return massif, massif_w
+def run_mass(history, floor, lo, hi, denom):
+    """A run as a mass: its peak heart rate, its height over the floor, and
+    its place on the axis (the centroid of its height over the floor, so a
+    plateau sits on its middle whichever noisy bucket is its highest and a
+    climb leans toward its high end)."""
+    peak_hr = max(history[lo:hi + 1])
+    weights = [max(history[i] - floor, 0.0) for i in range(lo, hi + 1)]
+    cx = sum(i * w for i, w in zip(range(lo, hi + 1), weights)) / max(sum(weights), 1e-9)
+    return {"lo": lo, "hi": hi, "buckets": hi - lo + 1, "peak_hr": peak_hr,
+            "elev": peak_hr - floor, "nx": cx / denom}
+
+
+def mass_role(buckets, pale):
+    """Which plane a mass gets, by its duration: the spire for a short
+    effort, the massif for a middling one, the wide mountain for a long
+    one. The tallest mass is the host and takes the dark planes; every
+    other mass takes the pale twin."""
+    if buckets <= SPIRE_UPTO:
+        return "spire_pale" if pale else "spire"
+    if buckets >= WIDE_FROM:
+        return "wide_pale" if pale else "wide"
+    return "guest" if pale else "host"
 
 
 def measure_apex(name):
@@ -339,6 +343,11 @@ PLANES = {
     "guest": {"name": "guest_mountain", "aspect": 260.0 / 190.0, "apex": (GUEST_APEX_FRAC, GUEST_APEX_Y)},
     "spire": {"name": "spire", "aspect": 180.0 / 300.0, "apex": None},
     "spire_pale": {"name": "spire_pale", "aspect": 180.0 / 300.0, "apex": None},
+    "wide": {"name": "wide_mountain", "aspect": 480.0 / 200.0, "apex": None},
+    "wide_pale": {"name": "wide_mountain_pale", "aspect": 480.0 / 200.0, "apex": None},
+    "hills": {"name": "hills", "aspect": 320.0 / 96.0, "apex": None},
+    "hills2": {"name": "hills2", "aspect": 320.0 / 96.0, "apex": None},
+    "horizon": {"name": "horizon", "aspect": 416.0 / 56.0, "apex": None},
 }
 
 
@@ -347,7 +356,6 @@ def plane(role):
     if p["apex"] is None:
         p["apex"] = measure_apex(p["name"] + ".png")
     return p
-GUEST_RECESS = 0.03      # the guest crest sits this far below the crest scale
 TRACE_COLS = 58          # fillPolygon takes at most 64 points (DC_PART1)
 TRACE_FLOOR_PAD = 0.02   # the wash's floor sits this far under the lowest sample
 
@@ -373,42 +381,61 @@ def thin_trace(trace, cols=TRACE_COLS):
     return [max(trace[i:i + stride], key=lambda t: t[1]) for i in range(0, len(trace), stride)]
 
 
-def ridge_points(history, trace):
-    """The far ridge's skyline, [(x, y)] left to right on the crest scale
-    (2026-11-02, John: the faded distant range follows the heart rate
-    nearly exactly; the foreground landmarks mark its notable peaks). The
-    thinned trace, which the Scene already stores for the overlay, or the
-    buckets with data when there is no trace."""
-    src = thin_trace(trace) if trace else [(i / float(len(history) - 1), norm_hr(h))
-                                           for i, h in enumerate(history) if h > 0.0]
-    return [(W * axis_x(nx), trace_y(norm)) for nx, norm in src]
+_MASS_CACHE = {}
 
 
-def draw_far_ridge(base, pts, night):
-    """The far range as the device can draw it: each ribbon is a run of
-    fillPolygons of RIDGE_CHUNK samples (top edge the ridge line shifted
-    down, bottom edge the same shifted further or the foot), all of one
-    ribbon at one alpha. Darkest at the crest line, haze at the foot, which
-    the mist then dissolves. On the device adjacent chunks must not share a
-    column or the seam blends twice."""
-    if len(pts) < 2:
+def paper_backed(img, night):
+    """A mass as a cutout: its ink over its own paper (black paper at
+    night), so whatever stands behind it, the horizon or a farther mass, is
+    hidden the way a nearer mountain is painted over a gap left in the
+    farther one. The cutout's alpha ramps from KNOCKOUT[0] to [1] of the
+    ink's (a wash body is 20% ink and must still hide the line), and the
+    color is chosen so that over bare paper every pixel is unchanged. The
+    port bakes this into the plane PNGs (or draws a paper-colored
+    silhouette polygon first)."""
+    import numpy as np
+    a = np.asarray(img.getchannel("A"), dtype=float) / 255.0
+    rgb = np.asarray(img.convert("RGB"), dtype=float)
+    paper = np.array((0.0, 0.0, 0.0) if night else PAPER[:3], dtype=float)
+    k0, k1 = KNOCKOUT
+    a2 = np.clip((a - k0) / (k1 - k0), 0.0, 1.0)
+    share = np.clip(np.where(a2 > 0.0, a / np.maximum(a2, 1e-6), 0.0), 0.0, 1.0)[..., None]
+    rgb2 = rgb * share + paper * (1.0 - share)
+    out = np.dstack([rgb2, a2 * 255.0]).round().astype(np.uint8)
+    return Image.fromarray(out, "RGBA")
+
+
+def mass_image(name, night):
+    key = (name, night)
+    if key not in _MASS_CACHE:
+        _MASS_CACHE[key] = paper_backed(load(name + ("_night" if night else "") + ".png"), night)
+    return _MASS_CACHE[key]
+
+
+def paint_horizon(base, layout, night):
+    """The far range as a level line at the window's floor, full width, its
+    crest row on the crest scale. Nothing on an empty window."""
+    if layout["horizon_y"] is None:
         return base
-    rgb = (120, 118, 110) if night else (70, 66, 60)
-    foot = RIDGE_BASE_Y * H
-    for top_dy, bot_dy, alpha in RIDGE_RIBBONS:
-        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer)
-        for i in range(0, len(pts) - 1, RIDGE_CHUNK):
-            seg = pts[i:i + RIDGE_CHUNK + 1]
-            top = [(x, y + top_dy) for x, y in seg]
-            bot = [(x, foot if bot_dy is None else min(y + bot_dy, foot))
-                   for x, y in reversed(seg)]
-            d.polygon(top + bot, fill=rgb + (alpha,))
-        base = Image.alpha_composite(base, layer)
+    p = plane("horizon")
+    img = load(p["name"] + ("_night" if night else "") + ".png")
+    w, h = img.size
+    return paste_scaled(base, img, 0, layout["horizon_y"] - p["apex"][1] * h, w, h)
+
+
+def paint_masses(base, layout, night):
+    """The hills, then the masses in their depth order (mid_plane_layout):
+    pale ones first, the host last. scripts/fidelity_test.py paints the
+    scored skyline with the same two calls."""
+    for hill in layout["hills"]:
+        for name, rect in hill["tiles"]:
+            base = paste_scaled(base, mass_image(name, night), *rect)
+    for m in layout["masses"]:
+        base = paste_scaled(base, mass_image(m["plane"], night), *m["rect"])
     return base
 
 
-def draw_trace(base, trace, host_crest, guest_crest, night):
+def draw_trace(base, trace, crests, night):
     """The true-HR overlay as the Scene draws it: the data as a SILHOUETTE in
     the painting's own grammar, a translucent vermilion wash under the data's
     skyline on the host crest scale, with a crisp brush edge, and a dot on
@@ -419,7 +446,6 @@ def draw_trace(base, trace, host_crest, guest_crest, night):
     layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer, "RGBA")
     wash = (200, 70, 50, 0x50) if night else (176, 52, 38, 0x3C)
-    # (guest_crest is None when the painting has no guest this window)
     edge = (236, 110, 84, 0xF0) if night else (166, 44, 30, 0xF0)
     pts = [(W * axis_x(nx) * S, trace_y(norm) * S) for nx, norm in thin_trace(trace)]
     # The floor hugs the window's lowest sample, so the wash is the data's
@@ -427,53 +453,96 @@ def draw_trace(base, trace, host_crest, guest_crest, night):
     floor = max(y for _, y in pts) + TRACE_FLOOR_PAD * H * S
     d.polygon(pts + [(pts[-1][0], floor), (pts[0][0], floor)], fill=wash)
     d.line(pts, fill=edge, width=2 * S, joint="curve")
-    for crest in (host_crest, guest_crest):
-        if crest is None:
-            continue
-        cx, cy = crest
+    for cx, cy in crests:
         d.ellipse([(cx - 4) * S, (cy - 4) * S, (cx + 4) * S, (cy + 4) * S], fill=edge)
     layer = layer.resize((W, H), Image.LANCZOS)
     return Image.alpha_composite(base, layer)
 
 
 def mid_plane_layout(history):
-    """Where the two landmark planes go for a window, as (x, y, w, h) pixel
-    rects plus their crest points: {"host": rect, "host_crest": (x, y),
-    "guest": rect or None, "guest_crest": (x, y) or None}. compose() and
+    """The relief for a window: {"floor": bpm, "horizon_y": px or None,
+    "masses": [{"rect": (x, y, w, h), "crest": (x, y), "plane": name, "host":
+    bool, "run": (lo, hi)}] in draw order, "hills": [{"tiles": [(plane,
+    rect)], "span": (x0, x1)}]}, plus "host"/"host_crest"/"host_plane" and "guest"/... for
+    the tallest and second-tallest mass (None without one). compose() and
     scripts/fidelity_test.py both use it, so the scored skyline is the
     painted one.
 
-    Both landmarks sit at their true place on the one full-width time axis
-    (the 2026-10-29 crossover rule went with the 0.36..0.80 axis). No
-    landmark means no host; no second landmark means no guest."""
-    peaks = landmark_peaks(history)
-    out = {"host": None, "host_crest": None, "host_plane": None,
+    A mass takes its plane's own aspect: its width is its run's buckets
+    plus a shoulder each side, its height whatever that needs, but at least
+    enough for its foot to reach the mist (MIST_Y), so a tall short effort
+    is a tall spire and not a floating island. Its crest sits on the crest
+    scale at its run's centroid."""
+    floor = floor_level(history)
+    out = {"floor": floor, "horizon_y": None, "masses": [], "hills": [],
+           "host": None, "host_crest": None, "host_plane": None,
            "guest": None, "guest_crest": None, "guest_plane": None}
-    bucket_px = W / float(len(history) - 1)
-    if peaks:
-        host_nx, h0, run0 = peaks[0]
-        hx = axis_x(host_nx)
-        m_h = host_height(h0)
-        p, m_w = landmark_plane(run0, bucket_px, m_h, plane("host"), plane("spire"))
+    if floor <= 0.0:
+        return out
+    out["horizon_y"] = crest_y(height_for_hr(floor))
+    denom = len(history) - 1
+    bucket_px = W / float(denom)
+    runs = [run_mass(history, floor, lo, hi, denom) for lo, hi in split_runs(history, floor)]
+    tall = [r for r in runs if r["elev"] >= HILL_MAX]
+    low = [r for r in runs if r["elev"] < HILL_MAX]
+    host = max(tall, key=lambda r: r["peak_hr"]) if tall else None
+    masses = []
+    for r in tall:
+        p = plane(mass_role(r["buckets"], r is not host))
         ax, ay = p["apex"]
-        # the crest stays on the crest scale whichever plane carries it: the
-        # massif's apex is 0.31 down its bitmap, the spire's is near its top
-        top = 0.87 * H - m_h + HOST_APEX_Y * m_h - ay * m_h
-        out["host"] = (hx * W - ax * m_w, top, m_w, m_h)
-        out["host_crest"] = (hx * W, top + ay * m_h)
-        out["host_plane"] = p["name"]
-    if len(peaks) > 1:
-        guest_nx, h1, run1 = peaks[1]
-        gx = axis_x(guest_nx)
-        # the guest's crest on the host's crest scale, GUEST_RECESS lower, so
-        # a lower heart rate is a lower peak
-        g_h = 0.50 * H * (0.40 + 0.70 * h1)
-        p, g_w = landmark_plane(run1, bucket_px, g_h, plane("guest"), plane("spire_pale"))
-        ax, ay = p["apex"]
-        g_y = crest_y(h1) + GUEST_RECESS * H - ay * g_h
-        out["guest"] = (gx * W - ax * g_w, g_y, g_w, g_h)
-        out["guest_crest"] = (gx * W, g_y + ay * g_h)
-        out["guest_plane"] = p["name"]
+        cy = crest_y(height_for_hr(r["peak_hr"]))
+        want = r["buckets"] * bucket_px + 2.0 * SHOULDER_PX
+        h = max(want / p["aspect"], MIST_Y * H - cy)
+        w = p["aspect"] * h
+        cx = axis_x(r["nx"]) * W
+        masses.append({"rect": (cx - ax * w, cy - ay * h, w, h), "crest": (cx, cy),
+                       "plane": p["name"], "host": r is host, "run": (r["lo"], r["hi"])})
+    # depth: pale masses first (the taller farther), the host nearest, last
+    masses.sort(key=lambda m: (m["host"], m["crest"][1]))
+    out["masses"] = masses
+
+    # hills: the gap between two masses, and a low run outside any gap
+    gaps = []
+    by_x = sorted(masses, key=lambda m: m["run"][0])
+    for a, b in zip(by_x, by_x[1:]):
+        lo_b, hi_b = a["run"][1] + 1, b["run"][0] - 1
+        if hi_b >= lo_b:
+            gaps.append((lo_b, hi_b))
+    spans = []
+    for lo_b, hi_b in gaps:
+        vals = [history[i] for i in range(lo_b, hi_b + 1) if history[i] > 0.0]
+        elev = max(0.0, sum(vals) / len(vals) - floor) if vals else 0.0
+        spans.append((lo_b, hi_b, elev))
+    for r in low:
+        if any(r["hi"] >= g_lo and r["lo"] <= g_hi for g_lo, g_hi in gaps):
+            continue
+        spans.append((r["lo"], r["hi"], r["elev"]))
+    for lo_b, hi_b, elev in spans:
+        x0 = max(0.0, (lo_b - 0.5) * bucket_px)
+        x1 = min(float(W), (hi_b + 0.5) * bucket_px)
+        h = HILL_BASE_H + HILL_PER_BPM * elev
+        w = plane("hills")["aspect"] * h
+        if x1 - x0 <= w:
+            xs = [0.5 * (x0 + x1) - 0.5 * w]
+        else:
+            xs, x = [], x0
+            while x + w < x1:
+                xs.append(x)
+                x += HILL_STEP * w
+            xs.append(x1 - w)
+        tiles = []
+        for k, x in enumerate(xs):   # the two hill rows alternate
+            hp = plane("hills" if k % 2 == 0 else "hills2")
+            top = out["horizon_y"] + HILL_DROP - hp["apex"][1] * h
+            tiles.append((hp["name"], (x, top, w, h)))
+        out["hills"].append({"tiles": tiles, "span": (x0, x1)})
+
+    # the two tallest, for the fidelity test's peak timing and crest dots
+    ranked = sorted(masses, key=lambda m: m["crest"][1])
+    for key, m in zip(("host", "guest"), ranked):
+        out[key] = m["rect"]
+        out[key + "_crest"] = m["crest"]
+        out[key + "_plane"] = m["plane"]
     return out
 
 
@@ -515,22 +584,16 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     base = blend_ellipse(base, sx, sy, r_halo, halo)
     base = blend_ellipse(base, sx, sy, r_core, core)
 
-    # 1. the far ridge IS the heart rate: the window's samples as a distant
-    #    range on the crest scale, soft-edged, full width (round 3, 11-02).
-    #    The 10-29 far_range.png backdrop is retired by it.
-    base = draw_far_ridge(base, ridge_points(history, trace), night)
+    # 1. the horizon: the far range as a level line at the window's floor
+    #    (round 4, 11-02). Drawn first; every mass is a cutout over it.
+    base = paint_horizon(base, layout, night)
 
     # 2. light mist between far and mid planes
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
 
-    # 3. guest: second landmark (mid_plane_layout has the placement and
-    #    the plane: the broad guest or the pale spire)
-    if layout["guest"] is not None:
-        base = paste_scaled(base, load("%s%s.png" % (layout["guest_plane"], sfx)), *layout["guest"])
-
-    # 4. host: strongest landmark, the hero (massif or spire; none on a flat day)
-    if layout["host"] is not None:
-        base = paste_scaled(base, load("%s%s.png" % (layout["host_plane"], sfx)), *layout["host"])
+    # 3-4. the hills under the horizon line, then the masses: pale ones
+    #      first, the host last (none of either on a flat day)
+    base = paint_masses(base, layout, night)
 
     # 5. full mist dissolving the mid-plane bases
     base = paste_scaled(base, mist, -0.03 * W, 0.69 * H, 1.06 * W, 0.20 * H)
@@ -550,7 +613,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 8. the data itself, for judging the painting against it: dots on the
     #    painted crests (the apex pixel inside each plane, not its rect top)
     if trace is not None:
-        base = draw_trace(base, trace, layout["host_crest"], layout["guest_crest"], night)
+        base = draw_trace(base, trace, [m["crest"] for m in layout["masses"]], night)
 
     # 9. inscription column + seal (upper-left void), as the View draws them:
     #    the hour as brush kanji stacked on a 0.10 H pitch, bottom glyph at

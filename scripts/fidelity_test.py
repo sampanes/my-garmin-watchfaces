@@ -175,15 +175,12 @@ def smooth(series, radius):
 
 
 def skyline(history, trace):
-    """Top inked row of the far ridge + host + guest planes per screen
-    column, as painted."""
+    """Top inked row of the horizon + hills + masses per screen column, as
+    painted (the same two painters compose() uses)."""
     layout = cp.mid_plane_layout(history)
     canvas = Image.new("RGBA", (cp.W, cp.H), (0, 0, 0, 0))
-    canvas = cp.draw_far_ridge(canvas, cp.ridge_points(history, trace), False)
-    if layout["guest"] is not None:
-        canvas = cp.paste_scaled(canvas, cp.load(layout["guest_plane"] + ".png"), *layout["guest"])
-    if layout["host"] is not None:
-        canvas = cp.paste_scaled(canvas, cp.load(layout["host_plane"] + ".png"), *layout["host"])
+    canvas = cp.paint_horizon(canvas, layout, False)
+    canvas = cp.paint_masses(canvas, layout, False)
     alpha = canvas.getchannel("A").load()
     tops = []
     for x in range(cp.W):
@@ -264,8 +261,7 @@ def score(rows):
     peak_err = (abs(true_peak_min - painted_peak_min)
                 if true_peak_min is not None and painted_peak_min is not None else None)
     true_peaks = len(prominent_peaks(smoothed, minutes_per_col))
-    painted_peaks = ((1 if layout["host"] is not None else 0)
-                     + (1 if layout["guest"] is not None else 0))
+    painted_peaks = len(layout["masses"])
     gaps = [abs(cp.trace_y(cp.norm_hr(v)) - (tops[x] if tops[x] is not None else BASE_Y))
             for x, v in zip(columns, truth) if v is not None]
     gap_px = sum(gaps) / len(gaps) if gaps else None
