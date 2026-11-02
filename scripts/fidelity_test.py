@@ -140,13 +140,14 @@ def real_windows(path, minimum_rows=60):
 
 def axis_columns():
     lo = int(round(cp.W * cp.axis_x(0.0)))
-    hi = int(round(cp.W * cp.axis_x(1.0)))
+    hi = min(int(round(cp.W * cp.axis_x(1.0))), cp.W - 1)   # a full-width axis ends on the last column
     return list(range(lo, hi + 1))
 
 
 def column_minute(x):
     """Minutes since the window's start for a screen column on the axis."""
-    nx = (x / float(cp.W) - 0.36) / (0.60 * 0.73)
+    lo, hi = cp.W * cp.axis_x(0.0), cp.W * cp.axis_x(1.0)
+    nx = (x - lo) / (hi - lo)
     return min(max(nx, 0.0), 1.0) * WINDOW_MIN
 
 
@@ -174,12 +175,18 @@ def smooth(series, radius):
 
 
 def skyline(history):
-    """Top inked row of the host + guest planes per screen column, as painted."""
+    """Top inked row of the level bands + host + guest planes per screen
+    column, as painted."""
     layout = cp.mid_plane_layout(history)
     canvas = Image.new("RGBA", (cp.W, cp.H), (0, 0, 0, 0))
+    if layout["bands"]:
+        band = cp.load("level_band.png")
+        for x0, x1, y_line in layout["bands"]:
+            canvas = cp.paste_band(canvas, band, x0, x1, y_line)
     if layout["guest"] is not None:
-        canvas = cp.paste_scaled(canvas, cp.load("guest_mountain.png"), *layout["guest"])
-    canvas = cp.paste_scaled(canvas, cp.load("host_mountain.png"), *layout["host"])
+        canvas = cp.paste_scaled(canvas, cp.load(layout["guest_plane"] + ".png"), *layout["guest"])
+    if layout["host"] is not None:
+        canvas = cp.paste_scaled(canvas, cp.load(layout["host_plane"] + ".png"), *layout["host"])
     alpha = canvas.getchannel("A").load()
     tops = []
     for x in range(cp.W):
@@ -255,10 +262,13 @@ def score(rows):
     r = pearson(heights, truth)
     have = [(i, v) for i, v in enumerate(smoothed) if v is not None]
     true_peak_min = column_minute(columns[max(have, key=lambda p: p[1])[0]]) if have else None
-    painted_peak_min = column_minute(layout["host_crest"][0])
-    peak_err = abs(true_peak_min - painted_peak_min) if true_peak_min is not None else None
+    painted_peak_min = (column_minute(layout["host_crest"][0])
+                        if layout["host_crest"] is not None else None)
+    peak_err = (abs(true_peak_min - painted_peak_min)
+                if true_peak_min is not None and painted_peak_min is not None else None)
     true_peaks = len(prominent_peaks(smoothed, minutes_per_col))
-    painted_peaks = 1 + (1 if layout["guest"] is not None else 0)
+    painted_peaks = ((1 if layout["host"] is not None else 0)
+                     + (1 if layout["guest"] is not None else 0))
     gaps = [abs(cp.trace_y(cp.norm_hr(v)) - (tops[x] if tops[x] is not None else BASE_Y))
             for x, v in zip(columns, truth) if v is not None]
     gap_px = sum(gaps) / len(gaps) if gaps else None

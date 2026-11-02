@@ -50,15 +50,13 @@ def height_for_hr(hr):
     return height_for_norm(norm_hr(hr))
 
 
-def peak_x(nx):
-    return 0.20 + min(max(nx, 0.0), 1.0) * 0.60
-
-
 def axis_x(nx):
-    """The landscape's time axis: four hours ago .. now -> 0.36..0.80 of W,
-    clear of the inscription column. Both landmarks and the true-HR overlay
-    use it, so a departure of the art from the data is visible as such."""
-    return 0.36 + (peak_x(nx) - 0.20) * 0.73
+    """The landscape's time axis: four hours ago .. now -> the full width,
+    0..1 of W (2026-11-02, John: the oldest hour may sit under the time and
+    the seal, it matters least). Landmarks, level bands and the true-HR
+    overlay all use it, so a departure of the art from the data is visible
+    as such."""
+    return min(max(nx, 0.0), 1.0)
 
 
 def host_height(h_norm):
@@ -147,17 +145,73 @@ def window_from_rows(rows, end_epoch=None):
 
 
 GUEST_PROMINENCE = 8.0   # bpm a guest must stand above the valley between it and the host
+HOST_PROMINENCE = 10.0   # bpm the host must stand above the window's resting level
+FLAT_TOL = 6.0           # bpm a bucket may sit from its run's mean and still be flat
+LEVEL_BAND_H = 64        # level_band.png rows; its horizon line is row LEVEL_LINE_ROW
+LEVEL_LINE_ROW = 10
+BAND_FEATHER_PX = 22     # a band slice fades in and out over this, except at the screen edge
+SHOULDER_PX = 40.0       # a landmark's slope beyond its effort's buckets, each side
+SPIRE_BELOW = 0.80       # an effort narrower than this share of the massif's width gets a spire
+
+
+def resting_level(history):
+    """The window's resting level: the median of the buckets with data
+    (0.0 for an empty window)."""
+    vals = sorted(h for h in history if h > 0.0)
+    if not vals:
+        return 0.0
+    n = len(vals)
+    return vals[n // 2] if n % 2 else 0.5 * (vals[n // 2 - 1] + vals[n // 2])
+
+
+def effort_run(history, peak, level):
+    """How many contiguous buckets around `peak` stand at least halfway from
+    the resting level to the peak: the effort's duration, which sets the
+    landmark's width (landmark_width)."""
+    half = level + 0.5 * (history[peak] - level)
+    lo = peak
+    while lo - 1 >= 0 and history[lo - 1] >= half:
+        lo -= 1
+    hi = peak
+    while hi + 1 < len(history) and history[hi + 1] >= half:
+        hi += 1
+    return hi - lo + 1
+
+
+def level_runs(history):
+    """The flat stretches: maximal runs of two or more consecutive data
+    buckets each within FLAT_TOL of the run's mean, as (first bucket, last
+    bucket, mean bpm). A run spanning the window is a flat day."""
+    runs, i, n = [], 0, len(history)
+    while i < n:
+        if history[i] <= 0.0:
+            i += 1
+            continue
+        j, total = i, history[i]
+        while (j + 1 < n and history[j + 1] > 0.0
+               and abs(history[j + 1] - total / (j - i + 1)) <= FLAT_TOL):
+            j += 1
+            total += history[j]
+        if j > i:
+            runs.append((i, j, total / (j - i + 1)))
+        i = j + 1
+    return runs
 
 
 def landmark_peaks(history):
-    """Strongest bucket (host) and the strongest bucket WITH DATA at least an
+    """(nx, height, effort buckets) for the host and, behind it, the guest;
+    empty when the window has no landmark. The host is the strongest bucket,
+    and a landmark only when it stands HOST_PROMINENCE above the resting
+    level: a flat day paints no mountain, its level band says flat
+    (2026-11-02). The guest is the strongest bucket WITH DATA at least an
     hour away that stands GUEST_PROMINENCE above the lowest data bucket
-    between them (guest). An empty bucket is not a landmark, and neither is
-    the host's own shoulder or a resting window's noise: the 2026-10-31
-    fidelity baseline painted a guest in 12 of 13 windows, a flat 62 bpm
-    one included. With no such bucket the list has one peak and the
-    painting has no guest."""
+    between them: not an empty bucket, not the host's shoulder, not resting
+    noise (the 2026-10-31 fidelity baseline painted a guest in 12 of 13
+    windows, a flat 62 bpm one included)."""
+    level = resting_level(history)
     host = max(range(len(history)), key=lambda i: history[i])
+    if history[host] <= 0.0 or history[host] - level < HOST_PROMINENCE:
+        return []
     guest, guest_hr = -1, 0.0
     for i, hr in enumerate(history):
         if abs(i - host) < 4 or hr <= guest_hr:
@@ -168,10 +222,70 @@ def landmark_peaks(history):
         if hr - valley >= GUEST_PROMINENCE:
             guest, guest_hr = i, hr
     denom = len(history) - 1
-    peaks = [(host / denom, height_for_hr(history[host]))]
+    peaks = [(host / denom, height_for_hr(history[host]), effort_run(history, host, level))]
     if guest >= 0:
-        peaks.append((guest / denom, height_for_hr(history[guest])))
+        peaks.append((guest / denom, height_for_hr(history[guest]),
+                      effort_run(history, guest, level)))
     return peaks
+
+
+def landmark_plane(run_buckets, bucket_px, plane_h, massif, spire):
+    """Which plane a landmark gets and how wide: as wide as its effort (its
+    buckets plus a shoulder each side). An effort narrower than SPIRE_BELOW
+    of the massif's native width takes the spire plane (its own brushwork,
+    not a squeezed massif) at the spire's aspect or a little wider; a long
+    one takes the massif at its native aspect, so a 40-minute workout is no
+    longer a massif four hours wide (2026-11-02). Returns (plane, w)."""
+    want = run_buckets * bucket_px + 2.0 * SHOULDER_PX
+    massif_w = massif["aspect"] * plane_h
+    if want < SPIRE_BELOW * massif_w:
+        spire_w = spire["aspect"] * plane_h
+        return spire, min(max(want, spire_w), 1.25 * spire_w)
+    return massif, massif_w
+
+
+def measure_apex(name):
+    """The crest of a plane as (x frac, y frac) of its bitmap: the topmost
+    row with ink, at the middle of its inked columns."""
+    im = load(name)
+    alpha = im.getchannel("A").load()
+    w, h = im.size
+    for y in range(h):
+        xs = [x for x in range(w) if alpha[x, y] >= 40]
+        if xs:
+            return (0.5 * (xs[0] + xs[-1])) / w, y / float(h)
+    return 0.5, 0.0
+
+
+def paste_band(base, band, x0, x1, y_line):
+    """A slice of the level band, cropped rather than scaled so the brush
+    keeps its grain and continues across abutting runs, its horizon line on
+    y_line (drawBitmap2 with :bitmapX/:bitmapWidth on the device). Each end
+    that is not the screen edge fades over BAND_FEATHER_PX, so abutting
+    runs at different heights cross-fade instead of meeting as slabs."""
+    bx0, bx1 = int(round(x0)), int(round(x1))
+    bx0, bx1 = max(bx0, 0), min(bx1, band.size[0])
+    if bx1 - bx0 < 2:
+        return base
+    sl = band.crop((bx0, 0, bx1, band.size[1]))
+    n = sl.size[0]
+    ramp = [1.0] * n
+    f = min(BAND_FEATHER_PX, n // 2)
+    for i in range(f):
+        k = (i + 0.5) / f
+        if bx0 > 0:
+            ramp[i] = min(ramp[i], k)
+        if bx1 < band.size[0]:
+            ramp[n - 1 - i] = min(ramp[n - 1 - i], k)
+    if f and (bx0 > 0 or bx1 < band.size[0]):
+        a = sl.getchannel("A").load()
+        for x in range(n):
+            if ramp[x] < 1.0:
+                for y in range(sl.size[1]):
+                    a[x, y] = int(a[x, y] * ramp[x])
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    layer.paste(sl, (bx0, int(round(y_line)) - LEVEL_LINE_ROW))
+    return Image.alpha_composite(base, layer)
 
 
 # ---- compose ----------------------------------------------------------------
@@ -257,7 +371,26 @@ def kanji_hour(hour):
 # and the painting share a scale where the painting is honest (the hero
 # crest) and the rest of the painting's license shows against it.
 HOST_APEX_Y = 0.31
+HOST_APEX_FRAC = 0.47    # crest column inside the host bitmap
 GUEST_APEX_Y = 0.12
+GUEST_APEX_FRAC = 0.46   # measured crest column (was 0.42, 8 px off the axis)
+
+# The mid planes by role: the massif and the spire for each. "apex" is the
+# crest (x frac, y frac) inside the bitmap; the 10-29 massif numbers are the
+# measured, simulator-confirmed ones, the spires are measured from the PNG.
+PLANES = {
+    "host": {"name": "host_mountain", "aspect": 340.0 / 260.0, "apex": (HOST_APEX_FRAC, HOST_APEX_Y)},
+    "guest": {"name": "guest_mountain", "aspect": 260.0 / 190.0, "apex": (GUEST_APEX_FRAC, GUEST_APEX_Y)},
+    "spire": {"name": "spire", "aspect": 180.0 / 300.0, "apex": None},
+    "spire_pale": {"name": "spire_pale", "aspect": 180.0 / 300.0, "apex": None},
+}
+
+
+def plane(role):
+    p = PLANES[role]
+    if p["apex"] is None:
+        p["apex"] = measure_apex(p["name"] + ".png")
+    return p
 GUEST_RECESS = 0.03      # the guest crest sits this far below the crest scale
 TRACE_COLS = 58          # fillPolygon takes at most 64 points (DC_PART1)
 TRACE_FLOOR_PAD = 0.02   # the wash's floor sits this far under the lowest sample
@@ -318,33 +451,45 @@ def mid_plane_layout(history):
     scripts/fidelity_test.py both use it, so the scored skyline is the
     painted one.
 
-    Both landmarks on the one time axis. The guest apex also stays right of
-    the inscription column (x >= 0.34) and clear of the host massif; when
-    it cannot do both on its own side of the host it crosses over. No
-    second landmark means no guest plane."""
+    Both landmarks sit at their true place on the one full-width time axis
+    (the 2026-10-29 crossover rule went with the 0.36..0.80 axis). No
+    landmark means no host; no second landmark means no guest. "bands" are
+    the level-distance horizon slices, one per flat run, as (x0, x1,
+    y_line) with y_line on the crest scale."""
     peaks = landmark_peaks(history)
-    host_nx, h0 = peaks[0]
-    hx = axis_x(host_nx)
-    out = {"guest": None, "guest_crest": None}
+    out = {"host": None, "host_crest": None, "host_plane": None,
+           "guest": None, "guest_crest": None, "guest_plane": None, "bands": []}
+    bucket_px = W / float(len(history) - 1)
+    if peaks:
+        host_nx, h0, run0 = peaks[0]
+        hx = axis_x(host_nx)
+        m_h = host_height(h0)
+        p, m_w = landmark_plane(run0, bucket_px, m_h, plane("host"), plane("spire"))
+        ax, ay = p["apex"]
+        # the crest stays on the crest scale whichever plane carries it: the
+        # massif's apex is 0.31 down its bitmap, the spire's is near its top
+        top = 0.87 * H - m_h + HOST_APEX_Y * m_h - ay * m_h
+        out["host"] = (hx * W - ax * m_w, top, m_w, m_h)
+        out["host_crest"] = (hx * W, top + ay * m_h)
+        out["host_plane"] = p["name"]
     if len(peaks) > 1:
-        guest_nx, h1 = peaks[1]
-        gx = max(axis_x(guest_nx), 0.34)
-        if abs(hx - gx) < 0.30:
-            gx = hx + 0.34 if hx < 0.55 else hx - 0.34
-            gx = min(max(gx, 0.34), 0.84)
+        guest_nx, h1, run1 = peaks[1]
+        gx = axis_x(guest_nx)
         # the guest's crest on the host's crest scale, GUEST_RECESS lower, so
         # a lower heart rate is a lower peak
         g_h = 0.50 * H * (0.40 + 0.70 * h1)
-        g_w = g_h * (260.0 / 190.0)
-        g_apex = 0.46      # measured crest column (was 0.42, 8 px off the axis)
-        g_y = crest_y(h1) + GUEST_RECESS * H - GUEST_APEX_Y * g_h
-        out["guest"] = (gx * W - g_apex * g_w, g_y, g_w, g_h)
-        out["guest_crest"] = (gx * W, g_y + GUEST_APEX_Y * g_h)
-    m_h = host_height(h0)
-    m_w = m_h * (340.0 / 260.0)
-    m_apex = 0.47
-    out["host"] = (hx * W - m_apex * m_w, 0.87 * H - m_h, m_w, m_h)
-    out["host_crest"] = (hx * W, 0.87 * H - m_h + HOST_APEX_Y * m_h)
+        p, g_w = landmark_plane(run1, bucket_px, g_h, plane("guest"), plane("spire_pale"))
+        ax, ay = p["apex"]
+        g_y = crest_y(h1) + GUEST_RECESS * H - ay * g_h
+        out["guest"] = (gx * W - ax * g_w, g_y, g_w, g_h)
+        out["guest_crest"] = (gx * W, g_y + ay * g_h)
+        out["guest_plane"] = p["name"]
+    for a, b, bpm in level_runs(history):
+        # a bucket beyond the run each side, so neighbors overlap and the
+        # feathered ends cross-fade at a step
+        x0 = max(0.0, (a - 1.0) * bucket_px)
+        x1 = min(float(W), (b + 1.0) * bucket_px)
+        out["bands"].append((x0, x1, crest_y(height_for_hr(bpm))))
     return out
 
 
@@ -354,8 +499,6 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     trace: [(nx, norm_hr)] raw samples for the true-HR overlay, or None."""
     sfx = "_night" if night else ""
     far = load("far_range%s.png" % sfx)
-    guest = load("guest_mountain%s.png" % sfx)
-    host = load("host_mountain%s.png" % sfx)
     fg_l = load("fg_left%s.png" % sfx)
     fg_r = load("fg_right%s.png" % sfx)
     mist = load("mist_band%s.png" % sfx)
@@ -395,12 +538,22 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 2. light mist between far and mid planes
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
 
-    # 3. guest: second landmark (mid_plane_layout has the placement)
-    if layout["guest"] is not None:
-        base = paste_scaled(base, guest, *layout["guest"])
+    # 2b. level distance (2026-11-02): a horizon band for every flat run at
+    #     that run's own height. Still water where nothing happened, a step
+    #     where the resting level changed, hidden where a landmark stands.
+    if layout["bands"]:
+        band = load("level_band%s.png" % sfx)
+        for x0, x1, y_line in layout["bands"]:
+            base = paste_band(base, band, x0, x1, y_line)
 
-    # 4. host: strongest landmark, the hero
-    base = paste_scaled(base, host, *layout["host"])
+    # 3. guest: second landmark (mid_plane_layout has the placement and
+    #    the plane: the broad guest or the pale spire)
+    if layout["guest"] is not None:
+        base = paste_scaled(base, load("%s%s.png" % (layout["guest_plane"], sfx)), *layout["guest"])
+
+    # 4. host: strongest landmark, the hero (massif or spire; none on a flat day)
+    if layout["host"] is not None:
+        base = paste_scaled(base, load("%s%s.png" % (layout["host_plane"], sfx)), *layout["host"])
 
     # 5. full mist dissolving the mid-plane bases
     base = paste_scaled(base, mist, -0.03 * W, 0.69 * H, 1.06 * W, 0.20 * H)
