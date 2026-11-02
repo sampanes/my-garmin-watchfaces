@@ -18,8 +18,14 @@ class JapaneseInkHeartrateApp extends Application.AppBase {
         return [ view, new JapaneseInkHeartrateDelegate() ];
     }
 
-    // Settings edited from the phone (true-HR overlay, night hours) repaint
-    // at once instead of at the next five-minute key.
+    // The watch's own Customize menu (a USB-installed face has none on the
+    // phone). Unannotated like getInitialView: the tuple return type.
+    function getSettingsView() {
+        return [ new JapaneseInkHeartrateSettingsMenu(), new JapaneseInkHeartrateSettingsDelegate() ];
+    }
+
+    // Settings edited from the phone or the watch menu (true-HR overlay,
+    // night hours) repaint at once instead of at the next five-minute key.
     function onSettingsChanged() as Void {
         var view = mView;
         if (view != null) {
