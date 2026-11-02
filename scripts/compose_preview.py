@@ -146,14 +146,26 @@ def window_from_rows(rows, end_epoch=None):
     return history, trace, hr_now, end_epoch, len(rows)
 
 
+GUEST_PROMINENCE = 8.0   # bpm a guest must stand above the valley between it and the host
+
+
 def landmark_peaks(history):
     """Strongest bucket (host) and the strongest bucket WITH DATA at least an
-    hour away (guest). An empty bucket is not a landmark; with none in
-    reach the list has one peak and the painting has no guest."""
+    hour away that stands GUEST_PROMINENCE above the lowest data bucket
+    between them (guest). An empty bucket is not a landmark, and neither is
+    the host's own shoulder or a resting window's noise: the 2026-10-31
+    fidelity baseline painted a guest in 12 of 13 windows, a flat 62 bpm
+    one included. With no such bucket the list has one peak and the
+    painting has no guest."""
     host = max(range(len(history)), key=lambda i: history[i])
     guest, guest_hr = -1, 0.0
     for i, hr in enumerate(history):
-        if abs(i - host) >= 4 and hr > guest_hr:
+        if abs(i - host) < 4 or hr <= guest_hr:
+            continue
+        lo, hi = (i + 1, host) if i < host else (host + 1, i)
+        between = [h for h in history[lo:hi] if h > 0.0]
+        valley = min(between) if between else hr   # no data between: no valley
+        if hr - valley >= GUEST_PROMINENCE:
             guest, guest_hr = i, hr
     denom = len(history) - 1
     peaks = [(host / denom, height_for_hr(history[host]))]

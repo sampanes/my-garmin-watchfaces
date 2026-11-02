@@ -13,7 +13,7 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.7.0";
+    const APP_VERSION = "0.7.1";
     const SCHEMA = 3;           // On-watch storage layout.
     const EXPORT_FORMAT = 5;    // Log export layout; friend-export.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;
@@ -170,6 +170,10 @@ class WristDiaryView extends WatchUi.View {
     }
 
     function onShow() as Void {
+        // Hide and show seconds in the log beside FRIEND_EXIT: the 2026-10-31
+        // field log's two watch-closed sessions each counted 3 hides, and a
+        // count alone cannot say whether the close followed one.
+        System.println("FRIEND_SHOW," + mElapsed);
         startSession();
         mWalk.onShow();
     }
@@ -177,6 +181,7 @@ class WristDiaryView extends WatchUi.View {
     // The screen went away (a notification, another app, or the app closing).
     function onHide() as Void {
         mHideCount += 1;
+        System.println("FRIEND_HIDE," + mElapsed + "," + mHideCount);
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {

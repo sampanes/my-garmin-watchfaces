@@ -37,6 +37,13 @@ using Toybox.WatchUi;
 // guest needs a data bucket an hour away or is not drawn, and its crest
 // sits on the host's crest scale (crestY), a little lower.
 //
+// 2026-11-02: the fidelity test (scripts/fidelity_test.py, from home)
+// scored the 2026-10-31 recipe at a guest in 12 of 13 synthetic windows, a
+// flat resting one included: any data bucket an hour from the host
+// qualified, so noise did. A guest now also needs GUEST_PROMINENCE bpm
+// over the valley between it and the host; the host's own shoulder and a
+// resting window's noise are not a second landmark.
+//
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
 //
@@ -111,6 +118,10 @@ class JapaneseInkHeartrateScene {
     // the further, paler mountain). Until 2026-10-29 it stood on its own
     // higher base and out-topped the host even at a lower heart rate.
     const GUEST_RECESS = 0.03;
+    // A guest must stand this many bpm above the lowest data bucket between
+    // it and the host (landmarkPeaks); the host's shoulder and resting noise
+    // are not a second landmark.
+    const GUEST_PROMINENCE = 8.0;
     const MIST_W = 416;
     const MIST_H = 110;
 
@@ -347,11 +358,15 @@ class JapaneseInkHeartrateScene {
     }
 
     // The host is the strongest 15-minute bucket. The guest is the strongest
-    // bucket WITH DATA at least an hour away; an empty bucket is not a
+    // bucket WITH DATA at least an hour away that stands GUEST_PROMINENCE
+    // above the lowest data bucket between them. An empty bucket is not a
     // landmark (until 2026-10-29 a window missing its first hours after a
-    // reboot grew a full-size guest out of nothing). With no such bucket
-    // there is no guest: one episode, one mountain. Each x stays its true
-    // location in the window.
+    // reboot grew a full-size guest out of nothing), and neither is the
+    // host's own shoulder or a resting window's noise (until 2026-11-02 a
+    // flat 62 bpm window painted two equal mountains: the fidelity test's
+    // first baseline found a guest in 12 of 13 windows). With no such
+    // bucket there is no guest: one episode, one mountain. Each x stays its
+    // true location in the window.
     function landmarkPeaks(history as Lang.Array<Lang.Float>) as Lang.Array<Lang.Array<Lang.Float>> {
         var host = 0;
         for (var i = 1; i < history.size(); i++) {
@@ -362,7 +377,16 @@ class JapaneseInkHeartrateScene {
         for (var i = 0; i < history.size(); i++) {
             var distance = i - host;
             if (distance < 0) { distance = -distance; }
-            if (distance >= 4 && history[i] > guestHr) {
+            if (distance < 4 || history[i] <= guestHr) { continue; }
+            // the lowest data bucket between the two; nothing between, or no
+            // data there, is no valley and the candidate fails
+            var lo = (i < host) ? i + 1 : host + 1;
+            var hi = (i < host) ? host : i;
+            var valley = history[i];
+            for (var j = lo; j < hi; j++) {
+                if (history[j] > 0.0 && history[j] < valley) { valley = history[j]; }
+            }
+            if (history[i] - valley >= GUEST_PROMINENCE) {
                 guest = i;
                 guestHr = history[i];
             }

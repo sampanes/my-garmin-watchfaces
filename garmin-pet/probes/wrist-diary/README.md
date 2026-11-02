@@ -5,7 +5,7 @@ installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.7.0`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.7.1`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
 dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
 build that never reached git, and `0.4.0` was built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
@@ -32,6 +32,12 @@ motion-only listener 0.4.0 ran with.
 copy. Friend now writes the same export the DEBUG DATA card does every time it exits, Back or
 watch-closed, after the session summary is saved. A failed export logs `FRIEND_AUTO_EXPORT_ERROR`
 and changes nothing stored. The DEBUG DATA card still works for an export mid-session.
+
+**0.7.1 -- Hide/show timeline:** every `onShow` / `onHide` writes `FRIEND_SHOW,<elapsed s>` /
+`FRIEND_HIDE,<elapsed s>,<hide count>` to the log beside `FRIEND_EXIT`, so a session the watch
+closed can show whether the close followed a hide that never got its show back. The 2026-10-31
+[field log](../../field-logs/2026-10-31_friend-export.md) counted 3 hides in each such session and
+could say no more. No stored data or export format change.
 
 ## What it does
 
