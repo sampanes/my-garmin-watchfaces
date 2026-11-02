@@ -10,13 +10,13 @@ Planes, back to front (same order on the watch):
     host) -> near range -> mist -> fg_left -> fg_right -> paper grain
     -> (View) inscription + seal
 
-The relief (round 5, 2026-11-02): the window's floor is a level far horizon;
-every run of buckets standing RUN_MIN over it is a mass as wide as its run,
-spire / broad peak / wide mountain by duration, its crest on the crest
-scale; a third layer, the near range, fills whichever third of the screen
-the masses leave empty, under the half-way line, in front of them. Every
-mass is a paper cutout (paper_backed), so the horizon stays straight and
-hides behind it.
+The relief (round 6, 2026-11-02): the window's floor is a level far horizon;
+every run of buckets standing RUN_MIN over it is a mass, spire / broad peak
+/ wide mountain by duration, standing on one deep base with its crest on
+the crest scale; a third layer, the near range, fills whichever third of
+the screen the masses leave empty, under the half-way line, in front of
+them, its feet in the mist. Every mass is a paper cutout (paper_backed), so
+the horizon stays straight and hides behind it.
 
 The inscription uses the baked BMFont pairs in resources/fonts (read from the
 .fnt exactly as the resource compiler reads them), so the preview's digits
@@ -162,12 +162,12 @@ MASS_MIN = 15.0          # bpm a run's crest must stand over the floor to be a m
 GUEST_PROMINENCE = 8.0   # bpm a valley must drop under both summits to split a run in two
 SPIRE_UPTO = 2           # buckets: a run this short takes the spire plane (30 min)
 WIDE_FROM = 6            # buckets: a run this long takes the wide plane (90 min)
-SHOULDER_PX = 40.0       # a mass's slope beyond its run's buckets, each side
-MIST_Y = 0.72            # a mass's foot reaches at least here, so the mist takes it
-WIDE_BODY = 0.84         # the wide plane's body (its width less the edge fades) spans the run
+BASE_Y = 0.87            # every mass's foot (the Scene's 10-29 base): its last fifth, the
+                         # baked fade, lies under the mist and the foregrounds
+WIDE_SUMMIT_IN = 0.20    # the wide plane's summit sits this far into its run from the high end
 WIDE_END_TOL = 5.0       # bpm: a run whose ends differ by less keeps its summit at its start
-NEAR_CREST_Y = 0.585     # the near range's crest, under the lowest horizon (0.58 H)
-NEAR_H = 0.15            # its height (fraction of H) ...
+NEAR_CREST_Y = 0.60      # the near range's crest, under the lowest horizon (0.58 H)
+NEAR_H = 0.21            # its height (fraction of H): the foot under the mist and foreground ...
 NEAR_HR_SPAN = 30.0      # ... up by almost half over this many bpm of its third over the floor
 NEAR_EMPTY = 0.25        # a third of the screen with less mass cover than this is empty
 NEAR_LEAN = (-0.05, 0.03, 0.05)   # the near hills lean outward from their third's center (W)
@@ -349,12 +349,12 @@ CREST_HI_Y = 0.26        # ... and 160 bpm here (round 3: 1.7x the 10-29 scale)
 PLANES = {
     "spire": {"name": "spire", "aspect": 180.0 / 300.0, "apex": None},
     "spire_pale": {"name": "spire_pale", "aspect": 180.0 / 300.0, "apex": None},
-    "broad": {"name": "broad", "aspect": 300.0 / 200.0, "apex": None},
-    "broad_pale": {"name": "broad_pale", "aspect": 300.0 / 200.0, "apex": None},
-    "wide": {"name": "wide_mountain", "aspect": 480.0 / 200.0, "apex": None},
-    "wide_pale": {"name": "wide_mountain_pale", "aspect": 480.0 / 200.0, "apex": None},
-    "near_hill": {"name": "near_hill", "aspect": 320.0 / 100.0, "apex": None},
-    "near_hill2": {"name": "near_hill2", "aspect": 320.0 / 100.0, "apex": None},
+    "broad": {"name": "broad", "aspect": 300.0 / 240.0, "apex": None},
+    "broad_pale": {"name": "broad_pale", "aspect": 300.0 / 240.0, "apex": None},
+    "wide": {"name": "wide_mountain", "aspect": 480.0 / 340.0, "apex": None},
+    "wide_pale": {"name": "wide_mountain_pale", "aspect": 480.0 / 340.0, "apex": None},
+    "near_hill": {"name": "near_hill", "aspect": 320.0 / 160.0, "apex": None},
+    "near_hill2": {"name": "near_hill2", "aspect": 320.0 / 160.0, "apex": None},
     "horizon": {"name": "horizon", "aspect": 416.0 / 56.0, "apex": None},
 }
 
@@ -487,15 +487,17 @@ def mid_plane_layout(history, trace=None):
     compose() and scripts/fidelity_test.py both use it, so the scored
     skyline is the painted one.
 
-    A mass takes its plane's own aspect: its width is its run's buckets
-    plus a shoulder each side, its height whatever that needs, but at least
-    enough for its foot to reach the mist (MIST_Y), so a tall short effort
-    is a tall spire and not a floating island. A spire or broad peak stands
-    its crest at the run's centroid; the wide mountain's body spans the run
-    with its summit at the run's higher end (mirrored for the right end)
-    and its flat shoulder over the rest. Every crest sits on the crest
-    scale. The near range then takes any third of the screen the masses
-    leave empty (both outer thirds when all three are)."""
+    Every mass stands on one deep base (BASE_Y, the Scene's 10-29 base):
+    its height is crest to base, its width its plane's own aspect, so only
+    the upper body shows above the mist and the baked fade at its foot is
+    never seen (round 6, John: the fades cut off and the proportions were
+    off when the feet stood in open paper). The run's duration picks the
+    plane, not the width. A spire or broad peak stands its crest at the
+    run's centroid; the wide mountain's summit sits WIDE_SUMMIT_IN into the
+    run from its higher end (mirrored for the right end) with its flat
+    shoulder over the rest. Every crest sits on the crest scale. The near
+    range then takes any third of the screen the masses leave empty (both
+    outer thirds when all three are), its foot under the mist too."""
     floor = floor_level(history)
     out = {"floor": floor, "horizon_y": None, "masses": [], "near": [],
            "host": None, "host_crest": None, "host_plane": None,
@@ -514,20 +516,21 @@ def mid_plane_layout(history, trace=None):
         p = plane(role)
         ax, ay = p["apex"]
         cy = crest_y(height_for_hr(r["peak_hr"]))
-        want = r["buckets"] * bucket_px + 2.0 * SHOULDER_PX
+        h = (BASE_Y * H - cy) / (1.0 - ay)
+        w = p["aspect"] * h
         flip = False
         if role.startswith("wide"):
-            w = max(want / WIDE_BODY, p["aspect"] * (MIST_Y * H - cy))
-            h = w / p["aspect"]
-            left = (r["lo"] + r["hi"]) * 0.5 * bucket_px - 0.5 * w
+            run_x0, run_x1 = (r["lo"] - 0.5) * bucket_px, (r["hi"] + 0.5) * bucket_px
             flip = r["lean"] == "end"
-            crest_x = left + ((1.0 - ax) if flip else ax) * w
+            if flip:
+                crest_x = run_x1 - WIDE_SUMMIT_IN * (run_x1 - run_x0)
+            else:
+                crest_x = run_x0 + WIDE_SUMMIT_IN * (run_x1 - run_x0)
+            left = crest_x - ((1.0 - ax) if flip else ax) * w
         else:
-            h = max(want / p["aspect"], MIST_Y * H - cy)
-            w = p["aspect"] * h
             crest_x = axis_x(r["nx"]) * W
             left = crest_x - ax * w
-        masses.append({"rect": (left, cy - ay * h, w, h), "crest": (crest_x, cy),
+        masses.append({"rect": (left, BASE_Y * H - h, w, h), "crest": (crest_x, cy),
                        "plane": p["name"], "flip": flip, "host": r is host,
                        "run": (r["lo"], r["hi"])})
     # depth: pale masses first (the taller farther), the host nearest, last
@@ -622,8 +625,10 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     #    picture; both outer thirds on a flat day
     base = paint_near(base, layout, night)
 
-    # 5. full mist dissolving the mid-plane bases
-    base = paste_scaled(base, mist, -0.03 * W, 0.69 * H, 1.06 * W, 0.20 * H)
+    # 5. full mist dissolving the mid-plane bodies and the near range's
+    #    feet: raised in round 6 to begin just under the near crests, so the
+    #    masses show their upper bodies and the depth order reads
+    base = paste_scaled(base, mist, -0.03 * W, 0.66 * H, 1.06 * W, 0.22 * H)
 
     # 6. foreground masses: left = oldest hour, right = newest
     l_h = 0.58 * H * (0.65 + 0.45 * h_start)
