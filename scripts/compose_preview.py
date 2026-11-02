@@ -53,15 +53,16 @@ def height_for_hr(hr):
 def axis_x(nx):
     """The landscape's time axis: four hours ago .. now -> the full width,
     0..1 of W (2026-11-02, John: the oldest hour may sit under the time and
-    the seal, it matters least). Landmarks, level bands and the true-HR
+    the seal, it matters least). Landmarks, the far ridge and the true-HR
     overlay all use it, so a departure of the art from the data is visible
     as such."""
     return min(max(nx, 0.0), 1.0)
 
 
 def host_height(h_norm):
-    """Host plane height for a landmark height (height_for_hr output)."""
-    return 0.70 * H * (0.50 + 0.60 * h_norm)
+    """Host plane height for a landmark height (height_for_hr output):
+    whatever stands its crest on the crest scale."""
+    return (0.87 * H - crest_y(h_norm)) / (1.0 - HOST_APEX_Y)
 
 
 def bucket_history(data, count=16):
@@ -145,13 +146,17 @@ def window_from_rows(rows, end_epoch=None):
 
 
 GUEST_PROMINENCE = 8.0   # bpm a guest must stand above the valley between it and the host
-HOST_PROMINENCE = 10.0   # bpm the host must stand above the window's resting level
-FLAT_TOL = 6.0           # bpm a bucket may sit from its run's mean and still be flat
-LEVEL_BAND_H = 64        # level_band.png rows; its horizon line is row LEVEL_LINE_ROW
-LEVEL_LINE_ROW = 10
-BAND_FEATHER_PX = 22     # a band slice fades in and out over this, except at the screen edge
+HOST_PROMINENCE = 20.0   # bpm the host must stand above the window's resting level (the
+                         # far ridge shows every bump; a foreground mountain marks an effort)
 SHOULDER_PX = 40.0       # a landmark's slope beyond its effort's buckets, each side
 SPIRE_BELOW = 0.80       # an effort narrower than this share of the massif's width gets a spire
+RIDGE_BASE_Y = 0.74      # the far ridge's foot, under the mist
+# Ribbons that follow the ridge line as (top px, bottom px or None = the
+# foot, alpha): darkest just under the crest line, haze toward the foot, a
+# faint lead above the line so the edge is soft, like the blurred 10-29
+# far_range.png and unlike a slab.
+RIDGE_RIBBONS = ((-2, 5, 0x16), (0, 14, 0x2A), (10, 34, 0x1C), (28, None, 0x10))
+RIDGE_CHUNK = 15         # samples per ribbon polygon: 2 x 16 points, under the 64 cap
 
 
 def resting_level(history):
@@ -176,26 +181,6 @@ def effort_run(history, peak, level):
     while hi + 1 < len(history) and history[hi + 1] >= half:
         hi += 1
     return hi - lo + 1
-
-
-def level_runs(history):
-    """The flat stretches: maximal runs of two or more consecutive data
-    buckets each within FLAT_TOL of the run's mean, as (first bucket, last
-    bucket, mean bpm). A run spanning the window is a flat day."""
-    runs, i, n = [], 0, len(history)
-    while i < n:
-        if history[i] <= 0.0:
-            i += 1
-            continue
-        j, total = i, history[i]
-        while (j + 1 < n and history[j + 1] > 0.0
-               and abs(history[j + 1] - total / (j - i + 1)) <= FLAT_TOL):
-            j += 1
-            total += history[j]
-        if j > i:
-            runs.append((i, j, total / (j - i + 1)))
-        i = j + 1
-    return runs
 
 
 def landmark_peaks(history):
@@ -255,37 +240,6 @@ def measure_apex(name):
         if xs:
             return (0.5 * (xs[0] + xs[-1])) / w, y / float(h)
     return 0.5, 0.0
-
-
-def paste_band(base, band, x0, x1, y_line):
-    """A slice of the level band, cropped rather than scaled so the brush
-    keeps its grain and continues across abutting runs, its horizon line on
-    y_line (drawBitmap2 with :bitmapX/:bitmapWidth on the device). Each end
-    that is not the screen edge fades over BAND_FEATHER_PX, so abutting
-    runs at different heights cross-fade instead of meeting as slabs."""
-    bx0, bx1 = int(round(x0)), int(round(x1))
-    bx0, bx1 = max(bx0, 0), min(bx1, band.size[0])
-    if bx1 - bx0 < 2:
-        return base
-    sl = band.crop((bx0, 0, bx1, band.size[1]))
-    n = sl.size[0]
-    ramp = [1.0] * n
-    f = min(BAND_FEATHER_PX, n // 2)
-    for i in range(f):
-        k = (i + 0.5) / f
-        if bx0 > 0:
-            ramp[i] = min(ramp[i], k)
-        if bx1 < band.size[0]:
-            ramp[n - 1 - i] = min(ramp[n - 1 - i], k)
-    if f and (bx0 > 0 or bx1 < band.size[0]):
-        a = sl.getchannel("A").load()
-        for x in range(n):
-            if ramp[x] < 1.0:
-                for y in range(sl.size[1]):
-                    a[x, y] = int(a[x, y] * ramp[x])
-    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    layer.paste(sl, (bx0, int(round(y_line)) - LEVEL_LINE_ROW))
-    return Image.alpha_composite(base, layer)
 
 
 # ---- compose ----------------------------------------------------------------
@@ -372,6 +326,8 @@ def kanji_hour(hour):
 # crest) and the rest of the painting's license shows against it.
 HOST_APEX_Y = 0.31
 HOST_APEX_FRAC = 0.47    # crest column inside the host bitmap
+CREST_LO_Y = 0.58        # the crest scale: 45 bpm sits here (fraction of H) ...
+CREST_HI_Y = 0.26        # ... and 160 bpm here (round 3: 1.7x the 10-29 scale)
 GUEST_APEX_Y = 0.12
 GUEST_APEX_FRAC = 0.46   # measured crest column (was 0.42, 8 px off the axis)
 
@@ -397,10 +353,11 @@ TRACE_FLOOR_PAD = 0.02   # the wash's floor sits this far under the lowest sampl
 
 
 def crest_y(h_norm):
-    """The host's crest scale for a landmark height: 45 bpm -> 0.527 H,
-    160 bpm -> 0.337 H. The guest crest and the overlay sit on it too, so
-    one height means one heart rate everywhere in the painting."""
-    return 0.87 * H - (1.0 - HOST_APEX_Y) * host_height(h_norm)
+    """The painting's one vertical scale, for a landmark height (0.35..1.0,
+    height_for_norm): the far ridge, every crest and the overlay sit on
+    it, so one height means one heart rate everywhere in the painting."""
+    norm = (h_norm - 0.35) / 0.65
+    return H * (CREST_LO_Y + (CREST_HI_Y - CREST_LO_Y) * norm)
 
 
 def trace_y(norm):
@@ -414,6 +371,41 @@ def thin_trace(trace, cols=TRACE_COLS):
         return list(trace)
     stride = (len(trace) + cols - 1) // cols
     return [max(trace[i:i + stride], key=lambda t: t[1]) for i in range(0, len(trace), stride)]
+
+
+def ridge_points(history, trace):
+    """The far ridge's skyline, [(x, y)] left to right on the crest scale
+    (2026-11-02, John: the faded distant range follows the heart rate
+    nearly exactly; the foreground landmarks mark its notable peaks). The
+    thinned trace, which the Scene already stores for the overlay, or the
+    buckets with data when there is no trace."""
+    src = thin_trace(trace) if trace else [(i / float(len(history) - 1), norm_hr(h))
+                                           for i, h in enumerate(history) if h > 0.0]
+    return [(W * axis_x(nx), trace_y(norm)) for nx, norm in src]
+
+
+def draw_far_ridge(base, pts, night):
+    """The far range as the device can draw it: each ribbon is a run of
+    fillPolygons of RIDGE_CHUNK samples (top edge the ridge line shifted
+    down, bottom edge the same shifted further or the foot), all of one
+    ribbon at one alpha. Darkest at the crest line, haze at the foot, which
+    the mist then dissolves. On the device adjacent chunks must not share a
+    column or the seam blends twice."""
+    if len(pts) < 2:
+        return base
+    rgb = (120, 118, 110) if night else (70, 66, 60)
+    foot = RIDGE_BASE_Y * H
+    for top_dy, bot_dy, alpha in RIDGE_RIBBONS:
+        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        for i in range(0, len(pts) - 1, RIDGE_CHUNK):
+            seg = pts[i:i + RIDGE_CHUNK + 1]
+            top = [(x, y + top_dy) for x, y in seg]
+            bot = [(x, foot if bot_dy is None else min(y + bot_dy, foot))
+                   for x, y in reversed(seg)]
+            d.polygon(top + bot, fill=rgb + (alpha,))
+        base = Image.alpha_composite(base, layer)
+    return base
 
 
 def draw_trace(base, trace, host_crest, guest_crest, night):
@@ -453,12 +445,10 @@ def mid_plane_layout(history):
 
     Both landmarks sit at their true place on the one full-width time axis
     (the 2026-10-29 crossover rule went with the 0.36..0.80 axis). No
-    landmark means no host; no second landmark means no guest. "bands" are
-    the level-distance horizon slices, one per flat run, as (x0, x1,
-    y_line) with y_line on the crest scale."""
+    landmark means no host; no second landmark means no guest."""
     peaks = landmark_peaks(history)
     out = {"host": None, "host_crest": None, "host_plane": None,
-           "guest": None, "guest_crest": None, "guest_plane": None, "bands": []}
+           "guest": None, "guest_crest": None, "guest_plane": None}
     bucket_px = W / float(len(history) - 1)
     if peaks:
         host_nx, h0, run0 = peaks[0]
@@ -484,12 +474,6 @@ def mid_plane_layout(history):
         out["guest"] = (gx * W - ax * g_w, g_y, g_w, g_h)
         out["guest_crest"] = (gx * W, g_y + ay * g_h)
         out["guest_plane"] = p["name"]
-    for a, b, bpm in level_runs(history):
-        # a bucket beyond the run each side, so neighbors overlap and the
-        # feathered ends cross-fade at a step
-        x0 = max(0.0, (a - 1.0) * bucket_px)
-        x1 = min(float(W), (b + 1.0) * bucket_px)
-        out["bands"].append((x0, x1, crest_y(height_for_hr(bpm))))
     return out
 
 
@@ -498,7 +482,6 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples for the true-HR overlay, or None."""
     sfx = "_night" if night else ""
-    far = load("far_range%s.png" % sfx)
     fg_l = load("fg_left%s.png" % sfx)
     fg_r = load("fg_right%s.png" % sfx)
     mist = load("mist_band%s.png" % sfx)
@@ -532,19 +515,13 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     base = blend_ellipse(base, sx, sy, r_halo, halo)
     base = blend_ellipse(base, sx, sy, r_core, core)
 
-    # 1. far plane (ghost + far ridges), the horizon haze
-    base = paste_scaled(base, far, -0.02 * W, 0.33 * H, 1.04 * W, 0.29 * H)
+    # 1. the far ridge IS the heart rate: the window's samples as a distant
+    #    range on the crest scale, soft-edged, full width (round 3, 11-02).
+    #    The 10-29 far_range.png backdrop is retired by it.
+    base = draw_far_ridge(base, ridge_points(history, trace), night)
 
     # 2. light mist between far and mid planes
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
-
-    # 2b. level distance (2026-11-02): a horizon band for every flat run at
-    #     that run's own height. Still water where nothing happened, a step
-    #     where the resting level changed, hidden where a landmark stands.
-    if layout["bands"]:
-        band = load("level_band%s.png" % sfx)
-        for x0, x1, y_line in layout["bands"]:
-            base = paste_band(base, band, x0, x1, y_line)
 
     # 3. guest: second landmark (mid_plane_layout has the placement and
     #    the plane: the broad guest or the pale spire)

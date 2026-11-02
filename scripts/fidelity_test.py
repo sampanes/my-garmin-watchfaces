@@ -174,15 +174,12 @@ def smooth(series, radius):
     return out
 
 
-def skyline(history):
-    """Top inked row of the level bands + host + guest planes per screen
+def skyline(history, trace):
+    """Top inked row of the far ridge + host + guest planes per screen
     column, as painted."""
     layout = cp.mid_plane_layout(history)
     canvas = Image.new("RGBA", (cp.W, cp.H), (0, 0, 0, 0))
-    if layout["bands"]:
-        band = cp.load("level_band.png")
-        for x0, x1, y_line in layout["bands"]:
-            canvas = cp.paste_band(canvas, band, x0, x1, y_line)
+    canvas = cp.draw_far_ridge(canvas, cp.ridge_points(history, trace), False)
     if layout["guest"] is not None:
         canvas = cp.paste_scaled(canvas, cp.load(layout["guest_plane"] + ".png"), *layout["guest"])
     if layout["host"] is not None:
@@ -254,7 +251,7 @@ def score(rows):
     history, trace, hr_now, _, _ = cp.window_from_rows(rows, EPOCH0 + cp.HISTORY_SECONDS)
     columns = axis_columns()
     truth = true_series(rows, columns)
-    tops, layout = skyline(history)
+    tops, layout = skyline(history, trace)
     heights = [BASE_Y - tops[x] if tops[x] is not None else 0.0 for x in columns]
     minutes_per_col = WINDOW_MIN / float(len(columns) - 1)
     smoothed = smooth(truth, int(round(2.5 / minutes_per_col)))

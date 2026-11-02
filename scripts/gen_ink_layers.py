@@ -20,9 +20,6 @@ Outputs (RGBA, straight alpha, one ink color per file):
     mist_band.png        416x110  paper-colored organic mist (band+puffs+wisps)
     mist_band_lite.png   same at 62% alpha (no runtime alpha knob on device)
     paper_grain.png      240x240  washi grain, upscaled on-device
-    level_band.png       416x64   level distance: a brushed horizon line (row
-                                  10) over a thin wash with a few ripples; a
-                                  cropped slice per flat run of the window
     spire.png            180x300  a narrow peak for an effort shorter than the
                                   massif is wide (host ink)
     spire_pale.png       180x300  the same role for the guest (paler, softer)
@@ -504,65 +501,9 @@ def make_paper_grain(size, seed):
     return Image.fromarray(np.dstack([rgb, a]), "RGBA")
 
 
-# ---------------------------------------------------------- level band
-
-def level_band(W1, H1, seed, line_row=10, line_ink=0.50, wash_ink=0.07):
-    """Level distance (2026-11-02): the flat hours of the window as still
-    water seen across a plain. A brushed horizon line at 1x row `line_row`
-    (several overlapping dry strokes so the pressure wanders), a thin wash
-    beneath it that is gone before the band's bottom edge, and a few
-    broken ripple strokes. Nothing above the line, so the top inked row of
-    a slice is the line itself (the fidelity test reads it that way)."""
-    W, H = W1 * SS, H1 * SS
-    rng = np.random.default_rng(seed)
-    y0 = line_row * SS
-    xs = np.arange(W, dtype=float)
-    wobble = fbm(xs / W * 5.0, seed + 11, 3) * 1.6 * SS
-    line_y = y0 + wobble
-
-    # the wash: ink below the line, fading out over about two thirds of the
-    # band, mottled so it reads as water and not a gradient
-    yy = np.arange(H, dtype=float)[:, None]
-    depth = yy - line_y[None, :]
-    body = 1.0 - smoothstep(0.0, 0.45 * H, depth)
-    mottle = 0.75 + 0.5 * vnoise2(H, W, 14 * SS, 40 * SS, seed + 23, octaves=2)
-    a = wash_ink * body * mottle * (depth >= 0)
-    a *= 1.0 - smoothstep(0.78 * H, 0.97 * H, yy)      # never show the rectangle
-
-    # the line: overlapping segments, each a pressure stroke, so it thins
-    # and thickens like one pass of a nearly dry brush
-    mod = 2.0 * vnoise2(H, W, 20 * SS, 20 * SS, seed + 55, octaves=2) - 1.0
-    im, d = scratch(H, W)
-    seg = W / 5.0
-    for k in range(6):
-        xa = max(0.0, (k - 0.5) * seg + rng.uniform(-0.2, 0.2) * seg)
-        xb = min(float(W), (k + 0.8) * seg + rng.uniform(-0.2, 0.2) * seg)
-        ia, ib = int(min(max(xa, 0), W - 1)), int(min(max(xb, 0), W - 1))
-        brush_stroke(d, mod, xa, line_y[ia] + rng.uniform(-0.4, 0.4) * SS,
-                     xb, line_y[ib] + rng.uniform(-0.4, 0.4) * SS,
-                     0.9 * SS, 2.4 * SS, line_ink)
-    # ripples: short broken strokes under the line, sparser with depth
-    for _ in range(14):
-        depth_px = rng.uniform(5.0, 34.0) * SS
-        length = rng.uniform(18.0, 58.0) * SS * (1.0 - 0.5 * depth_px / (34.0 * SS))
-        x = rng.uniform(0.0, W - length)
-        ix = int(min(max(x + length / 2.0, 0), W - 1))
-        y = line_y[ix] + depth_px
-        dashed_line(d, x, y, x + length, y + rng.uniform(-0.6, 0.6) * SS,
-                    rng.uniform(5.0, 12.0) * SS, rng.uniform(3.0, 7.0) * SS,
-                    1.0 * SS, 0.28 * (1.0 - 0.6 * depth_px / (34.0 * SS)))
-    a = over(a, alpha_of(im))
-
-    a_img = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8), "L")
-    a_img = a_img.filter(ImageFilter.GaussianBlur(0.6 * SS))
-    a_img = a_img.resize((W1, H1), Image.LANCZOS)
-    return np.asarray(a_img, dtype=float) / 255.0
-
-
 def write_extras():
     """The 2026-11-02 planes only; the seven 10-29 planes stay byte-identical."""
     os.makedirs(OUT_DIR, exist_ok=True)
-    write_pair(level_band(416, 64, seed=707), (12, 9, 7), "level_band", NIGHT_INK, 0.85)
     # Spires: one narrow peak, steep flanks, a skirt that dissolves into the
     # mist like the massif's. Huangshan rather than the broad host massif, for
     # an effort of under about two hours on the full-width axis.
