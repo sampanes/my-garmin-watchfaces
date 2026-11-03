@@ -44,6 +44,17 @@ using Toybox.WatchUi;
 // over the valley between it and the host; the host's own shoulder and a
 // resting window's noise are not a second landmark.
 //
+// 2026-11-03: the opinion-round relief (compose_preview.py round 6, John
+// judged six rounds of it on 11-02) replaces the host/guest landmarks.
+// The window's floor is a level far horizon on the crest scale; every run
+// of buckets standing over it is a mass on one deep base (0.87 H), a spire,
+// broad peak or wide mountain by its duration, its crest on the crest scale
+// at the run's place on a full-width time axis; a near range fills the
+// thirds of the screen the masses leave empty. Masses and near hills are
+// paper cutouts baked into their PNGs (scripts/bake_cutouts.py), so the
+// horizon and farther masses hide behind them. They are loaded per render
+// and dropped, so the graphics pool only ever holds one frame's planes.
+//
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
 //
@@ -58,14 +69,11 @@ class JapaneseInkHeartrateScene {
     var mBufferHeight as Lang.Number = 0;
     var mLastSceneKey as Lang.Number = -1;
 
-    // The baked planes. Typed so the checker sees them (untyped members made
-    // every draw call "Passing 'Any'", 20 warnings per build, and hid real
-    // type errors). The checker does not narrow a member after a null test
+    // The fixed planes of the loaded set (day or night). Typed so the
+    // checker sees them; it does not narrow a member after a null test
     // (COMPILER_FACTS 1.4), so every draw site copies the plane to a local
-    // first.
-    var mFar as Graphics.BitmapType?;
-    var mHost as Graphics.BitmapType?;
-    var mGuest as Graphics.BitmapType?;
+    // first. The horizon, masses and near hills are loaded per render
+    // (loadPlane), drawn and dropped.
     var mMist as Graphics.BitmapType?;
     var mMistLite as Graphics.BitmapType?;
     var mFgLeft as Graphics.BitmapType?;
@@ -74,10 +82,27 @@ class JapaneseInkHeartrateScene {
     // Which plane set is in the graphics pool: -1 none, 0 day, 1 night.
     var mLoadedSet as Lang.Number = -1;
 
-    // HR peak descriptor cache. Each element is [nx, h, s] — normalized x
-    // position, normalized height, spread. Sorted descending by h so
-    // index 0 = host (dominant), index 1 = guest.
-    var mPeaks as Lang.Array<Lang.Array<Lang.Float>>?;
+    // The relief of the current window (computeRelief): the horizon's crest
+    // y in px (negative = none), the masses in draw order as [left, top,
+    // width, height, crestX, crestY, plane, flip, host] (M_* indices) and
+    // the near hills as [left, top, width, height, plane].
+    var mHorizonY as Lang.Float = -1.0;
+    var mMasses as Lang.Array<Lang.Array<Lang.Float>>?;
+    var mNear as Lang.Array<Lang.Array<Lang.Float>>?;
+
+    // The planes by index (P_*): width/height of the PNG and the painted
+    // crest inside it (alpha >= 40, measured 2026-11-03 from the day PNGs,
+    // as compose_preview.measure_apex does). The flipped wide planes use
+    // 1 - x.
+    var mPlaneAspect as Lang.Array<Lang.Float> =
+        [0.6, 0.6, 1.25, 1.25, 1.4117647, 1.4117647, 2.0, 2.0] as Lang.Array<Lang.Float>;
+    var mPlaneApexX as Lang.Array<Lang.Float> =
+        [0.4417, 0.4444, 0.40, 0.49, 0.2469, 0.2531, 0.4938, 0.3078] as Lang.Array<Lang.Float>;
+    var mPlaneApexY as Lang.Array<Lang.Float> =
+        [0.2667, 0.17, 0.1417, 0.10, 0.1794, 0.2088, 0.0, 0.1062] as Lang.Array<Lang.Float>;
+    // The near hills lean outward from their third's center (fraction of W).
+    var mNearLean as Lang.Array<Lang.Float> = [-0.05, 0.03, 0.05] as Lang.Array<Lang.Float>;
+
     // Sixteen 15-minute averages, oldest to newest. Zero means that portion
     // of the four-hour window was unavailable (for example after a reboot).
     var mHistory as Lang.Array<Lang.Float>?;
@@ -98,30 +123,55 @@ class JapaneseInkHeartrateScene {
     const HISTORY_BUCKETS = 16;
     const HISTORY_SECONDS = 4 * 3600;
     // Dc.fillPolygon takes at most 64 points (common/graphics/DC_PART1); the
-    // wash is the trace plus two floor corners. 58 columns on a 183 px axis
-    // is about one point every 3 px, which is the display's resolution.
+    // wash is the trace plus two floor corners. 58 columns on the full-width
+    // axis is a point every 7 px, finer than the 15-minute buckets.
     const TRACE_MAX = 58;
     const TRACE_FLOOR_PAD = 0.02;     // wash floor this far under the lowest sample
 
-    // Asset native dimensions (must match gen_ink_layers.py outputs) and
-    // where the painted crest sits inside each bitmap (alpha >= 40, measured
-    // 2026-10-29, identical on the day and night sets).
-    const HOST_W = 340.0;
-    const HOST_H = 260.0;
-    const HOST_APEX_FRAC = 0.47;      // crest x within the host bitmap
-    const HOST_APEX_Y = 0.31;         // crest y: 31% down the host bitmap
-    const GUEST_W = 260.0;
-    const GUEST_H = 190.0;
-    const GUEST_APEX_FRAC = 0.46;     // crest x (0.42 sat 8 px off the axis)
-    const GUEST_APEX_Y = 0.12;        // crest y: 12% down the guest bitmap
-    // The guest crest sits on the host's crest scale, this much lower (it is
-    // the further, paler mountain). Until 2026-10-29 it stood on its own
-    // higher base and out-topped the host even at a lower heart rate.
-    const GUEST_RECESS = 0.03;
-    // A guest must stand this many bpm above the lowest data bucket between
-    // it and the host (landmarkPeaks); the host's shoulder and resting noise
-    // are not a second landmark.
-    const GUEST_PROMINENCE = 8.0;
+    // The relief (compose_preview.py, round 6). bpm unless noted.
+    const FLOOR_RANK = 8;         // the floor is the (n / 8)-th lowest data bucket (3rd of 16)
+    const RUN_MIN = 6.0;          // a bucket this far over the floor belongs to a run
+    const MASS_MIN = 15.0;        // a run's crest must stand this far over the floor
+    const VALLEY_MIN = 8.0;       // a valley this deep under both summits splits a run
+    const SPIRE_UPTO = 2;         // buckets: a run this short is a spire (30 min)
+    const WIDE_FROM = 6;          // buckets: a run this long is the wide mountain (90 min)
+    const BASE_Y = 0.87;          // every mass's foot (fraction of H), under the mist
+    const WIDE_SUMMIT_IN = 0.20;  // the wide summit sits this far into its run from the high end
+    const WIDE_END_TOL = 5.0;     // a run whose ends differ by less keeps its summit at its start
+    const NEAR_CREST_Y = 0.60;    // the near range's crest (fraction of H)
+    const NEAR_H = 0.21;          // its height (fraction of H) ...
+    const NEAR_HR_SPAN = 30.0;    // ... up by almost half over this much of its third over the floor
+    const NEAR_EMPTY = 0.25;      // a third with less mass cover than this is empty
+    const CREST_LO_Y = 0.58;      // the crest scale: 45 bpm sits here (fraction of H) ...
+    const CREST_HI_Y = 0.26;      // ... and 160 bpm here
+    const HORIZON_W = 416.0;      // horizon.png, drawn full width at native height on 416
+    const HORIZON_H = 56.0;
+    const HORIZON_APEX_Y = 0.1607;
+
+    // Plane indices (mPlane* tables, loadPlane).
+    const P_SPIRE = 0;
+    const P_SPIRE_PALE = 1;
+    const P_BROAD = 2;
+    const P_BROAD_PALE = 3;
+    const P_WIDE = 4;
+    const P_WIDE_PALE = 5;
+    const P_NEAR = 6;
+    const P_NEAR2 = 7;
+
+    // Run fields (runMass) and mass fields (mMasses).
+    const R_LO = 0;
+    const R_HI = 1;
+    const R_BUCKETS = 2;
+    const R_PEAK = 3;
+    const R_ELEV = 4;
+    const R_NX = 5;
+    const R_LEAN_END = 6;
+    const M_CX = 4;
+    const M_CY = 5;
+    const M_PLANE = 6;
+    const M_FLIP = 7;
+    const M_HOST = 8;
+
     const MIST_W = 416;
     const MIST_H = 110;
 
@@ -142,19 +192,23 @@ class JapaneseInkHeartrateScene {
     //      The docs make FULL the default, so the first tile is what the
     //      painting already gets; the scene buffer itself is made with FULL
     //      spelled out (the title says whether that call was accepted).
-    //   B  the host plane 75 px tall: drawScaledBitmap (point sampling) beside
+    //   B  the broad plane 75 px tall: drawScaledBitmap (point sampling) beside
     //      drawBitmap2 with an AffineTransform scale and FILTER_MODE_BILINEAR.
     //      Barcode strokes left and smooth ones right = §13 row 2 is the fix.
     //   C  mist_band_lite as baked (62% alpha) beside mist_band under a white
     //      50%-alpha :tintColor, the same crop over the same gray. A paler
     //      right tile = the tint is the global-alpha knob; the same density
     //      as the full band = the tint's alpha is ignored here.
-    //   D  two guest planes overlapping by half: source-over beside
+    //   D  two pale spires overlapping by half: source-over beside
     //      BLEND_MODE_MULTIPLY. A darker overlap on the right = multiply
     //      works (the docs want a GPU); identical tiles = it is ignored.
     const PROBE = false;
     const PROBE_GROUND = 0x5A5550;
     const PROBE_INK = 0x18120E;
+    const PROBE_B_W = 300.0;     // broad_cut.png
+    const PROBE_B_H = 240.0;
+    const PROBE_D_W = 180.0;     // spire_pale_cut.png
+    const PROBE_D_H = 300.0;
     var mProbeFull as Graphics.BufferedBitmap?;
     var mProbePartial as Graphics.BufferedBitmap?;
     // How the scene buffer was made in probe mode: full (ALPHA_BLENDING_FULL
@@ -228,42 +282,80 @@ class JapaneseInkHeartrateScene {
 
     // -------------------------------------------------------------- planes
 
-    // Only one set sits in the graphics pool at a time: the other set's
-    // references are dropped before the new one loads. The probe card is
-    // always the day set (see PROBE).
+    // Only one set of fixed planes sits in the graphics pool at a time: the
+    // other set's references are dropped before the new one loads. The
+    // probe card is always the day set (see PROBE).
     function loadPlanes(night as Lang.Boolean) as Void {
         var set = (night && !PROBE) ? 1 : 0;
         if (set == mLoadedSet) { return; }
-        mFar = null;
-        mHost = null;
-        mGuest = null;
         mMist = null;
         mMistLite = null;
         mFgLeft = null;
         mFgRight = null;
         mPaperGrain = null;
-        if (WatchUi has :loadResource) {
-            if (night) {
-                mFar = WatchUi.loadResource(Rez.Drawables.FarRangeNight) as Graphics.BitmapType;
-                mHost = WatchUi.loadResource(Rez.Drawables.HostMountainNight) as Graphics.BitmapType;
-                mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainNight) as Graphics.BitmapType;
-                mMist = WatchUi.loadResource(Rez.Drawables.MistBandNight) as Graphics.BitmapType;
-                mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteNight) as Graphics.BitmapType;
-                mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftNight) as Graphics.BitmapType;
-                mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightNight) as Graphics.BitmapType;
-                // No grain on the night paper: black stays black.
-            } else {
-                mFar = WatchUi.loadResource(Rez.Drawables.FarRangeTuned) as Graphics.BitmapType;
-                mHost = WatchUi.loadResource(Rez.Drawables.HostMountainTuned) as Graphics.BitmapType;
-                mGuest = WatchUi.loadResource(Rez.Drawables.GuestMountainTuned) as Graphics.BitmapType;
-                mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned) as Graphics.BitmapType;
-                mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned) as Graphics.BitmapType;
-                mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftTuned) as Graphics.BitmapType;
-                mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightTuned) as Graphics.BitmapType;
-                mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned) as Graphics.BitmapType;
-            }
+        if (set == 1) {
+            mMist = WatchUi.loadResource(Rez.Drawables.MistBandNight) as Graphics.BitmapType;
+            mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteNight) as Graphics.BitmapType;
+            mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftNight) as Graphics.BitmapType;
+            mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightNight) as Graphics.BitmapType;
+            // No grain on the night paper: black stays black.
+        } else {
+            mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned) as Graphics.BitmapType;
+            mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned) as Graphics.BitmapType;
+            mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftTuned) as Graphics.BitmapType;
+            mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightTuned) as Graphics.BitmapType;
+            mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned) as Graphics.BitmapType;
         }
         mLoadedSet = set;
+    }
+
+    // A mass or near-hill cutout, loaded for one render. Null when the pool
+    // refuses it: that plane is skipped and the face stays alive.
+    function loadPlane(p as Lang.Number, flip as Lang.Boolean, night as Lang.Boolean) as Graphics.BitmapType? {
+        var id = null;
+        if (p == P_SPIRE) {
+            id = night ? Rez.Drawables.SpireCutNight : Rez.Drawables.SpireCut;
+        } else if (p == P_SPIRE_PALE) {
+            id = night ? Rez.Drawables.SpirePaleCutNight : Rez.Drawables.SpirePaleCut;
+        } else if (p == P_BROAD) {
+            id = night ? Rez.Drawables.BroadCutNight : Rez.Drawables.BroadCut;
+        } else if (p == P_BROAD_PALE) {
+            id = night ? Rez.Drawables.BroadPaleCutNight : Rez.Drawables.BroadPaleCut;
+        } else if (p == P_WIDE) {
+            if (flip) {
+                id = night ? Rez.Drawables.WideFlipCutNight : Rez.Drawables.WideFlipCut;
+            } else {
+                id = night ? Rez.Drawables.WideCutNight : Rez.Drawables.WideCut;
+            }
+        } else if (p == P_WIDE_PALE) {
+            if (flip) {
+                id = night ? Rez.Drawables.WidePaleFlipCutNight : Rez.Drawables.WidePaleFlipCut;
+            } else {
+                id = night ? Rez.Drawables.WidePaleCutNight : Rez.Drawables.WidePaleCut;
+            }
+        } else if (p == P_NEAR) {
+            id = night ? Rez.Drawables.NearHillCutNight : Rez.Drawables.NearHillCut;
+        } else if (p == P_NEAR2) {
+            id = night ? Rez.Drawables.NearHill2CutNight : Rez.Drawables.NearHill2Cut;
+        }
+        if (id == null) { return null; }
+        var bmp = null;
+        try {
+            bmp = WatchUi.loadResource(id) as Graphics.BitmapType;
+        } catch (ex) {
+            bmp = null;
+        }
+        return bmp;
+    }
+
+    function loadHorizon(night as Lang.Boolean) as Graphics.BitmapType? {
+        var bmp = null;
+        try {
+            bmp = WatchUi.loadResource(night ? Rez.Drawables.HorizonNight : Rez.Drawables.Horizon) as Graphics.BitmapType;
+        } catch (ex) {
+            bmp = null;
+        }
+        return bmp;
     }
 
     // ------------------------------------------------------------- HR data
@@ -357,48 +449,257 @@ class JapaneseInkHeartrateScene {
         return 0.5;
     }
 
-    // The host is the strongest 15-minute bucket. The guest is the strongest
-    // bucket WITH DATA at least an hour away that stands GUEST_PROMINENCE
-    // above the lowest data bucket between them. An empty bucket is not a
-    // landmark (until 2026-10-29 a window missing its first hours after a
-    // reboot grew a full-size guest out of nothing), and neither is the
-    // host's own shoulder or a resting window's noise (until 2026-11-02 a
-    // flat 62 bpm window painted two equal mountains: the fidelity test's
-    // first baseline found a guest in 12 of 13 windows). With no such
-    // bucket there is no guest: one episode, one mountain. Each x stays its
-    // true location in the window.
-    function landmarkPeaks(history as Lang.Array<Lang.Float>) as Lang.Array<Lang.Array<Lang.Float>> {
-        var host = 0;
-        for (var i = 1; i < history.size(); i++) {
-            if (history[i] > history[host]) { host = i; }
-        }
-        var guest = -1;
-        var guestHr = 0.0;
+    // ------------------------------------------------------------- relief
+    // compose_preview.py mid_plane_layout, round 6, line for line.
+
+    // The window's floor: the third-lowest of sixteen data buckets, so one
+    // odd bucket cannot drag it (0.0 for an empty window).
+    function floorLevel(history as Lang.Array<Lang.Float>) as Lang.Float {
+        var vals = [] as Lang.Array<Lang.Float>;
         for (var i = 0; i < history.size(); i++) {
-            var distance = i - host;
-            if (distance < 0) { distance = -distance; }
-            if (distance < 4 || history[i] <= guestHr) { continue; }
-            // the lowest data bucket between the two; nothing between, or no
-            // data there, is no valley and the candidate fails
-            var lo = (i < host) ? i + 1 : host + 1;
-            var hi = (i < host) ? host : i;
-            var valley = history[i];
-            for (var j = lo; j < hi; j++) {
-                if (history[j] > 0.0 && history[j] < valley) { valley = history[j]; }
+            var v = history[i];
+            if (v <= 0.0) { continue; }
+            var j = vals.size();
+            vals.add(v);
+            while (j > 0 && vals[j - 1] > v) {
+                vals[j] = vals[j - 1];
+                j--;
             }
-            if (history[i] - valley >= GUEST_PROMINENCE) {
-                guest = i;
-                guestHr = history[i];
+            vals[j] = v;
+        }
+        if (vals.size() == 0) { return 0.0; }
+        return vals[vals.size() / FLOOR_RANK];
+    }
+
+    function maxIn(history as Lang.Array<Lang.Float>, lo as Lang.Number, hi as Lang.Number) as Lang.Float {
+        var best = history[lo];
+        for (var i = lo + 1; i <= hi; i++) {
+            if (history[i] > best) { best = history[i]; }
+        }
+        return best;
+    }
+
+    // Cut a run at its deepest interior valley that drops VALLEY_MIN under
+    // the summits on both sides, again on each side. The valley bucket goes
+    // to both halves (it is both slopes).
+    function splitAtValleys(history as Lang.Array<Lang.Float>, lo as Lang.Number, hi as Lang.Number,
+                            out as Lang.Array<Lang.Array<Lang.Number>>) as Void {
+        var best = -1;
+        var bestDrop = 0.0;
+        for (var v = lo + 1; v < hi; v++) {
+            var left = maxIn(history, lo, v - 1);
+            var right = maxIn(history, v + 1, hi);
+            var drop = ((left < right) ? left : right) - history[v];
+            if (drop >= VALLEY_MIN && (best < 0 || drop > bestDrop)) {
+                best = v;
+                bestDrop = drop;
             }
         }
-        var denom = (HISTORY_BUCKETS - 1).toFloat();
-        var peaks = [
-            [host.toFloat() / denom, heightForHr(history[host]), 0.15] as Lang.Array<Lang.Float>
-        ] as Lang.Array<Lang.Array<Lang.Float>>;
-        if (guest >= 0) {
-            peaks.add([guest.toFloat() / denom, heightForHr(history[guest]), 0.15] as Lang.Array<Lang.Float>);
+        if (best < 0) {
+            out.add([lo, hi] as Lang.Array<Lang.Number>);
+            return;
         }
-        return peaks;
+        splitAtValleys(history, lo, best, out);
+        splitAtValleys(history, best, hi, out);
+    }
+
+    // Maximal runs of data buckets RUN_MIN over the floor, each split at its
+    // valleys: [lo, hi] in time order.
+    function splitRuns(history as Lang.Array<Lang.Float>, floor as Lang.Float) as Lang.Array<Lang.Array<Lang.Number>> {
+        var out = [] as Lang.Array<Lang.Array<Lang.Number>>;
+        var n = history.size();
+        var i = 0;
+        while (i < n) {
+            if (history[i] > 0.0 && history[i] - floor >= RUN_MIN) {
+                var j = i;
+                while (j + 1 < n && history[j + 1] > 0.0 && history[j + 1] - floor >= RUN_MIN) {
+                    j++;
+                }
+                splitAtValleys(history, i, j, out);
+                i = j + 1;
+            } else {
+                i++;
+            }
+        }
+        return out;
+    }
+
+    // A run as a mass (R_* fields): its crest heart rate (the highest trace
+    // sample inside its buckets, so five minutes of stairs paint their spike
+    // and not their fifteen-minute average), its height over the floor, its
+    // place on the axis (the centroid of its height over the floor) and
+    // whether its end stands higher than its start.
+    function runMass(history as Lang.Array<Lang.Float>, floor as Lang.Float,
+                     lo as Lang.Number, hi as Lang.Number, denom as Lang.Float) as Lang.Array<Lang.Float> {
+        var peak = maxIn(history, lo, hi);
+        var nxs = mTraceNx;
+        var hrs = mTraceHr;
+        if (nxs != null && hrs != null) {
+            var x0 = (lo - 0.5) / denom;
+            var x1 = (hi + 0.5) / denom;
+            for (var i = 0; i < nxs.size() && i < hrs.size(); i++) {
+                if (nxs[i] >= x0 && nxs[i] <= x1) {
+                    var bpm = HR_MIN + hrs[i] * (HR_MAX - HR_MIN);
+                    if (bpm > peak) { peak = bpm; }
+                }
+            }
+        }
+        var wsum = 0.0;
+        var xsum = 0.0;
+        for (var i = lo; i <= hi; i++) {
+            var wt = history[i] - floor;
+            if (wt < 0.0) { wt = 0.0; }
+            wsum += wt;
+            xsum += i * wt;
+        }
+        var cx = (wsum > 0.0) ? xsum / wsum : 0.0;
+        // the first two and last two buckets (the mock's slices: the first
+        // pair may reach one bucket past a one-bucket run)
+        var headHi = lo + 1;
+        if (headHi > history.size() - 1) { headHi = history.size() - 1; }
+        var head = 0.0;
+        for (var i = lo; i <= headHi; i++) { head += history[i]; }
+        head = head / (headHi - lo + 1);
+        var tailLo = (hi - 1 >= lo) ? hi - 1 : lo;
+        var tail = 0.0;
+        for (var i = tailLo; i <= hi; i++) { tail += history[i]; }
+        tail = tail / (hi - tailLo + 1);
+        return [lo.toFloat(), hi.toFloat(), (hi - lo + 1).toFloat(), peak, peak - floor,
+                cx / denom, (tail - head > WIDE_END_TOL) ? 1.0 : 0.0] as Lang.Array<Lang.Float>;
+    }
+
+    // Which plane a mass gets, by its duration; the host takes the dark
+    // planes, every other mass the pale twin.
+    function massPlane(buckets as Lang.Number, pale as Lang.Boolean) as Lang.Number {
+        if (buckets <= SPIRE_UPTO) { return pale ? P_SPIRE_PALE : P_SPIRE; }
+        if (buckets >= WIDE_FROM) { return pale ? P_WIDE_PALE : P_WIDE; }
+        return pale ? P_BROAD_PALE : P_BROAD;
+    }
+
+    // Draw order: pale masses first (the taller farther), the host last.
+    function massAfter(a as Lang.Array<Lang.Float>, b as Lang.Array<Lang.Float>) as Lang.Boolean {
+        if (a[M_HOST] != b[M_HOST]) { return a[M_HOST] > b[M_HOST]; }
+        return a[M_CY] > b[M_CY];
+    }
+
+    function computeRelief(w as Lang.Float, h as Lang.Float) as Void {
+        mHorizonY = -1.0;
+        var masses = [] as Lang.Array<Lang.Array<Lang.Float>>;
+        var near = [] as Lang.Array<Lang.Array<Lang.Float>>;
+        mMasses = masses;
+        mNear = near;
+        var history = mHistory;
+        if (history == null) { return; }
+        var floor = floorLevel(history);
+        if (floor <= 0.0) { return; }
+        mHorizonY = crestY(heightForHr(floor), h);
+        var denom = (history.size() - 1).toFloat();
+        var bucketPx = w / denom;
+
+        // the runs that stand MASS_MIN over the floor; the highest crest is
+        // the host (the first, on a tie)
+        var spans = splitRuns(history, floor);
+        var runs = [] as Lang.Array<Lang.Array<Lang.Float>>;
+        var host = -1;
+        for (var i = 0; i < spans.size(); i++) {
+            var r = runMass(history, floor, spans[i][0], spans[i][1], denom);
+            if (r[R_ELEV] < MASS_MIN) { continue; }
+            if (host < 0 || r[R_PEAK] > runs[host][R_PEAK]) { host = runs.size(); }
+            runs.add(r);
+        }
+
+        // every mass on the deep base, its crest on the crest scale, its
+        // width its plane's own aspect
+        for (var i = 0; i < runs.size(); i++) {
+            var r = runs[i];
+            var isHost = (i == host);
+            var p = massPlane(r[R_BUCKETS].toNumber(), !isHost);
+            var ax = mPlaneApexX[p];
+            var ay = mPlaneApexY[p];
+            var cy = crestY(heightForHr(r[R_PEAK]), h);
+            var mh = (BASE_Y * h - cy) / (1.0 - ay);
+            var mw = mPlaneAspect[p] * mh;
+            var flip = false;
+            var cx = 0.0;
+            var left = 0.0;
+            if (p == P_WIDE || p == P_WIDE_PALE) {
+                // the summit WIDE_SUMMIT_IN into the run from its higher end,
+                // the level shoulder over the rest (mirrored for the right)
+                var x0 = (r[R_LO] - 0.5) * bucketPx;
+                var x1 = (r[R_HI] + 0.5) * bucketPx;
+                flip = r[R_LEAN_END] > 0.5;
+                if (flip) {
+                    cx = x1 - WIDE_SUMMIT_IN * (x1 - x0);
+                    left = cx - (1.0 - ax) * mw;
+                } else {
+                    cx = x0 + WIDE_SUMMIT_IN * (x1 - x0);
+                    left = cx - ax * mw;
+                }
+            } else {
+                cx = axisX(r[R_NX]) * w;
+                left = cx - ax * mw;
+            }
+            masses.add([left, BASE_Y * h - mh, mw, mh, cx, cy, p.toFloat(),
+                        flip ? 1.0 : 0.0, isHost ? 1.0 : 0.0] as Lang.Array<Lang.Float>);
+        }
+        // a stable insertion sort into draw order
+        for (var i = 1; i < masses.size(); i++) {
+            var m = masses[i];
+            var j = i;
+            while (j > 0 && massAfter(masses[j - 1], m)) {
+                masses[j] = masses[j - 1];
+                j--;
+            }
+            masses[j] = m;
+        }
+
+        // the near range: a third of the screen the masses leave empty gets
+        // a near hill, nudged up by that third's heart rate over the floor;
+        // both outer thirds when all three are empty
+        var third = w / 3.0;
+        var empty = [] as Lang.Array<Lang.Number>;
+        for (var k = 0; k < 3; k++) {
+            var a = k * third;
+            var b = a + third;
+            var covered = 0.0;
+            for (var i = 0; i < masses.size(); i++) {
+                var m = masses[i];
+                var lo = m[0] + 0.15 * m[2];
+                var hi = m[0] + 0.85 * m[2];
+                if (lo < a) { lo = a; }
+                if (hi > b) { hi = b; }
+                if (hi > lo) { covered += hi - lo; }
+            }
+            if (covered / third < NEAR_EMPTY) { empty.add(k); }
+        }
+        if (empty.size() == 3) {
+            empty = [0, 2] as Lang.Array<Lang.Number>;
+        }
+        for (var e = 0; e < empty.size(); e++) {
+            var k = empty[e];
+            var a = k * third;
+            var b = a + third;
+            var loB = (a / bucketPx + 0.5).toNumber();
+            var hiB = (b / bucketPx + 0.5).toNumber();
+            var sum = 0.0;
+            var n = 0;
+            for (var i = (loB < 0) ? 0 : loB; i <= hiB && i < history.size(); i++) {
+                if (history[i] > 0.0) {
+                    sum += history[i];
+                    n++;
+                }
+            }
+            var over = (n > 0) ? sum / n - floor : 0.0;
+            if (over < 0.0) { over = 0.0; }
+            var span = over / NEAR_HR_SPAN;
+            if (span > 1.0) { span = 1.0; }
+            var p = (k == 1) ? P_NEAR2 : P_NEAR;
+            var nh = NEAR_H * h * (0.85 + 0.45 * span);
+            var nw = mPlaneAspect[p] * nh;
+            var cx = 0.5 * (a + b) + mNearLean[k] * w;
+            near.add([cx - mPlaneApexX[p] * nw, NEAR_CREST_Y * h - mPlaneApexY[p] * nh,
+                      nw, nh, p.toFloat()] as Lang.Array<Lang.Float>);
+        }
     }
 
     function refreshHistory() as Void {
@@ -457,7 +758,6 @@ class JapaneseInkHeartrateScene {
             mHistory = history;
             storeTrace(traceNx, traceHr);
         }
-        mPeaks = landmarkPeaks(mHistory as Lang.Array<Lang.Float>);
     }
 
     // Keep at most TRACE_MAX samples. Groups are reduced to their highest
@@ -492,33 +792,24 @@ class JapaneseInkHeartrateScene {
     }
 
     // ------------------------------------------------------------ mapping
-    // The landscape's time axis: 0 (four hours ago) .. 1 (now) maps to
-    // x = 0.36..0.80 of the width, which keeps every apex clear of the
-    // inscription column. The true-HR overlay uses the same two functions,
-    // so wherever the art departs from the data, the departure shows.
-
-    function peakX(nx as Lang.Float) as Lang.Float {
-        var clamped = nx;
-        if (clamped < 0.0) { clamped = 0.0; }
-        if (clamped > 1.0) { clamped = 1.0; }
-        return 0.20 + clamped * 0.60;
-    }
+    // The landscape's time axis is the full width (11-02, John: the oldest
+    // hour may sit under the time and the seal, it matters least). The
+    // masses and the true-HR overlay use the same axis and crest scale, so
+    // wherever the art departs from the data, the departure shows.
 
     function axisX(nx as Lang.Float) as Lang.Float {
-        return 0.36 + (peakX(nx) - 0.20) * 0.73;
+        if (nx < 0.0) { return 0.0; }
+        if (nx > 1.0) { return 1.0; }
+        return nx;
     }
 
-    // Host plane height for a landmark height (heightForHr output).
-    function hostHeight(hNorm as Lang.Float, h as Lang.Float) as Lang.Float {
-        return h * 0.70 * (0.50 + 0.60 * hNorm);
-    }
-
-    // The host's CREST scale: the y the host crest has when the host is sized
-    // for a landmark height (45 bpm -> 0.527 h, 160 bpm -> 0.337 h). The
-    // guest crest and the overlay both sit on it, so one height means one
-    // heart rate everywhere in the painting.
+    // The painting's one vertical scale, for a landmark height (0.35..1.0,
+    // heightForNorm): 45 bpm at CREST_LO_Y, 160 bpm at CREST_HI_Y. The
+    // horizon, every crest and the overlay sit on it, so one height means
+    // one heart rate everywhere in the painting.
     function crestY(hNorm as Lang.Float, h as Lang.Float) as Lang.Float {
-        return h * 0.87 - (1.0 - HOST_APEX_Y) * hostHeight(hNorm, h);
+        var norm = (hNorm - 0.35) / 0.65;
+        return h * (CREST_LO_Y + (CREST_HI_Y - CREST_LO_Y) * norm);
     }
 
     function traceY(norm as Lang.Float, h as Lang.Float) as Lang.Float {
@@ -625,34 +916,7 @@ class JapaneseInkHeartrateScene {
 
         var w = width.toFloat();
         var h = height.toFloat();
-
-        // Both landmarks sit on the one time axis. The guest apex also stays
-        // right of the inscription column (x >= 0.34) and clear of the host
-        // massif; when it cannot do both on its own side it crosses over.
-        // No second landmark (landmarkPeaks) means no guest plane.
-        var peaks = mPeaks;
-        var h0 = 0.6;
-        var h1 = 0.5;
-        var hostNx = 0.5;
-        var guestNx = 0.25;
-        var hasGuest = false;
-        if (peaks != null && peaks.size() >= 1) {
-            hostNx = axisX(peaks[0][0]);
-            h0 = peaks[0][1];
-        }
-        if (peaks != null && peaks.size() >= 2) {
-            hasGuest = true;
-            guestNx = axisX(peaks[1][0]);
-            h1 = peaks[1][1];
-            if (guestNx < 0.34) { guestNx = 0.34; }
-            var dxp = hostNx - guestNx;
-            if (dxp < 0.0) { dxp = -dxp; }
-            if (dxp < 0.30) {
-                guestNx = (hostNx < 0.55) ? hostNx + 0.34 : hostNx - 0.34;
-                if (guestNx < 0.34) { guestNx = 0.34; }
-                if (guestNx > 0.84) { guestNx = 0.84; }
-            }
-        }
+        computeRelief(w, h);
 
         // The foreground masses carry the two ends of the window: the oldest
         // hour on the left, the newest (now) on the right.
@@ -662,10 +926,14 @@ class JapaneseInkHeartrateScene {
         drawPaper(dc);
         drawCelestial(dc, width, height);
 
-        // 1. far plane: ghost and far ridges, the horizon haze
-        var far = mFar;
-        if (far != null) {
-            dc.drawScaledBitmap(-(w * 0.02), h * 0.33, w * 1.04, h * 0.29, far);
+        // 1. the far range as a level line at the window's floor, its crest
+        //    row on the crest scale; every mass is a cutout over it
+        if (mHorizonY >= 0.0) {
+            var horizon = loadHorizon(mNight);
+            if (horizon != null) {
+                var hzH = HORIZON_H * (w / HORIZON_W);
+                dc.drawScaledBitmap(0, mHorizonY - HORIZON_APEX_Y * hzH, w, hzH, horizon);
+            }
         }
 
         // 2. light mist between the far and mid planes
@@ -674,31 +942,35 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(-(w * 0.10), h * 0.50, w * 1.20, h * 0.17, mistLite);
         }
 
-        // 3. guest: the second landmark, its crest on the host's crest scale
-        //    and GUEST_RECESS lower, so a lower heart rate is a lower peak
-        var gH = h * 0.50 * (0.40 + 0.70 * h1);
-        var gY = crestY(h1, h) + h * GUEST_RECESS - GUEST_APEX_Y * gH;
-        var guest = mGuest;
-        if (hasGuest && guest != null) {
-            var gW = gH * (GUEST_W / GUEST_H);
-            var gX = guestNx * w - GUEST_APEX_FRAC * gW;
-            dc.drawScaledBitmap(gX, gY, gW, gH, guest);
+        // 3. the masses: pale ones first, the host last (none on a flat day)
+        var masses = mMasses;
+        if (masses != null) {
+            for (var i = 0; i < masses.size(); i++) {
+                var m = masses[i];
+                var bmp = loadPlane(m[M_PLANE].toNumber(), m[M_FLIP] > 0.5, mNight);
+                if (bmp != null) {
+                    dc.drawScaledBitmap(m[0], m[1], m[2], m[3], bmp);
+                }
+            }
         }
 
-        // 4. host: the strongest landmark, the hero
-        var hH = hostHeight(h0, h);
-        var hY = h * 0.87 - hH;
-        var host = mHost;
-        if (host != null) {
-            var hW = hH * (HOST_W / HOST_H);
-            var hX = hostNx * w - HOST_APEX_FRAC * hW;
-            dc.drawScaledBitmap(hX, hY, hW, hH, host);
+        // 4. the near range: a near hill in each third the masses leave empty
+        var near = mNear;
+        if (near != null) {
+            for (var i = 0; i < near.size(); i++) {
+                var n = near[i];
+                var bmp = loadPlane(n[4].toNumber(), false, mNight);
+                if (bmp != null) {
+                    dc.drawScaledBitmap(n[0], n[1], n[2], n[3], bmp);
+                }
+            }
         }
 
-        // 5. full mist dissolving the mid-plane bases
+        // 5. full mist dissolving the mid-plane bodies and the near range's
+        //    feet, beginning just under the near crests
         var mist = mMist;
         if (mist != null) {
-            dc.drawScaledBitmap(-(w * 0.03), h * 0.69, w * 1.06, h * 0.20, mist);
+            dc.drawScaledBitmap(-(w * 0.03), h * 0.66, w * 1.06, h * 0.22, mist);
         }
 
         // 6. foreground masses: left = oldest hour, right = newest
@@ -721,26 +993,20 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(0, 0, width, height, grain);
         }
 
-        // 8. the data itself, for judging the painting against it. The dots
-        //    go on the painted crests (the apex pixel inside each plane, not
-        //    the top of its rectangle).
+        // 8. the data itself, for judging the painting against it, with a
+        //    dot on every painted crest
         if (mShowTrace) {
-            drawTrace(dc, w, h,
-                      hostNx * w, hY + HOST_APEX_Y * hH,
-                      guestNx * w, hasGuest ? gY + GUEST_APEX_Y * gH : -1.0);
+            drawTrace(dc, w, h);
         }
     }
 
     // The data as a SILHOUETTE in the painting's own grammar: a translucent
-    // vermilion wash under the data's skyline on the host crest scale, a
-    // crisp brush edge along the skyline, and a dot on each painted crest.
-    // Where the wash rises above the ink the painting under-states; where
-    // ink stands above the edge it over-states. The wash's floor hugs the
+    // vermilion wash under the data's skyline on the crest scale, a crisp
+    // brush edge along the skyline, and a dot on each painted crest. Where
+    // the wash rises above the ink the painting under-states; where ink
+    // stands above the edge it over-states. The wash's floor hugs the
     // window's lowest sample, so it is the data's own relief, not a box.
-    // guestAy < 0 means the painting has no guest this window.
-    function drawTrace(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float,
-                       hostAx as Lang.Float, hostAy as Lang.Float,
-                       guestAx as Lang.Float, guestAy as Lang.Float) as Void {
+    function drawTrace(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float) as Void {
         var nxs = mTraceNx;
         var hrs = mTraceHr;
         if (nxs == null || hrs == null || nxs.size() < 2) { return; }
@@ -781,9 +1047,11 @@ class JapaneseInkHeartrateScene {
             dc.drawLine(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
         }
         dc.setPenWidth(1);
-        dc.fillCircle(hostAx.toNumber(), hostAy.toNumber(), 4);
-        if (guestAy >= 0.0) {
-            dc.fillCircle(guestAx.toNumber(), guestAy.toNumber(), 4);
+        var masses = mMasses;
+        if (masses != null) {
+            for (var i = 0; i < masses.size(); i++) {
+                dc.fillCircle(masses[i][M_CX].toNumber(), masses[i][M_CY].toNumber(), 4);
+            }
         }
     }
 
@@ -832,7 +1100,7 @@ class JapaneseInkHeartrateScene {
         probeFrame(dc, a[0] + 2 * (a[2] + a[4]), a[1], a[2], a[3]);
         probeLabel(dc, w * 0.5, h * 0.325, "A: full | partial | screen");
 
-        // B. the host plane, point sampling beside bilinear.
+        // B. the broad plane, point sampling beside bilinear.
         var bX = (w * 0.08).toNumber();
         var bY = (h * 0.36).toNumber();
         var bW = (w * 0.40).toNumber();
@@ -840,16 +1108,16 @@ class JapaneseInkHeartrateScene {
         var bX2 = bX + bW + (w * 0.04).toNumber();
         probeFrame(dc, bX, bY, bW, bH);
         probeFrame(dc, bX2, bY, bW, bH);
-        var host = mHost;
+        var host = loadPlane(P_BROAD, false, false);
         if (host != null) {
             var hostH = bH.toFloat();
-            var hostW = hostH * (HOST_W / HOST_H);
+            var hostW = hostH * (PROBE_B_W / PROBE_B_H);
             var inset = (bW.toFloat() - hostW) / 2.0;
             dc.drawScaledBitmap(bX.toFloat() + inset, bY.toFloat(), hostW, hostH, host);
             if ((Graphics has :AffineTransform) && (dc has :drawBitmap2)) {
                 try {
                     var t = new Graphics.AffineTransform();
-                    t.scale(hostW / HOST_W, hostH / HOST_H);
+                    t.scale(hostW / PROBE_B_W, hostH / PROBE_B_H);
                     dc.drawBitmap2(bX2.toFloat() + inset, bY.toFloat(), host,
                                    { :transform => t, :filterMode => Graphics.FILTER_MODE_BILINEAR });
                 } catch (ex) {
@@ -897,7 +1165,7 @@ class JapaneseInkHeartrateScene {
         }
         probeLabel(dc, w * 0.5, h * 0.745, "C: baked 62% | tint 50%");
 
-        // D. two guests overlapping by half, source-over beside multiply.
+        // D. two pale spires overlapping by half, source-over beside multiply.
         var dX = (w * 0.235).toNumber();
         var dY = (h * 0.78).toNumber();
         var dW = (w * 0.25).toNumber();
@@ -905,10 +1173,10 @@ class JapaneseInkHeartrateScene {
         var dX2 = dX + dW + (w * 0.03).toNumber();
         probeFrame(dc, dX, dY, dW, dH);
         probeFrame(dc, dX2, dY, dW, dH);
-        var guest = mGuest;
+        var guest = loadPlane(P_SPIRE_PALE, false, false);
         if (guest != null) {
             var gH = dH.toFloat() * 0.9;
-            var gW = gH * (GUEST_W / GUEST_H);
+            var gW = gH * (PROBE_D_W / PROBE_D_H);
             var gY = dY.toFloat() + (dH.toFloat() - gH) / 2.0;
             var second = dW.toFloat() - 3.0 - gW;
             dc.drawScaledBitmap(dX.toFloat() + 3.0, gY, gW, gH, guest);

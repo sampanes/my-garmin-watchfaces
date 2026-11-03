@@ -1,20 +1,39 @@
 <drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
-    <!-- Day set: ink on paper. -->
-    <bitmap id="HostMountainTuned" filename="host_mountain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="GuestMountainTuned" filename="guest_mountain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="FarRangeTuned" filename="far_range.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <!-- Fixed planes, day set: ink on paper. Only one set is loaded at a time. -->
     <bitmap id="MistBandTuned" filename="mist_band.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="MistBandLiteTuned" filename="mist_band_lite.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="FgLeftTuned" filename="fg_left.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="FgRightTuned" filename="fg_right.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PaperGrainTuned" filename="paper_grain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <!-- Night set: the same planes as pale ink for black paper (no grain). Only one set is loaded at a time. -->
-    <bitmap id="HostMountainNight" filename="host_mountain_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="GuestMountainNight" filename="guest_mountain_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="FarRangeNight" filename="far_range_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <!-- Fixed planes, night set: pale ink for black paper (no grain). -->
     <bitmap id="MistBandNight" filename="mist_band_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="MistBandLiteNight" filename="mist_band_lite_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="FgLeftNight" filename="fg_left_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="FgRightNight" filename="fg_right_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <!-- The relief (round 6): the level horizon, and the masses and near hills as paper
+         cutouts baked by scripts/bake_cutouts.py (Flip = mirrored wide mountain).
+         Loaded per render and dropped, never held. -->
+    <bitmap id="Horizon" filename="horizon.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="SpireCut" filename="spire_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="SpirePaleCut" filename="spire_pale_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="BroadCut" filename="broad_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="BroadPaleCut" filename="broad_pale_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WideCut" filename="wide_mountain_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WideFlipCut" filename="wide_mountain_flip_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WidePaleCut" filename="wide_mountain_pale_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WidePaleFlipCut" filename="wide_mountain_pale_flip_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="NearHillCut" filename="near_hill_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="NearHill2Cut" filename="near_hill2_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="HorizonNight" filename="horizon_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="SpireCutNight" filename="spire_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="SpirePaleCutNight" filename="spire_pale_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="BroadCutNight" filename="broad_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="BroadPaleCutNight" filename="broad_pale_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WideCutNight" filename="wide_mountain_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WideFlipCutNight" filename="wide_mountain_flip_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WidePaleCutNight" filename="wide_mountain_pale_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WidePaleFlipCutNight" filename="wide_mountain_pale_flip_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="NearHillCutNight" filename="near_hill_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="NearHill2CutNight" filename="near_hill2_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

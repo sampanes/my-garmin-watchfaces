@@ -1,0 +1,5 @@
+project.manifest = manifest.xml
+# source-gen/ and resources-gen/ are written by scripts/bitmap-budget.ps1
+# (gen_budget_bitmaps.py) before every build; they are not committed.
+base.sourcePath = source;source-gen
+base.resourcePath = resources;resources-gen

@@ -344,8 +344,9 @@ CREST_HI_Y = 0.26        # ... and 160 bpm here (round 3: 1.7x the 10-29 scale)
 
 # The planes by role. "apex" is the crest (x frac, y frac) inside the
 # bitmap, measured from the PNG (measure_apex) the first time it is used.
-# The 10-29 host_mountain / guest_mountain / far_range are what the watch
-# still draws; the mock no longer uses them.
+# The watch draws the same planes as baked cutouts (scripts/bake_cutouts.py,
+# ported 11-03); the 10-29 host_mountain / guest_mountain / far_range are
+# retired from both.
 PLANES = {
     "spire": {"name": "spire", "aspect": 180.0 / 300.0, "apex": None},
     "spire_pale": {"name": "spire_pale", "aspect": 180.0 / 300.0, "apex": None},
@@ -703,8 +704,10 @@ PROBE_INK = (24, 18, 14, 255)
 
 def compose_probe():
     from PIL import ImageChops, ImageFont
-    host = load("host_mountain.png")
-    guest = load("guest_mountain.png")
+    # the Scene's probe uses the baked cutouts since the 11-03 port (the
+    # 10-29 host/guest planes left the watch)
+    host = load("broad_cut.png")
+    guest = load("spire_pale_cut.png")
     mist = load("mist_band.png")
     mist_lite = load("mist_band_lite.png")
     base = Image.new("RGBA", (W, H), PAPER)
@@ -739,10 +742,10 @@ def compose_probe():
         base.alpha_composite(mist_middle(mist, aw, ah), dest=(x, ay))
     label(0.325 * H, "A: full | partial | screen")
 
-    # B: the host plane, point sampling | bilinear
+    # B: the broad plane, point sampling | bilinear
     bx, by, bw, bh = int(W * 0.08), int(H * 0.36), int(W * 0.40), int(H * 0.18)
     bx2 = bx + bw + int(W * 0.04)
-    host_w = int(round(bh * 340.0 / 260.0))
+    host_w = int(round(bh * 300.0 / 240.0))
     inset = int((bw - host_w) / 2.0)
     frame(bx, by, bw, bh)
     frame(bx2, by, bw, bh)
@@ -761,12 +764,12 @@ def compose_probe():
     base.alpha_composite(tinted, dest=(bx2, cy))
     label(0.745 * H, "C: baked 62% | tint 50%")
 
-    # D: two guests overlapping by half, source-over | multiply
+    # D: two pale spires overlapping by half, source-over | multiply
     #    (multiply with an opaque destination: D * (S over white))
     dx, dy, dw, dh = int(W * 0.235), int(H * 0.78), int(W * 0.25), int(H * 0.12)
     dx2 = dx + dw + int(W * 0.03)
     gh = dh * 0.9
-    gw = gh * 260.0 / 190.0
+    gw = gh * 180.0 / 300.0
     gy = int(round(dy + (dh - gh) / 2.0))
     g = guest.resize((int(round(gw)), int(round(gh))), Image.LANCZOS)
     g_over_white = Image.alpha_composite(Image.new("RGBA", g.size, (255, 255, 255, 255)), g)
