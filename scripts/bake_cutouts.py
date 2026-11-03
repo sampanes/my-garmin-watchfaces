@@ -1,16 +1,15 @@
-"""Bake the watch's cutout planes from the generator's PNGs.
+"""Bake the watch's near-hill cutouts from the generator's PNGs.
 
-The opinion-round mock (compose_preview.py) turns every mass and near hill
-into a paper cutout at compose time (paper_backed: its ink over its own
-paper, so the horizon and farther masses behind it are hidden) and mirrors
-the wide mountain when its summit belongs at the right end. The watch has
-no per-pixel step for that, so this script bakes exactly the mock's images
-(compose_preview.mass_image) into resources/drawables as *_cut[_night].png,
-plus the mirrored twins of the wide planes:
+The opinion-round mock (compose_preview.py) turns each near hill into a
+paper cutout at compose time (paper_backed: its ink over its own paper, so
+whatever stands behind it is hidden). The watch has no per-pixel step for
+that, so this script bakes exactly the mock's images
+(compose_preview.mass_image) into resources/drawables:
 
-    spire, spire_pale, broad, broad_pale, wide_mountain, wide_mountain_pale,
     near_hill, near_hill2                -> <name>_cut.png, <name>_cut_night.png
-    wide_mountain, wide_mountain_pale    -> <name>_flip_cut.png, ..._flip_cut_night.png
+
+The masses are no longer baked here: since 2026-11-03 they are the shape
+library, painted and cut by scripts/gen_shape_library.py (its own --check).
 
 Run it after gen_ink_layers.py --only extras. --check exits 1 when a baked
 file no longer matches what the mock would paint (a plane was regenerated
@@ -23,9 +22,8 @@ sys.path.insert(0, HERE)
 import compose_preview as cp  # noqa: E402
 from PIL import Image, ImageChops  # noqa: E402
 
-PLANES = ["spire", "spire_pale", "broad", "broad_pale", "wide_mountain",
-          "wide_mountain_pale", "near_hill", "near_hill2"]
-FLIPPED = ["wide_mountain", "wide_mountain_pale"]
+PLANES = ["near_hill", "near_hill2"]
+FLIPPED = []
 
 
 def targets():

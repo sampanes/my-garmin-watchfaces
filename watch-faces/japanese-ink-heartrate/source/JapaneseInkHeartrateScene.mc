@@ -55,6 +55,18 @@ using Toybox.WatchUi;
 // horizon and farther masses hide behind them. They are loaded per render
 // and dropped, so the graphics pool only ever holds one frame's planes.
 //
+// 2026-11-03, later: the shape library. John, on a study that assembled
+// mountains from brush primitives: whole known shapes beat bespoke ones, so
+// have many. Each mass is now one of the library's whole painted mountains
+// (scripts/gen_shape_library.py: 26 planes, 300 px tall, skirt at the
+// bottom, day and night cutouts), CHOSEN per run by fitShape against the
+// stored trace and drawn at its baked size with its crest on the run's
+// peak: sunk, never stretched, its foot behind the bank and the mist. The
+// profile table is generated (JapaneseInkHeartrateShapes.mc), the same
+// numbers the mock reads (scripts/shape_table.json). The fit is plain
+// floating point; the mock's is double precision, so a near tie between two
+// shapes may break differently here.
+//
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
 //
@@ -73,7 +85,7 @@ class JapaneseInkHeartrateScene {
     // checker sees them; it does not narrow a member after a null test
     // (COMPILER_FACTS 1.4), so every draw site copies the plane to a local
     // first. The horizon, masses and near hills are loaded per render
-    // (loadPlane), drawn and dropped.
+    // (loadHorizon, loadShape, loadNear), drawn and dropped.
     var mMist as Graphics.BitmapType?;
     var mMistLite as Graphics.BitmapType?;
     var mFgLeft as Graphics.BitmapType?;
@@ -90,16 +102,21 @@ class JapaneseInkHeartrateScene {
     var mMasses as Lang.Array<Lang.Array<Lang.Float>>?;
     var mNear as Lang.Array<Lang.Array<Lang.Float>>?;
 
-    // The planes by index (P_*): width/height of the PNG and the painted
-    // crest inside it (alpha >= 40, measured 2026-11-03 from the day PNGs,
-    // as compose_preview.measure_apex does). The flipped wide planes use
-    // 1 - x.
-    var mPlaneAspect as Lang.Array<Lang.Float> =
-        [0.6, 0.6, 1.25, 1.25, 1.4117647, 1.4117647, 2.0, 2.0] as Lang.Array<Lang.Float>;
-    var mPlaneApexX as Lang.Array<Lang.Float> =
-        [0.4417, 0.4444, 0.40, 0.49, 0.2469, 0.2531, 0.4938, 0.3078] as Lang.Array<Lang.Float>;
-    var mPlaneApexY as Lang.Array<Lang.Float> =
-        [0.2667, 0.17, 0.1417, 0.10, 0.1794, 0.2088, 0.0, 0.1062] as Lang.Array<Lang.Float>;
+    // The near hills by index (P_NEAR*): width/height of the PNG and the
+    // painted crest inside it (alpha >= 40, measured 2026-11-03 from the day
+    // PNGs, as compose_preview.measure_apex does).
+    var mPlaneAspect as Lang.Array<Lang.Float> = [2.0, 2.0] as Lang.Array<Lang.Float>;
+    var mPlaneApexX as Lang.Array<Lang.Float> = [0.4938, 0.3078] as Lang.Array<Lang.Float>;
+    var mPlaneApexY as Lang.Array<Lang.Float> = [0.0, 0.1062] as Lang.Array<Lang.Float>;
+    // The shape library's profile table (JapaneseInkHeartrateShapes.mc),
+    // read once.
+    var mShapeW as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    var mShapeH as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    var mShapeAx as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    var mShapeAy as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    var mShapeTop as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    // px: the apex is tried this far from the run's summit (FIT_SLIDE)
+    var mFitSlide as Lang.Array<Lang.Float> = [0.0, -12.0, 12.0, -24.0, 24.0] as Lang.Array<Lang.Float>;
     // The near hills lean outward from their third's center (fraction of W).
     var mNearLean as Lang.Array<Lang.Float> = [-0.05, 0.03, 0.05] as Lang.Array<Lang.Float>;
 
@@ -133,11 +150,13 @@ class JapaneseInkHeartrateScene {
     const RUN_MIN = 6.0;          // a bucket this far over the floor belongs to a run
     const MASS_MIN = 15.0;        // a run's crest must stand this far over the floor
     const VALLEY_MIN = 8.0;       // a valley this deep under both summits splits a run
-    const SPIRE_UPTO = 2;         // buckets: a run this short is a spire (30 min)
-    const WIDE_FROM = 6;          // buckets: a run this long is the wide mountain (90 min)
-    const BASE_Y = 0.87;          // every mass's foot (fraction of H), under the mist
-    const WIDE_SUMMIT_IN = 0.20;  // the wide summit sits this far into its run from the high end
-    const WIDE_END_TOL = 5.0;     // a run whose ends differ by less keeps its summit at its start
+    const WIDE_END_TOL = 5.0;     // a run whose ends differ by less leans neither way
+    const FIT_HIGH = 25.0;        // px of rise over the floor that doubles a sample's weight
+    const FIT_OVER_TOL = 3.0;     // px a shape may stand over the data before it pays extra ...
+    const FIT_OVER_K = 2.0;       // ... this much per px: the art must not claim more effort
+    const FIT_APEX_K = 1.0;       // error per px between a shape's apex and the run's summit
+    const FOOT_Y = 0.80;          // a placed shape's bottom edge must reach this far down (H)
+    const LIB_W = 416.0;          // the screen width the library was baked for
     const NEAR_CREST_Y = 0.60;    // the near range's crest (fraction of H)
     const NEAR_H = 0.21;          // its height (fraction of H) ...
     const NEAR_HR_SPAN = 30.0;    // ... up by almost half over this much of its third over the floor
@@ -148,15 +167,9 @@ class JapaneseInkHeartrateScene {
     const HORIZON_H = 56.0;
     const HORIZON_APEX_Y = 0.1607;
 
-    // Plane indices (mPlane* tables, loadPlane).
-    const P_SPIRE = 0;
-    const P_SPIRE_PALE = 1;
-    const P_BROAD = 2;
-    const P_BROAD_PALE = 3;
-    const P_WIDE = 4;
-    const P_WIDE_PALE = 5;
-    const P_NEAR = 6;
-    const P_NEAR2 = 7;
+    // Near-hill indices (mPlane* tables, loadNear).
+    const P_NEAR = 0;
+    const P_NEAR2 = 1;
 
     // Run fields (runMass) and mass fields (mMasses).
     const R_LO = 0;
@@ -205,9 +218,9 @@ class JapaneseInkHeartrateScene {
     const PROBE = false;
     const PROBE_GROUND = 0x5A5550;
     const PROBE_INK = 0x18120E;
-    const PROBE_B_W = 300.0;     // broad_cut.png
-    const PROBE_B_H = 240.0;
-    const PROBE_D_W = 180.0;     // spire_pale_cut.png
+    const PROBE_B_W = 300.0;     // shape_peak_300_cut.png
+    const PROBE_B_H = 300.0;
+    const PROBE_D_W = 180.0;     // shape_spire_180_cut.png
     const PROBE_D_H = 300.0;
     var mProbeFull as Graphics.BufferedBitmap?;
     var mProbePartial as Graphics.BufferedBitmap?;
@@ -216,6 +229,11 @@ class JapaneseInkHeartrateScene {
     var mProbeBufferNote as Lang.String = "none";
 
     function initialize() {
+        mShapeW = shapeW();
+        mShapeH = shapeH();
+        mShapeAx = shapeApexX();
+        mShapeAy = shapeApexY();
+        mShapeTop = shapeTop();
         readSettings();
         mNight = computeNight();
         loadPlanes(mNight);
@@ -309,39 +327,27 @@ class JapaneseInkHeartrateScene {
         mLoadedSet = set;
     }
 
-    // A mass or near-hill cutout, loaded for one render. Null when the pool
-    // refuses it: that plane is skipped and the face stays alive.
-    function loadPlane(p as Lang.Number, flip as Lang.Boolean, night as Lang.Boolean) as Graphics.BitmapType? {
-        var id = null;
-        if (p == P_SPIRE) {
-            id = night ? Rez.Drawables.SpireCutNight : Rez.Drawables.SpireCut;
-        } else if (p == P_SPIRE_PALE) {
-            id = night ? Rez.Drawables.SpirePaleCutNight : Rez.Drawables.SpirePaleCut;
-        } else if (p == P_BROAD) {
-            id = night ? Rez.Drawables.BroadCutNight : Rez.Drawables.BroadCut;
-        } else if (p == P_BROAD_PALE) {
-            id = night ? Rez.Drawables.BroadPaleCutNight : Rez.Drawables.BroadPaleCut;
-        } else if (p == P_WIDE) {
-            if (flip) {
-                id = night ? Rez.Drawables.WideFlipCutNight : Rez.Drawables.WideFlipCut;
-            } else {
-                id = night ? Rez.Drawables.WideCutNight : Rez.Drawables.WideCut;
-            }
-        } else if (p == P_WIDE_PALE) {
-            if (flip) {
-                id = night ? Rez.Drawables.WidePaleFlipCutNight : Rez.Drawables.WidePaleFlipCut;
-            } else {
-                id = night ? Rez.Drawables.WidePaleCutNight : Rez.Drawables.WidePaleCut;
-            }
-        } else if (p == P_NEAR) {
-            id = night ? Rez.Drawables.NearHillCutNight : Rez.Drawables.NearHillCut;
-        } else if (p == P_NEAR2) {
-            id = night ? Rez.Drawables.NearHill2CutNight : Rez.Drawables.NearHill2Cut;
-        }
-        if (id == null) { return null; }
-        var bmp = null;
+    // A near-hill cutout, loaded for one render. Null when the pool refuses
+    // it: that hill is skipped and the face stays alive.
+    function loadNear(p as Lang.Number, night as Lang.Boolean) as Graphics.BitmapType? {
+        var bmp as Graphics.BitmapType? = null;
         try {
-            bmp = WatchUi.loadResource(id) as Graphics.BitmapType;
+            if (p == P_NEAR2) {
+                bmp = WatchUi.loadResource(night ? Rez.Drawables.NearHill2CutNight : Rez.Drawables.NearHill2Cut) as Graphics.BitmapType;
+            } else {
+                bmp = WatchUi.loadResource(night ? Rez.Drawables.NearHillCutNight : Rez.Drawables.NearHillCut) as Graphics.BitmapType;
+            }
+        } catch (ex) {
+            bmp = null;
+        }
+        return bmp;
+    }
+
+    // A library shape's cutout, loaded for one render (null when refused).
+    function loadShape(i as Lang.Number, night as Lang.Boolean) as Graphics.BitmapType? {
+        var bmp as Graphics.BitmapType? = null;
+        try {
+            bmp = loadShapeBitmap(i, night);
         } catch (ex) {
             bmp = null;
         }
@@ -568,15 +574,65 @@ class JapaneseInkHeartrateScene {
                 cx / denom, (tail - head > WIDE_END_TOL) ? 1.0 : 0.0] as Lang.Array<Lang.Float>;
     }
 
-    // Which plane a mass gets, by its duration; the host takes the dark
-    // planes, every other mass the pale twin.
-    function massPlane(buckets as Lang.Number, pale as Lang.Boolean) as Lang.Number {
-        if (buckets <= SPIRE_UPTO) { return pale ? P_SPIRE_PALE : P_SPIRE; }
-        if (buckets >= WIDE_FROM) { return pale ? P_WIDE_PALE : P_WIDE; }
-        return pale ? P_BROAD_PALE : P_BROAD;
+    // What one sample costs when the top of the ink there is py: the
+    // distance to the data, weighted up on high ground, and more where the
+    // ink stands over the data (compose_preview.fit_cost).
+    function fitCost(py as Lang.Float, y as Lang.Float, floorY as Lang.Float) as Lang.Float {
+        var rise = floorY - y;
+        var wgt = 1.0 + ((rise > 0.0) ? rise / FIT_HIGH : 0.0);
+        var diff = py - y;
+        var c = ((diff < 0.0) ? -diff : diff) * wgt;
+        if (diff < -FIT_OVER_TOL) { c += FIT_OVER_K * (-FIT_OVER_TOL - diff); }
+        return c;
     }
 
-    // Draw order: pale masses first (the taller farther), the host last.
+    // The library shape that best paints one run: [error, index, left], or
+    // null (compose_preview.fit_shape). Every shape stands with its crest on
+    // the run's peak (cy), tried with its apex at the run's summit (sx) and
+    // mFitSlide either side, and with its middle over the run's middle; its
+    // error is what it changes over every sample under it, plus FIT_APEX_K
+    // per px between its apex and the summit. A shape whose bottom edge
+    // would show above the mist is skipped. s scales the 416 px library.
+    // The samples run left to right; base[j] is the far bank's own cost.
+    function fitShape(smpX as Lang.Array<Lang.Float>, smpY as Lang.Array<Lang.Float>,
+                      base as Lang.Array<Lang.Float>, runX0 as Lang.Float, runX1 as Lang.Float, sx as Lang.Float, cy as Lang.Float,
+                      floorY as Lang.Float, s as Lang.Float, h as Lang.Float) as Lang.Array<Lang.Float>? {
+        var best as Lang.Array<Lang.Float>? = null;
+        var bestErr = 0.0;
+        var tops = mShapeTop;
+        var slides = mFitSlide.size();
+        for (var i = 0; i < SHAPE_COUNT; i++) {
+            var sw = mShapeW[i] * s;
+            var ax = mShapeAx[i] * s;
+            var top0 = cy - mShapeAy[i] * s;
+            if (top0 + mShapeH[i] * s < FOOT_Y * h) { continue; }
+            for (var p = 0; p <= slides; p++) {
+                var left = (p < slides) ? sx + mFitSlide[p] - ax : 0.5 * (runX0 + runX1) - 0.5 * sw;
+                var off = left + ax - sx;
+                var err = FIT_APEX_K * ((off < 0.0) ? -off : off);
+                for (var j = 0; j < smpX.size(); j++) {
+                    var d = smpX[j] - left;
+                    if (d >= sw) { break; }
+                    if (d >= 0.0) {
+                        var t = tops[i * SHAPE_K + (d * SHAPE_K / sw).toNumber()];
+                        if (t >= 0) {
+                            var py = top0 + t * s;
+                            if (py < floorY) {
+                                err += fitCost(py, smpY[j], floorY) - base[j];
+                            }
+                        }
+                    }
+                }
+                if (best == null || err < bestErr) {
+                    best = [err, i.toFloat(), left] as Lang.Array<Lang.Float>;
+                    bestErr = err;
+                }
+            }
+        }
+        return best;
+    }
+
+    // Draw order: the other masses first (the taller farther), the host last.
     function massAfter(a as Lang.Array<Lang.Float>, b as Lang.Array<Lang.Float>) as Lang.Boolean {
         if (a[M_HOST] != b[M_HOST]) { return a[M_HOST] > b[M_HOST]; }
         return a[M_CY] > b[M_CY];
@@ -608,39 +664,55 @@ class JapaneseInkHeartrateScene {
             runs.add(r);
         }
 
-        // every mass on the deep base, its crest on the crest scale, its
-        // width its plane's own aspect
+        // the samples the fit scores: the stored trace, else the buckets
+        var smpX = [] as Lang.Array<Lang.Float>;
+        var smpY = [] as Lang.Array<Lang.Float>;
+        var nxs = mTraceNx;
+        var hrs = mTraceHr;
+        if (nxs != null && hrs != null && nxs.size() > 0) {
+            for (var i = 0; i < nxs.size() && i < hrs.size(); i++) {
+                smpX.add(w * axisX(nxs[i]));
+                smpY.add(traceY(hrs[i], h));
+            }
+        } else {
+            for (var i = 0; i < history.size(); i++) {
+                if (history[i] > 0.0) {
+                    smpX.add(w * axisX(i / denom));
+                    smpY.add(crestY(heightForHr(history[i]), h));
+                }
+            }
+        }
+        var floorY = mHorizonY;
+        var s = w / LIB_W;
+        var base = [] as Lang.Array<Lang.Float>;
+        for (var j = 0; j < smpY.size(); j++) { base.add(fitCost(floorY, smpY[j], floorY)); }
+
+        // each run: the library shape that fits it best, its crest on the
+        // run's peak, at its baked size
         for (var i = 0; i < runs.size(); i++) {
             var r = runs[i];
             var isHost = (i == host);
-            var p = massPlane(r[R_BUCKETS].toNumber(), !isHost);
-            var ax = mPlaneApexX[p];
-            var ay = mPlaneApexY[p];
+            var runX0 = (r[R_LO] - 0.5) * bucketPx;
+            var runX1 = (r[R_HI] + 0.5) * bucketPx;
             var cy = crestY(heightForHr(r[R_PEAK]), h);
-            var mh = (BASE_Y * h - cy) / (1.0 - ay);
-            var mw = mPlaneAspect[p] * mh;
-            var flip = false;
-            var cx = 0.0;
-            var left = 0.0;
-            if (p == P_WIDE || p == P_WIDE_PALE) {
-                // the summit WIDE_SUMMIT_IN into the run from its higher end,
-                // the level shoulder over the rest (mirrored for the right)
-                var x0 = (r[R_LO] - 0.5) * bucketPx;
-                var x1 = (r[R_HI] + 0.5) * bucketPx;
-                flip = r[R_LEAN_END] > 0.5;
-                if (flip) {
-                    cx = x1 - WIDE_SUMMIT_IN * (x1 - x0);
-                    left = cx - (1.0 - ax) * mw;
-                } else {
-                    cx = x0 + WIDE_SUMMIT_IN * (x1 - x0);
-                    left = cx - ax * mw;
+            // the run's summit: its highest sample inside it, else its centroid
+            var sx = axisX(r[R_NX]) * w;
+            var found = false;
+            var bestY = 0.0;
+            for (var j = 0; j < smpX.size(); j++) {
+                if (smpX[j] >= runX0 && smpX[j] <= runX1 && (!found || smpY[j] < bestY)) {
+                    sx = smpX[j];
+                    bestY = smpY[j];
+                    found = true;
                 }
-            } else {
-                cx = axisX(r[R_NX]) * w;
-                left = cx - ax * mw;
             }
-            masses.add([left, BASE_Y * h - mh, mw, mh, cx, cy, p.toFloat(),
-                        flip ? 1.0 : 0.0, isHost ? 1.0 : 0.0] as Lang.Array<Lang.Float>);
+            var fit = fitShape(smpX, smpY, base, runX0, runX1, sx, cy, floorY, s, h);
+            if (fit == null) { continue; }
+            var si = fit[1].toNumber();
+            var left = fit[2];
+            masses.add([left, cy - mShapeAy[si] * s, mShapeW[si] * s, mShapeH[si] * s,
+                        left + mShapeAx[si] * s, cy, si.toFloat(), 0.0,
+                        isHost ? 1.0 : 0.0] as Lang.Array<Lang.Float>);
         }
         // a stable insertion sort into draw order
         for (var i = 1; i < masses.size(); i++) {
@@ -942,12 +1014,12 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(-(w * 0.10), h * 0.50, w * 1.20, h * 0.17, mistLite);
         }
 
-        // 3. the masses: pale ones first, the host last (none on a flat day)
+        // 3. the masses: library shapes, the host last (none on a flat day)
         var masses = mMasses;
         if (masses != null) {
             for (var i = 0; i < masses.size(); i++) {
                 var m = masses[i];
-                var bmp = loadPlane(m[M_PLANE].toNumber(), m[M_FLIP] > 0.5, mNight);
+                var bmp = loadShape(m[M_PLANE].toNumber(), mNight);
                 if (bmp != null) {
                     dc.drawScaledBitmap(m[0], m[1], m[2], m[3], bmp);
                 }
@@ -959,7 +1031,7 @@ class JapaneseInkHeartrateScene {
         if (near != null) {
             for (var i = 0; i < near.size(); i++) {
                 var n = near[i];
-                var bmp = loadPlane(n[4].toNumber(), false, mNight);
+                var bmp = loadNear(n[4].toNumber(), mNight);
                 if (bmp != null) {
                     dc.drawScaledBitmap(n[0], n[1], n[2], n[3], bmp);
                 }
@@ -1108,7 +1180,7 @@ class JapaneseInkHeartrateScene {
         var bX2 = bX + bW + (w * 0.04).toNumber();
         probeFrame(dc, bX, bY, bW, bH);
         probeFrame(dc, bX2, bY, bW, bH);
-        var host = loadPlane(P_BROAD, false, false);
+        var host = loadShape(SHAPE_PEAK_300, false);
         if (host != null) {
             var hostH = bH.toFloat();
             var hostW = hostH * (PROBE_B_W / PROBE_B_H);
@@ -1173,7 +1245,7 @@ class JapaneseInkHeartrateScene {
         var dX2 = dX + dW + (w * 0.03).toNumber();
         probeFrame(dc, dX, dY, dW, dH);
         probeFrame(dc, dX2, dY, dW, dH);
-        var guest = loadPlane(P_SPIRE_PALE, false, false);
+        var guest = loadShape(SHAPE_SPIRE_180, false);
         if (guest != null) {
             var gH = dH.toFloat() * 0.9;
             var gW = gH * (PROBE_D_W / PROBE_D_H);

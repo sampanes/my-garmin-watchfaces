@@ -6,17 +6,22 @@ ported straight into JapaneseInkHeartrateScene.mc as the same fraction.
 Writes art/kit_preview.png (circular-masked, on dark surround like the sim).
 
 Planes, back to front (same order on the watch):
-    paper -> sun/moon -> horizon -> mist_lite -> masses (pale ones, then the
-    host) -> near range -> mist -> fg_left -> fg_right -> paper grain
+    paper -> sun/moon -> horizon -> mist_lite -> masses (library shapes, the
+    host last) -> near range -> mist -> fg_left -> fg_right -> paper grain
     -> (View) inscription + seal
 
 The relief (round 6, 2026-11-02): the window's floor is a level far horizon;
-every run of buckets standing RUN_MIN over it is a mass, spire / broad peak
-/ wide mountain by duration, standing on one deep base with its crest on
+every run of buckets standing RUN_MIN over it is a mass with its crest on
 the crest scale; a third layer, the near range, fills whichever third of
 the screen the masses leave empty, under the half-way line, in front of
-them, its feet in the mist. Every mass is a paper cutout (paper_backed), so
-the horizon stays straight and hides behind it.
+them, its feet in the mist. Every mass is a paper cutout, so the horizon
+stays straight and hides behind it.
+
+The shape library (2026-11-03): each mass is one whole painted mountain
+CHOSEN from scripts/gen_shape_library.py's library (fit_shape), drawn at
+its baked size and sunk until its crest sits on the run's peak; it is never
+stretched. The library's profile table (scripts/shape_table.json) is the
+same numbers the Scene compiles (JapaneseInkHeartrateShapes.mc).
 
 The inscription uses the baked BMFont pairs in resources/fonts (read from the
 .fnt exactly as the resource compiler reads them), so the preview's digits
@@ -160,12 +165,14 @@ FLOOR_RANK = 8           # the floor is the (n // FLOOR_RANK)-th lowest data buc
 RUN_MIN = 6.0            # bpm over the floor for a bucket to belong to a run
 MASS_MIN = 15.0          # bpm a run's crest must stand over the floor to be a mass at all
 GUEST_PROMINENCE = 8.0   # bpm a valley must drop under both summits to split a run in two
-SPIRE_UPTO = 2           # buckets: a run this short takes the spire plane (30 min)
-WIDE_FROM = 6            # buckets: a run this long takes the wide plane (90 min)
-BASE_Y = 0.87            # every mass's foot (the Scene's 10-29 base): its last fifth, the
-                         # baked fade, lies under the mist and the foregrounds
-WIDE_SUMMIT_IN = 0.20    # the wide plane's summit sits this far into its run from the high end
-WIDE_END_TOL = 5.0       # bpm: a run whose ends differ by less keeps its summit at its start
+BASE_Y = 0.87            # the fidelity test's empty-column height (the 10-29 base)
+WIDE_END_TOL = 5.0       # bpm: a run whose ends differ by less leans neither way
+FIT_HIGH = 25.0          # px of rise over the floor that doubles a sample's weight
+FIT_OVER_TOL = 3.0       # px a shape may stand over the data before it pays extra ...
+FIT_OVER_K = 2.0         # ... this much per px: the art must not claim more effort
+FOOT_Y = 0.80            # a placed shape's bottom edge must reach this far down (H), under the mist
+FIT_SLIDE = (0.0, -12.0, 12.0, -24.0, 24.0)   # px: the apex tried this far from the run's summit
+FIT_APEX_K = 1.0         # error per px between the shape's apex and the run's summit (its minute)
 NEAR_CREST_Y = 0.60      # the near range's crest, under the lowest horizon (0.58 H)
 NEAR_H = 0.21            # its height (fraction of H): the foot under the mist and foreground ...
 NEAR_HR_SPAN = 30.0      # ... up by almost half over this many bpm of its third over the floor
@@ -236,18 +243,6 @@ def run_mass(history, floor, lo, hi, denom, trace=None):
     return {"lo": lo, "hi": hi, "buckets": hi - lo + 1, "peak_hr": peak_hr,
             "elev": peak_hr - floor, "nx": cx / denom,
             "lean": "end" if end - start > WIDE_END_TOL else "start"}
-
-
-def mass_role(buckets, pale):
-    """Which plane a mass gets, by its duration: the spire for a short
-    effort, the broad peak for a middling one, the wide mountain for a long
-    one. The tallest mass is the host and takes the dark planes; every
-    other mass takes the pale twin."""
-    if buckets <= SPIRE_UPTO:
-        return "spire_pale" if pale else "spire"
-    if buckets >= WIDE_FROM:
-        return "wide_pale" if pale else "wide"
-    return "broad_pale" if pale else "broad"
 
 
 def measure_apex(name):
@@ -342,18 +337,10 @@ def kanji_hour(hour):
 CREST_LO_Y = 0.58        # the crest scale: 45 bpm sits here (fraction of H) ...
 CREST_HI_Y = 0.26        # ... and 160 bpm here (round 3: 1.7x the 10-29 scale)
 
-# The planes by role. "apex" is the crest (x frac, y frac) inside the
-# bitmap, measured from the PNG (measure_apex) the first time it is used.
-# The watch draws the same planes as baked cutouts (scripts/bake_cutouts.py,
-# ported 11-03); the 10-29 host_mountain / guest_mountain / far_range are
-# retired from both.
+# The near range and the horizon by role. "apex" is the crest (x frac, y
+# frac) inside the bitmap, measured from the PNG (measure_apex) the first
+# time it is used. The masses come from the shape library (shape_table).
 PLANES = {
-    "spire": {"name": "spire", "aspect": 180.0 / 300.0, "apex": None},
-    "spire_pale": {"name": "spire_pale", "aspect": 180.0 / 300.0, "apex": None},
-    "broad": {"name": "broad", "aspect": 300.0 / 240.0, "apex": None},
-    "broad_pale": {"name": "broad_pale", "aspect": 300.0 / 240.0, "apex": None},
-    "wide": {"name": "wide_mountain", "aspect": 480.0 / 340.0, "apex": None},
-    "wide_pale": {"name": "wide_mountain_pale", "aspect": 480.0 / 340.0, "apex": None},
     "near_hill": {"name": "near_hill", "aspect": 320.0 / 160.0, "apex": None},
     "near_hill2": {"name": "near_hill2", "aspect": 320.0 / 160.0, "apex": None},
     "horizon": {"name": "horizon", "aspect": 416.0 / 56.0, "apex": None},
@@ -440,11 +427,11 @@ def paint_horizon(base, layout, night):
 
 
 def paint_masses(base, layout, night):
-    """The masses in their depth order (mid_plane_layout): pale ones first,
-    the host last. scripts/fidelity_test.py paints the scored skyline with
-    paint_horizon and this."""
+    """The masses in their depth order (mid_plane_layout), each its library
+    shape's baked cutout at its own size. scripts/fidelity_test.py paints
+    the scored skyline with paint_horizon and this."""
     for m in layout["masses"]:
-        base = paste_scaled(base, mass_image(m["plane"], night, m["flip"]), *m["rect"])
+        base = paste_scaled(base, shape_image(m["plane"], night), *m["rect"])
     return base
 
 
@@ -479,62 +466,142 @@ def draw_trace(base, trace, crests, night):
     return Image.alpha_composite(base, layer)
 
 
+_SHAPES = {}
+
+
+def shape_table():
+    """The shape library's profile table (scripts/gen_shape_library.py)."""
+    if "t" not in _SHAPES:
+        import json
+        with open(os.path.join(HERE, "shape_table.json")) as f:
+            _SHAPES["t"] = json.load(f)
+    return _SHAPES["t"]
+
+
+def shape_image(name, night):
+    key = ("img", name, night)
+    if key not in _SHAPES:
+        _SHAPES[key] = load(name + "_cut" + ("_night" if night else "") + ".png")
+    return _SHAPES[key]
+
+
+def fit_samples(history, trace):
+    """The heart rate the fit scores against, as (x px, y px) on the crest
+    scale: the thinned trace the Scene keeps, or the buckets without one."""
+    if trace:
+        return [(W * axis_x(nx), trace_y(n)) for nx, n in thin_trace(trace)]
+    denom = float(len(history) - 1)
+    return [(W * axis_x(i / denom), crest_y(height_for_hr(v)))
+            for i, v in enumerate(history) if v > 0.0]
+
+
+def fit_cost(py, y, floor_y):
+    """What one sample costs when the top of the ink there is py: the
+    distance to the data, weighted up on high ground, and more where the
+    ink stands over the data."""
+    rise = floor_y - y
+    wgt = 1.0 + (rise / FIT_HIGH if rise > 0.0 else 0.0)
+    diff = py - y
+    c = abs(diff) * wgt
+    if diff < -FIT_OVER_TOL:
+        c += FIT_OVER_K * (-FIT_OVER_TOL - diff)
+    return c
+
+
+def fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y):
+    """The library shape that best paints one run: (error, index, left).
+
+    Every shape stands with its crest on the run's peak (cy) and is tried
+    with its apex at the run's summit (sx) and FIT_SLIDE either side of it,
+    and with its middle over the run's middle; FIT_APEX_K per px between
+    apex and summit keeps the painted summit on its minute. Its error is
+    what it changes: over every sample under it, the cost of the ink's top
+    being the shape's profile instead of the far bank (fit_cost), so a long
+    shoulder laid over rest pays for itself. A shape whose bottom edge would
+    show above the mist (FOOT_Y) is not a candidate. Ties keep the earlier.
+    samples run left to right; base[j] is fit_cost(floor_y, y_j, floor_y),
+    the cost of the far bank alone there."""
+    table = shape_table()
+    k_cols = table["k"]
+    best = None
+    for i, sh in enumerate(table["shapes"]):
+        top0 = cy - sh["ay"]
+        if top0 + sh["h"] < FOOT_Y * H:
+            continue
+        lefts = [sx + dx - sh["ax"] for dx in FIT_SLIDE]
+        lefts.append(0.5 * (run_x0 + run_x1) - 0.5 * sh["w"])
+        for left in lefts:
+            err = FIT_APEX_K * abs(left + sh["ax"] - sx)
+            for j, (x, y) in enumerate(samples):
+                d = x - left
+                if d >= sh["w"]:
+                    break
+                if d >= 0.0:
+                    t = sh["top"][int(d * k_cols / sh["w"])]
+                    if t >= 0 and top0 + t < floor_y:
+                        err += fit_cost(top0 + t, y, floor_y) - base[j]
+            if best is None or err < best[0]:
+                best = (err, i, left)
+    return best
+
+
 def mid_plane_layout(history, trace=None):
     """The relief for a window: {"floor": bpm, "horizon_y": px or None,
-    "masses": [{"rect": (x, y, w, h), "crest": (x, y), "plane": name, "flip":
-    bool, "host": bool, "run": (lo, hi)}] in draw order, "near": [{"plane":
-    name, "rect": ...}]}, plus "host"/"host_crest"/"host_plane" and
-    "guest"/... for the tallest and second-tallest mass (None without one).
-    compose() and scripts/fidelity_test.py both use it, so the scored
-    skyline is the painted one.
+    "masses": [{"rect": (x, y, w, h), "crest": (x, y), "plane": name,
+    "shape": index, "vis": (x0, x1), "host": bool, "run": (lo, hi)}] in
+    draw order, "near": [{"plane": name, "rect": ...}]}, plus
+    "host"/"host_crest"/"host_plane" and "guest"/... for the tallest and
+    second-tallest mass (None without one). compose() and
+    scripts/fidelity_test.py both use it, so the scored skyline is the
+    painted one.
 
-    Every mass stands on one deep base (BASE_Y, the Scene's 10-29 base):
-    its height is crest to base, its width its plane's own aspect, so only
-    the upper body shows above the mist and the baked fade at its foot is
-    never seen (round 6, John: the fades cut off and the proportions were
-    off when the feet stood in open paper). The run's duration picks the
-    plane, not the width. A spire or broad peak stands its crest at the
-    run's centroid; the wide mountain's summit sits WIDE_SUMMIT_IN into the
-    run from its higher end (mirrored for the right end) with its flat
-    shoulder over the rest. Every crest sits on the crest scale. The near
-    range then takes any third of the screen the masses leave empty (both
-    outer thirds when all three are), its foot under the mist too."""
+    Each run standing MASS_MIN over the floor gets the library shape that
+    fits it best (fit_shape), crest on the run's peak, drawn at its baked
+    size. "vis" is the stretch of the screen where the shape stands over
+    the far bank (kept for the record; the near range's cover still counts
+    the middle 70% of each mass's bitmap, as in round 6). Draw order: the other masses first (the taller farther),
+    the host (the highest crest) last. The near range then takes any third
+    of the screen the masses leave empty (both outer thirds when all three
+    are), its foot under the mist."""
     floor = floor_level(history)
     out = {"floor": floor, "horizon_y": None, "masses": [], "near": [],
            "host": None, "host_crest": None, "host_plane": None,
            "guest": None, "guest_crest": None, "guest_plane": None}
     if floor <= 0.0:
         return out
-    out["horizon_y"] = crest_y(height_for_hr(floor))
+    floor_y = crest_y(height_for_hr(floor))
+    out["horizon_y"] = floor_y
     denom = len(history) - 1
     bucket_px = W / float(denom)
     runs = [run_mass(history, floor, lo, hi, denom, trace) for lo, hi in split_runs(history, floor)]
     runs = [r for r in runs if r["elev"] >= MASS_MIN]
     host = max(runs, key=lambda r: r["peak_hr"]) if runs else None
+    samples = fit_samples(history, trace)
+    base = [fit_cost(floor_y, y, floor_y) for _, y in samples]
+    table = shape_table()
+    k_cols = table["k"]
     masses = []
     for r in runs:
-        role = mass_role(r["buckets"], r is not host)
-        p = plane(role)
-        ax, ay = p["apex"]
+        run_x0, run_x1 = (r["lo"] - 0.5) * bucket_px, (r["hi"] + 0.5) * bucket_px
         cy = crest_y(height_for_hr(r["peak_hr"]))
-        h = (BASE_Y * H - cy) / (1.0 - ay)
-        w = p["aspect"] * h
-        flip = False
-        if role.startswith("wide"):
-            run_x0, run_x1 = (r["lo"] - 0.5) * bucket_px, (r["hi"] + 0.5) * bucket_px
-            flip = r["lean"] == "end"
-            if flip:
-                crest_x = run_x1 - WIDE_SUMMIT_IN * (run_x1 - run_x0)
-            else:
-                crest_x = run_x0 + WIDE_SUMMIT_IN * (run_x1 - run_x0)
-            left = crest_x - ((1.0 - ax) if flip else ax) * w
-        else:
-            crest_x = axis_x(r["nx"]) * W
-            left = crest_x - ax * w
-        masses.append({"rect": (left, BASE_Y * H - h, w, h), "crest": (crest_x, cy),
-                       "plane": p["name"], "flip": flip, "host": r is host,
-                       "run": (r["lo"], r["hi"])})
-    # depth: pale masses first (the taller farther), the host nearest, last
+        # the run's summit: its highest sample inside the run, else its centroid
+        sx, best_y = axis_x(r["nx"]) * W, None
+        for x, y in samples:
+            if run_x0 <= x <= run_x1 and (best_y is None or y < best_y):
+                sx, best_y = x, y
+        fit = fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y)
+        if fit is None:
+            continue
+        _, i, left = fit
+        sh = table["shapes"][i]
+        top0 = cy - sh["ay"]
+        cols = [k for k in range(k_cols) if sh["top"][k] >= 0 and top0 + sh["top"][k] < floor_y]
+        vis = ((left + cols[0] * sh["w"] / float(k_cols), left + (cols[-1] + 1) * sh["w"] / float(k_cols))
+               if cols else (left + sh["ax"], left + sh["ax"]))
+        masses.append({"rect": (left, top0, sh["w"], sh["h"]), "crest": (left + sh["ax"], cy),
+                       "plane": sh["name"], "shape": i, "vis": vis, "flip": False,
+                       "host": r is host, "run": (r["lo"], r["hi"])})
+    # depth: the other masses first (the taller farther), the host last
     masses.sort(key=lambda m: (m["host"], m["crest"][1]))
     out["masses"] = masses
 
@@ -574,9 +641,11 @@ def mid_plane_layout(history, trace=None):
 
 
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
-            hour24=False):
+            hour24=False, overlay=True):
     """night: the moonlit negative set (pale ink on black paper, no grain).
-    trace: [(nx, norm_hr)] raw samples for the true-HR overlay, or None."""
+    trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
+    Scene fits its stored trace), or None. overlay: draw the true-HR overlay
+    over the painting (the watch's "True HR line" setting)."""
     sfx = "_night" if night else ""
     fg_l = load("fg_left%s.png" % sfx)
     fg_r = load("fg_right%s.png" % sfx)
@@ -618,7 +687,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 2. light mist between far and mid planes
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
 
-    # 3. the masses: pale ones first, the host last (none on a flat day)
+    # 3. the masses: the library shapes, the host last (none on a flat day)
     base = paint_masses(base, layout, night)
 
     # 4. the near range (round 5): a near hill in each third of the screen
@@ -645,7 +714,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
 
     # 8. the data itself, for judging the painting against it: dots on the
     #    painted crests (the apex pixel inside each plane, not its rect top)
-    if trace is not None:
+    if trace is not None and overlay:
         base = draw_trace(base, trace, [m["crest"] for m in layout["masses"]], night)
 
     # 9. inscription column + seal (upper-left void), as the View draws them:
@@ -704,10 +773,10 @@ PROBE_INK = (24, 18, 14, 255)
 
 def compose_probe():
     from PIL import ImageChops, ImageFont
-    # the Scene's probe uses the baked cutouts since the 11-03 port (the
-    # 10-29 host/guest planes left the watch)
-    host = load("broad_cut.png")
-    guest = load("spire_pale_cut.png")
+    # the Scene's probe uses two library shapes since 11-03 (the round-6
+    # planes left the watch)
+    host = load("shape_peak_300_cut.png")
+    guest = load("shape_spire_180_cut.png")
     mist = load("mist_band.png")
     mist_lite = load("mist_band_lite.png")
     base = Image.new("RGBA", (W, H), PAPER)
@@ -742,10 +811,10 @@ def compose_probe():
         base.alpha_composite(mist_middle(mist, aw, ah), dest=(x, ay))
     label(0.325 * H, "A: full | partial | screen")
 
-    # B: the broad plane, point sampling | bilinear
+    # B: the 300 px peak, point sampling | bilinear
     bx, by, bw, bh = int(W * 0.08), int(H * 0.36), int(W * 0.40), int(H * 0.18)
     bx2 = bx + bw + int(W * 0.04)
-    host_w = int(round(bh * 300.0 / 240.0))
+    host_w = int(round(bh * 300.0 / 300.0))
     inset = int((bw - host_w) / 2.0)
     frame(bx, by, bw, bh)
     frame(bx2, by, bw, bh)
@@ -764,7 +833,7 @@ def compose_probe():
     base.alpha_composite(tinted, dest=(bx2, cy))
     label(0.745 * H, "C: baked 62% | tint 50%")
 
-    # D: two pale spires overlapping by half, source-over | multiply
+    # D: two spires overlapping by half, source-over | multiply
     #    (multiply with an opaque destination: D * (S over white))
     dx, dy, dw, dh = int(W * 0.235), int(H * 0.78), int(W * 0.25), int(H * 0.12)
     dx2 = dx + dw + int(W * 0.03)
@@ -825,13 +894,11 @@ def main(argv):
         history = bucket_history(MOCK, 16)
         trace = [(i / (len(MOCK) - 1.0), norm_hr(v)) for i, v in enumerate(MOCK)]
         hr_now = history[-1]
-    if "--no-trace" in argv:
-        trace = None
     if "--time" in opts:
         hh, mm = opts["--time"].split(":")
         minute = int(hh) * 60 + int(mm)
     compose(history, minute_of_day=minute, hr_now=hr_now, night=night, trace=trace,
-            hour24="--24h" in argv).save(out)
+            hour24="--24h" in argv, overlay="--no-trace" not in argv).save(out)
     print("preview ->", os.path.abspath(out))
 
 

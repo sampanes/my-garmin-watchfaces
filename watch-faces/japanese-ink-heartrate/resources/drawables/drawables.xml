@@ -11,29 +11,13 @@
     <bitmap id="MistBandLiteNight" filename="mist_band_lite_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="FgLeftNight" filename="fg_left_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="FgRightNight" filename="fg_right_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <!-- The relief (round 6): the level horizon, and the masses and near hills as paper
-         cutouts baked by scripts/bake_cutouts.py (Flip = mirrored wide mountain).
-         Loaded per render and dropped, never held. -->
+    <!-- The relief: the level horizon and the near hills as paper cutouts baked by
+         scripts/bake_cutouts.py. The masses are the shape library (shapes.xml, from
+         scripts/gen_shape_library.py). Loaded per render and dropped, never held. -->
     <bitmap id="Horizon" filename="horizon.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="SpireCut" filename="spire_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="SpirePaleCut" filename="spire_pale_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="BroadCut" filename="broad_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="BroadPaleCut" filename="broad_pale_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="WideCut" filename="wide_mountain_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="WideFlipCut" filename="wide_mountain_flip_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="WidePaleCut" filename="wide_mountain_pale_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="WidePaleFlipCut" filename="wide_mountain_pale_flip_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="NearHillCut" filename="near_hill_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="NearHill2Cut" filename="near_hill2_cut.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="HorizonNight" filename="horizon_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="SpireCutNight" filename="spire_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="SpirePaleCutNight" filename="spire_pale_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="BroadCutNight" filename="broad_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="BroadPaleCutNight" filename="broad_pale_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="WideCutNight" filename="wide_mountain_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="WideFlipCutNight" filename="wide_mountain_flip_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="WidePaleCutNight" filename="wide_mountain_pale_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="WidePaleFlipCutNight" filename="wide_mountain_pale_flip_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="NearHillCutNight" filename="near_hill_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="NearHill2CutNight" filename="near_hill2_cut_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

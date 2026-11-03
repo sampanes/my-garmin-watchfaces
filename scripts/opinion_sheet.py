@@ -53,7 +53,7 @@ def main(argv):
         worn = cp.compose(s["history"], minute_of_day=minute, hr_now=s["hr_now"],
                           night=night, trace=s["trace"])
         alone = cp.compose(s["history"], minute_of_day=minute, hr_now=s["hr_now"],
-                           night=night, trace=None)
+                           night=night, trace=s["trace"], overlay=False)
         rows.append((k + 1, name, words, s, ft.graph_tile(s), worn, alone))
 
     width = 3 * TILE + 4 * GAP
