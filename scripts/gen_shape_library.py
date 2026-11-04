@@ -88,6 +88,24 @@ def camel(name):
     return "".join(p.capitalize() for p in name.split("_"))
 
 
+def wash_texture(cut, night, seed):
+    """Vary the ink within a cutout without changing its measured outline.
+
+    Low-frequency pooling and finer dry paper are baked into the color only;
+    alpha (including the opaque skyline used by the fitter) stays unchanged.
+    """
+    import gen_ink_layers as gl
+    pixels = np.array(cut, dtype=np.uint8)
+    h, w = pixels.shape[:2]
+    pooling = gl.vnoise2(h, w, 42, 29, seed, octaves=3) - 0.5
+    fiber = gl.vnoise2(h, w, 7, 3, seed + 1, octaves=2) - 0.5
+    strength = np.clip(1.0 + 1.10 * pooling + 0.28 * fiber, 0.65, 1.35)
+    paper = np.array((0, 0, 0) if night else gl.PAPER, dtype=float)
+    color = pixels[..., :3].astype(float)
+    pixels[..., :3] = np.clip(paper + (color - paper) * strength[..., None], 0, 255).round().astype(np.uint8)
+    return Image.fromarray(pixels, "RGBA")
+
+
 def render_all():
     import glob
     import compose_preview as cp
@@ -116,6 +134,7 @@ def render_all():
             arr[..., 0], arr[..., 1], arr[..., 2] = rgb
             arr[..., 3] = (np.clip(a * scale, 0, 1) * 255).astype(np.uint8)
             cut = cp.paper_backed(Image.fromarray(arr, "RGBA"), night)
+            cut = wash_texture(cut, night, 8200 + 37 * i)
             path = os.path.join(DRAW, name + "_cut" + ("_night" if night else "") + ".png")
             cut.save(path, optimize=True)
         print("painted", name, w, "x", PLANE_H, flush=True)
