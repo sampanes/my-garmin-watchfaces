@@ -1600,7 +1600,15 @@ class JapaneseInkHeartrateScene {
         var rHalo = (width * 46) / 1000;
         var rCore = (width * 34) / 1000;
 
-        if (isNight) {
+        if (isNight && !mNight) {
+            // 18:00 until the night window: the moon on day paper, in pale
+            // ink (the moonlit cream disk is invisible on cream paper);
+            // compose_preview MOON_INK_HALO / MOON_INK_CORE
+            dc.setFill(Graphics.createColor(0x20, 24, 18, 14));
+            dc.fillCircle(x, y, rHalo);
+            dc.setFill(Graphics.createColor(0x50, 24, 18, 14));
+            dc.fillCircle(x, y, rCore);
+        } else if (isNight) {
             dc.setFill(Graphics.createColor(0x30, 240, 235, 220));
             dc.fillCircle(x, y, rHalo);
             dc.setFill(Graphics.createColor(0xC0, 248, 244, 232));

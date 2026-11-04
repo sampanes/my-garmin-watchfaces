@@ -44,6 +44,8 @@ OUT = os.path.join(FACE, "art", "kit_preview.png")
 
 W = H = 416
 PAPER = (242, 238, 230, 255)
+MOON_INK_HALO = (24, 18, 14, 0x20)   # the moon on day paper (18:00 to night)
+MOON_INK_CORE = (24, 18, 14, 0x50)
 
 # ---- mock HR history (same binning and landmark model as Monkey C) --------
 MOCK = [72, 74, 76, 78, 82, 88, 95, 105, 112, 108, 100, 92, 85, 80, 77, 75,
@@ -673,7 +675,11 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     sx = int(W * 0.20 + W * 0.60 * t)
     sy = int(H * 0.14 - math.sin(t * math.pi) * H * 0.06)
     r_halo, r_core = int(W * 0.046), int(W * 0.034)
-    if moon:
+    if moon and not night:
+        # 18:00 until the night window: the moon on day paper, in pale ink
+        # (the moonlit cream disk is invisible on cream paper)
+        halo, core = MOON_INK_HALO, MOON_INK_CORE
+    elif moon:
         halo, core = (240, 235, 220, 0x30), (248, 244, 232, 0xC0)
     else:
         halo, core = (200, 70, 50, 0x40), (175, 38, 28, 0xCC)
