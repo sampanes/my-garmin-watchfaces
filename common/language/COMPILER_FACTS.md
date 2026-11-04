@@ -65,6 +65,32 @@ does not narrow a member or field after a null test. Copy it into a local,
 test the local, use the local. At `-l 2` it is a warning, not an error,
 and the runtime null check still protects the call.
 
+### 1.5 A typed local with a null initializer did not build (2026-11-03)
+
+Written (shape library, df251a7):
+
+```
+var bmp as Graphics.BitmapType? = null;
+var best as Lang.Array<Lang.Float>? = null;
+```
+
+The home build of 23dfea0 removed these to make it compile again (the error
+text was not recorded). The form that builds: an untyped local, with the
+function return type carrying the type, as in `loadNear` / `loadShape`:
+
+```
+function loadShape(i as Lang.Number, night as Lang.Boolean) as Graphics.BitmapType? {
+    var bmp = null;
+    try { bmp = loadShapeBitmap(i, night); } catch (ex) { bmp = null; }
+    return bmp;
+}
+```
+
+Also from that build: one `onUpdate` that scored 26 shapes x 6 placements x
+up to 58 samples per run tripped `Code Executed Too Long` on the FR265. Long
+searches go in a state machine spread across updates (`FIT_SHAPES_PER_UPDATE`
+in the Scene), never in one call.
+
 ---
 
 ## 2. Build facts
