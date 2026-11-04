@@ -59,7 +59,7 @@ using Toybox.WatchUi;
 // mountains from brush primitives: whole known shapes beat bespoke ones, so
 // have many. Each mass is now one of the library's whole painted mountains
 // (scripts/gen_shape_library.py: 26 planes, 300 px tall, skirt at the
-// bottom, day and night cutouts), CHOSEN per run by fitShape against the
+// bottom, day and night cutouts), CHOSEN per run by the staged fitter against the
 // stored trace and drawn at its baked size with its crest on the run's
 // peak: sunk, never stretched, its foot behind the bank and the mist. The
 // profile table is generated (JapaneseInkHeartrateShapes.mc), the same
@@ -94,13 +94,43 @@ class JapaneseInkHeartrateScene {
     // Which plane set is in the graphics pool: -1 none, 0 day, 1 night.
     var mLoadedSet as Lang.Number = -1;
 
-    // The relief of the current window (computeRelief): the horizon's crest
+    // The relief of the current window (the pending relief job): the horizon's crest
     // y in px (negative = none), the masses in draw order as [left, top,
     // width, height, crestX, crestY, plane, flip, host] (M_* indices) and
     // the near hills as [left, top, width, height, plane].
     var mHorizonY as Lang.Float = -1.0;
     var mMasses as Lang.Array<Lang.Array<Lang.Float>>?;
     var mNear as Lang.Array<Lang.Array<Lang.Float>>?;
+
+    // A scene refresh is split across onUpdate calls so the shape-library
+    // search cannot consume one callback's watchdog budget. Setup gets its
+    // own update, FIT_SHAPES_PER_UPDATE candidates are scored on each later
+    // update, and painting gets one final update. The old buffered frame
+    // remains visible until the replacement is complete.
+    var mJobState as Lang.Number = 0;
+    var mJobSceneKey as Lang.Number = -1;
+    var mHasBufferedScene as Lang.Boolean = false;
+    var mFitRuns as Lang.Array<Lang.Array<Lang.Float>>?;
+    var mFitSmpX as Lang.Array<Lang.Float>?;
+    var mFitSmpY as Lang.Array<Lang.Float>?;
+    var mFitBase as Lang.Array<Lang.Float>?;
+    var mFitHost as Lang.Number = -1;
+    var mFitRunIndex as Lang.Number = 0;
+    var mFitShapeIndex as Lang.Number = 0;
+    var mFitBucketPx as Lang.Float = 0.0;
+    var mFitFloorHr as Lang.Float = 0.0;
+    var mFitFloorY as Lang.Float = 0.0;
+    var mFitScale as Lang.Float = 1.0;
+    var mFitWidth as Lang.Float = 0.0;
+    var mFitHeight as Lang.Float = 0.0;
+    var mFitRunX0 as Lang.Float = 0.0;
+    var mFitRunX1 as Lang.Float = 0.0;
+    var mFitSummitX as Lang.Float = 0.0;
+    var mFitCrestY as Lang.Float = 0.0;
+    var mFitHasBest as Lang.Boolean = false;
+    var mFitBestErr as Lang.Float = 0.0;
+    var mFitBestIndex as Lang.Number = -1;
+    var mFitBestLeft as Lang.Float = 0.0;
 
     // The near hills by index (P_NEAR*): width/height of the PNG and the
     // painted crest inside it (alpha >= 40, measured 2026-11-03 from the day
@@ -134,6 +164,9 @@ class JapaneseInkHeartrateScene {
     var mNightStart as Lang.Number = 21;
     var mNightEnd as Lang.Number = 6;
     var mNight as Lang.Boolean = false;
+    // Palette of the frame currently on screen. Once a completed frame
+    // exists, a pending day/night scene does not recolor its inscription.
+    var mDisplayedNight as Lang.Boolean = false;
 
     const HR_MIN = 45.0;
     const HR_MAX = 160.0;
@@ -166,6 +199,14 @@ class JapaneseInkHeartrateScene {
     const HORIZON_W = 416.0;      // horizon.png, drawn full width at native height on 416
     const HORIZON_H = 56.0;
     const HORIZON_APEX_Y = 0.1607;
+
+    const JOB_IDLE = 0;
+    const JOB_FITTING = 1;
+    const JOB_READY = 2;
+    // Eight shapes = at most 48 placements in one active update, below the
+    // measured-safe 52-placement experiment. Setup and final painting never
+    // share that callback. Lowering this changes latency, not the winners.
+    const FIT_SHAPES_PER_UPDATE = 8;
 
     // Near-hill indices (mPlane* tables, loadNear).
     const P_NEAR = 0;
@@ -236,6 +277,7 @@ class JapaneseInkHeartrateScene {
         mShapeTop = shapeTop();
         readSettings();
         mNight = computeNight();
+        mDisplayedNight = mNight;
         loadPlanes(mNight);
         refreshHistory();
     }
@@ -285,7 +327,7 @@ class JapaneseInkHeartrateScene {
     }
 
     function isNight() as Lang.Boolean {
-        return mNight;
+        return mDisplayedNight;
     }
 
     function isProbe() as Lang.Boolean {
@@ -296,6 +338,7 @@ class JapaneseInkHeartrateScene {
     // five-minute key): forget the buffer's key so the next draw re-renders.
     function invalidate() as Void {
         mLastSceneKey = -1;
+        cancelSceneJob();
     }
 
     // -------------------------------------------------------------- planes
@@ -330,7 +373,7 @@ class JapaneseInkHeartrateScene {
     // A near-hill cutout, loaded for one render. Null when the pool refuses
     // it: that hill is skipped and the face stays alive.
     function loadNear(p as Lang.Number, night as Lang.Boolean) as Graphics.BitmapType? {
-        var bmp as Graphics.BitmapType? = null;
+        var bmp = null;
         try {
             if (p == P_NEAR2) {
                 bmp = WatchUi.loadResource(night ? Rez.Drawables.NearHill2CutNight : Rez.Drawables.NearHill2Cut) as Graphics.BitmapType;
@@ -345,7 +388,7 @@ class JapaneseInkHeartrateScene {
 
     // A library shape's cutout, loaded for one render (null when refused).
     function loadShape(i as Lang.Number, night as Lang.Boolean) as Graphics.BitmapType? {
-        var bmp as Graphics.BitmapType? = null;
+        var bmp = null;
         try {
             bmp = loadShapeBitmap(i, night);
         } catch (ex) {
@@ -586,50 +629,59 @@ class JapaneseInkHeartrateScene {
         return c;
     }
 
-    // The library shape that best paints one run: [error, index, left], or
-    // null (compose_preview.fit_shape). Every shape stands with its crest on
-    // the run's peak (cy), tried with its apex at the run's summit (sx) and
-    // mFitSlide either side, and with its middle over the run's middle; its
-    // error is what it changes over every sample under it, plus FIT_APEX_K
-    // per px between its apex and the summit. A shape whose bottom edge
-    // would show above the mist is skipped. s scales the 416 px library.
-    // The samples run left to right; base[j] is the far bank's own cost.
-    function fitShape(smpX as Lang.Array<Lang.Float>, smpY as Lang.Array<Lang.Float>,
-                      base as Lang.Array<Lang.Float>, runX0 as Lang.Float, runX1 as Lang.Float, sx as Lang.Float, cy as Lang.Float,
-                      floorY as Lang.Float, s as Lang.Float, h as Lang.Float) as Lang.Array<Lang.Float>? {
-        var best as Lang.Array<Lang.Float>? = null;
-        var bestErr = 0.0;
+    // Score one library shape for the current run. Shapes and placements are
+    // visited in exactly the same order as compose_preview.fit_shape. The
+    // strict comparison keeps the first candidate on a tie, even though the
+    // search is now spread across updates. fitCost is inlined in the hot loop
+    // to reduce each chunk's watchdog cost without changing its arithmetic.
+    function scoreFitShape(i as Lang.Number) as Void {
+        var smpX = mFitSmpX;
+        var smpY = mFitSmpY;
+        var base = mFitBase;
+        if (smpX == null || smpY == null || base == null) { return; }
+
+        var s = mFitScale;
+        var sw = mShapeW[i] * s;
+        var ax = mShapeAx[i] * s;
+        var top0 = mFitCrestY - mShapeAy[i] * s;
+        if (top0 + mShapeH[i] * s < FOOT_Y * mFitHeight) { return; }
+
         var tops = mShapeTop;
         var slides = mFitSlide.size();
-        for (var i = 0; i < SHAPE_COUNT; i++) {
-            var sw = mShapeW[i] * s;
-            var ax = mShapeAx[i] * s;
-            var top0 = cy - mShapeAy[i] * s;
-            if (top0 + mShapeH[i] * s < FOOT_Y * h) { continue; }
-            for (var p = 0; p <= slides; p++) {
-                var left = (p < slides) ? sx + mFitSlide[p] - ax : 0.5 * (runX0 + runX1) - 0.5 * sw;
-                var off = left + ax - sx;
-                var err = FIT_APEX_K * ((off < 0.0) ? -off : off);
-                for (var j = 0; j < smpX.size(); j++) {
-                    var d = smpX[j] - left;
-                    if (d >= sw) { break; }
-                    if (d >= 0.0) {
-                        var t = tops[i * SHAPE_K + (d * SHAPE_K / sw).toNumber()];
-                        if (t >= 0) {
-                            var py = top0 + t * s;
-                            if (py < floorY) {
-                                err += fitCost(py, smpY[j], floorY) - base[j];
+        var topBase = i * SHAPE_K;
+        for (var p = 0; p <= slides; p++) {
+            var left = (p < slides) ? mFitSummitX + mFitSlide[p] - ax :
+                       0.5 * (mFitRunX0 + mFitRunX1) - 0.5 * sw;
+            var off = left + ax - mFitSummitX;
+            var err = FIT_APEX_K * ((off < 0.0) ? -off : off);
+            for (var j = 0; j < smpX.size(); j++) {
+                var d = smpX[j] - left;
+                if (d >= sw) { break; }
+                if (d >= 0.0) {
+                    var t = tops[topBase + (d * SHAPE_K / sw).toNumber()];
+                    if (t >= 0) {
+                        var py = top0 + t * s;
+                        if (py < mFitFloorY) {
+                            var y = smpY[j];
+                            var rise = mFitFloorY - y;
+                            var wgt = 1.0 + ((rise > 0.0) ? rise / FIT_HIGH : 0.0);
+                            var diff = py - y;
+                            var cost = ((diff < 0.0) ? -diff : diff) * wgt;
+                            if (diff < -FIT_OVER_TOL) {
+                                cost += FIT_OVER_K * (-FIT_OVER_TOL - diff);
                             }
+                            err += cost - base[j];
                         }
                     }
                 }
-                if (best == null || err < bestErr) {
-                    best = [err, i.toFloat(), left] as Lang.Array<Lang.Float>;
-                    bestErr = err;
-                }
+            }
+            if (!mFitHasBest || err < mFitBestErr) {
+                mFitHasBest = true;
+                mFitBestErr = err;
+                mFitBestIndex = i;
+                mFitBestLeft = left;
             }
         }
-        return best;
     }
 
     // Draw order: the other masses first (the taller farther), the host last.
@@ -638,16 +690,24 @@ class JapaneseInkHeartrateScene {
         return a[M_CY] > b[M_CY];
     }
 
-    function computeRelief(w as Lang.Float, h as Lang.Float) as Void {
+    // Build the cheap, immutable half of a fit job. No library shape is
+    // scored in this callback; advanceReliefJob does that on later updates.
+    function startReliefJob(w as Lang.Float, h as Lang.Float) as Void {
         mHorizonY = -1.0;
         var masses = [] as Lang.Array<Lang.Array<Lang.Float>>;
         var near = [] as Lang.Array<Lang.Array<Lang.Float>>;
         mMasses = masses;
         mNear = near;
         var history = mHistory;
-        if (history == null) { return; }
+        if (history == null) {
+            mJobState = JOB_READY;
+            return;
+        }
         var floor = floorLevel(history);
-        if (floor <= 0.0) { return; }
+        if (floor <= 0.0) {
+            mJobState = JOB_READY;
+            return;
+        }
         mHorizonY = crestY(heightForHr(floor), h);
         var denom = (history.size() - 1).toFloat();
         var bucketPx = w / denom;
@@ -687,33 +747,112 @@ class JapaneseInkHeartrateScene {
         var base = [] as Lang.Array<Lang.Float>;
         for (var j = 0; j < smpY.size(); j++) { base.add(fitCost(floorY, smpY[j], floorY)); }
 
-        // each run: the library shape that fits it best, its crest on the
-        // run's peak, at its baked size
-        for (var i = 0; i < runs.size(); i++) {
-            var r = runs[i];
-            var isHost = (i == host);
-            var runX0 = (r[R_LO] - 0.5) * bucketPx;
-            var runX1 = (r[R_HI] + 0.5) * bucketPx;
-            var cy = crestY(heightForHr(r[R_PEAK]), h);
-            // the run's summit: its highest sample inside it, else its centroid
-            var sx = axisX(r[R_NX]) * w;
-            var found = false;
-            var bestY = 0.0;
-            for (var j = 0; j < smpX.size(); j++) {
-                if (smpX[j] >= runX0 && smpX[j] <= runX1 && (!found || smpY[j] < bestY)) {
-                    sx = smpX[j];
-                    bestY = smpY[j];
-                    found = true;
-                }
+        mFitRuns = runs;
+        mFitSmpX = smpX;
+        mFitSmpY = smpY;
+        mFitBase = base;
+        mFitHost = host;
+        mFitRunIndex = 0;
+        mFitShapeIndex = 0;
+        mFitBucketPx = bucketPx;
+        mFitFloorHr = floor;
+        mFitFloorY = floorY;
+        mFitScale = s;
+        mFitWidth = w;
+        mFitHeight = h;
+
+        if (runs.size() == 0) {
+            finishReliefJob();
+            mJobState = JOB_READY;
+            return;
+        }
+        prepareFitRun();
+        mJobState = JOB_FITTING;
+    }
+
+    // Cache the geometry shared by all 26 candidates for one run.
+    function prepareFitRun() as Void {
+        var runs = mFitRuns;
+        var smpX = mFitSmpX;
+        var smpY = mFitSmpY;
+        if (runs == null || smpX == null || smpY == null || mFitRunIndex >= runs.size()) {
+            finishReliefJob();
+            mJobState = JOB_READY;
+            return;
+        }
+        var r = runs[mFitRunIndex];
+        mFitRunX0 = (r[R_LO] - 0.5) * mFitBucketPx;
+        mFitRunX1 = (r[R_HI] + 0.5) * mFitBucketPx;
+        mFitCrestY = crestY(heightForHr(r[R_PEAK]), mFitHeight);
+
+        // The run's summit is its highest sample inside it, else its centroid.
+        mFitSummitX = axisX(r[R_NX]) * mFitWidth;
+        var found = false;
+        var bestY = 0.0;
+        for (var j = 0; j < smpX.size(); j++) {
+            if (smpX[j] >= mFitRunX0 && smpX[j] <= mFitRunX1 &&
+                (!found || smpY[j] < bestY)) {
+                mFitSummitX = smpX[j];
+                bestY = smpY[j];
+                found = true;
             }
-            var fit = fitShape(smpX, smpY, base, runX0, runX1, sx, cy, floorY, s, h);
-            if (fit == null) { continue; }
-            var si = fit[1].toNumber();
-            var left = fit[2];
+        }
+        mFitShapeIndex = 0;
+        mFitHasBest = false;
+        mFitBestErr = 0.0;
+        mFitBestIndex = -1;
+        mFitBestLeft = 0.0;
+    }
+
+    // Advance a fixed number of candidates. A chunk may finish one run and
+    // continue into the next, but it never changes shape/placement order.
+    function advanceReliefJob() as Void {
+        if (mJobState != JOB_FITTING) { return; }
+        var count = 0;
+        while (count < FIT_SHAPES_PER_UPDATE && mJobState == JOB_FITTING) {
+            scoreFitShape(mFitShapeIndex);
+            mFitShapeIndex++;
+            count++;
+            if (mFitShapeIndex >= SHAPE_COUNT) {
+                finishFitRun();
+            }
+        }
+    }
+
+    function finishFitRun() as Void {
+        var runs = mFitRuns;
+        var masses = mMasses;
+        if (runs == null || masses == null || mFitRunIndex >= runs.size()) {
+            finishReliefJob();
+            mJobState = JOB_READY;
+            return;
+        }
+        if (mFitHasBest) {
+            var si = mFitBestIndex;
+            var left = mFitBestLeft;
+            var s = mFitScale;
+            var cy = mFitCrestY;
             masses.add([left, cy - mShapeAy[si] * s, mShapeW[si] * s, mShapeH[si] * s,
                         left + mShapeAx[si] * s, cy, si.toFloat(), 0.0,
-                        isHost ? 1.0 : 0.0] as Lang.Array<Lang.Float>);
+                        (mFitRunIndex == mFitHost) ? 1.0 : 0.0] as Lang.Array<Lang.Float>);
         }
+
+        mFitRunIndex++;
+        if (mFitRunIndex >= runs.size()) {
+            finishReliefJob();
+            mJobState = JOB_READY;
+        } else {
+            prepareFitRun();
+        }
+    }
+
+    // Complete the cheap layout work after every run has a winning shape.
+    function finishReliefJob() as Void {
+        var masses = mMasses;
+        var near = mNear;
+        var history = mHistory;
+        if (masses == null || near == null || history == null) { return; }
+
         // a stable insertion sort into draw order
         for (var i = 1; i < masses.size(); i++) {
             var m = masses[i];
@@ -728,6 +867,10 @@ class JapaneseInkHeartrateScene {
         // the near range: a third of the screen the masses leave empty gets
         // a near hill, nudged up by that third's heart rate over the floor;
         // both outer thirds when all three are empty
+        var w = mFitWidth;
+        var h = mFitHeight;
+        var bucketPx = mFitBucketPx;
+        var floor = mFitFloorHr;
         var third = w / 3.0;
         var empty = [] as Lang.Array<Lang.Number>;
         for (var k = 0; k < 3; k++) {
@@ -772,6 +915,15 @@ class JapaneseInkHeartrateScene {
             near.add([cx - mPlaneApexX[p] * nw, NEAR_CREST_Y * h - mPlaneApexY[p] * nh,
                       nw, nh, p.toFloat()] as Lang.Array<Lang.Float>);
         }
+    }
+
+    function cancelSceneJob() as Void {
+        mJobState = JOB_IDLE;
+        mJobSceneKey = -1;
+        mFitRuns = null;
+        mFitSmpX = null;
+        mFitSmpY = null;
+        mFitBase = null;
     }
 
     function refreshHistory() as Void {
@@ -895,16 +1047,24 @@ class JapaneseInkHeartrateScene {
     }
 
     function draw(dc as Graphics.Dc) as Void {
-        ensureBuffer(dc.getWidth(), dc.getHeight());
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+        ensureBuffer(width, height);
+        var sceneKey = getSceneKey();
 
         if (mBuffer == null) {
-            renderScene(dc, dc.getWidth(), dc.getHeight());
+            drawWithoutBuffer(dc, width, height, sceneKey);
             return;
         }
 
-        var sceneKey = getSceneKey();
-        if (sceneKey != mLastSceneKey) {
-            renderBufferedScene(sceneKey);
+        // Each branch is deliberately exclusive: setup, fitting and final
+        // painting never share an onUpdate callback.
+        if (mJobState == JOB_IDLE && sceneKey != mLastSceneKey) {
+            startSceneJob(sceneKey, width, height);
+        } else if (mJobState == JOB_FITTING) {
+            advanceReliefJob();
+        } else if (mJobState == JOB_READY) {
+            finishBufferedScene();
         }
 
         var buffer = mBuffer;
@@ -916,8 +1076,9 @@ class JapaneseInkHeartrateScene {
         }
     }
 
-    // Five-minute key. The night window flips on an hour, which is always a
-    // key boundary, so the swap never waits.
+    // Five-minute key. An hour boundary also changes the key; a coherent job
+    // already in progress finishes first, then the next active update starts
+    // the new day/night scene.
     function getSceneKey() as Lang.Number {
         var clockTime = System.getClockTime();
         var minuteOfDay = (clockTime.hour * 60) + clockTime.min;
@@ -957,22 +1118,82 @@ class JapaneseInkHeartrateScene {
         mBufferWidth = width;
         mBufferHeight = height;
         mLastSceneKey = -1;
+        mHasBufferedScene = false;
+        cancelSceneJob();
     }
 
-    function renderBufferedScene(sceneKey as Lang.Number) as Void {
-        var buffer = mBuffer;
-        if (buffer == null) {
-            return;
-        }
+    function startSceneJob(sceneKey as Lang.Number, width as Lang.Number,
+                           height as Lang.Number) as Void {
+        mJobSceneKey = sceneKey;
 
         // Five-minute refresh tracks new history samples without doing the
-        // iterator and buffered painting work on every one-second update.
+        // iterator on every one-second update. It gets a callback of its own.
         readSettings();
         mNight = computeNight();
         loadPlanes(mNight);
         refreshHistory();
+        if (PROBE) {
+            mJobState = JOB_READY;
+        } else {
+            startReliefJob(width.toFloat(), height.toFloat());
+        }
+
+        // A newly allocated buffer has no old frame to preserve. Give the
+        // first few fit updates paper, sky and the data floor instead.
+        var buffer = mBuffer;
+        if (!mHasBufferedScene && buffer != null) {
+            renderPendingScene(buffer.getDc(), width, height);
+            mDisplayedNight = mNight;
+        }
+    }
+
+    function finishBufferedScene() as Void {
+        var buffer = mBuffer;
+        if (buffer == null) { return; }
         renderScene(buffer.getDc(), mBufferWidth, mBufferHeight);
-        mLastSceneKey = sceneKey;
+        mLastSceneKey = mJobSceneKey;
+        mHasBufferedScene = true;
+        mDisplayedNight = mNight;
+        cancelSceneJob();
+    }
+
+    function drawWithoutBuffer(dc as Graphics.Dc, width as Lang.Number,
+                               height as Lang.Number, sceneKey as Lang.Number) as Void {
+        if (mJobState == JOB_IDLE && sceneKey != mLastSceneKey) {
+            startSceneJob(sceneKey, width, height);
+            renderPendingScene(dc, width, height);
+            mDisplayedNight = mNight;
+            return;
+        }
+        if (mJobState == JOB_FITTING) {
+            advanceReliefJob();
+            renderPendingScene(dc, width, height);
+            return;
+        }
+        if (mJobState == JOB_READY) {
+            renderScene(dc, width, height);
+            mLastSceneKey = mJobSceneKey;
+            mDisplayedNight = mNight;
+            cancelSceneJob();
+            return;
+        }
+        // No cache API: repaint the already-fitted scene, but never refit it.
+        renderScene(dc, width, height);
+    }
+
+    function renderPendingScene(dc as Graphics.Dc, width as Lang.Number,
+                                height as Lang.Number) as Void {
+        if (dc has :setAntiAlias) { dc.setAntiAlias(true); }
+        drawPaper(dc);
+        drawCelestial(dc, width, height);
+        if (mHorizonY >= 0.0) {
+            var horizon = loadHorizon(mNight);
+            if (horizon != null) {
+                var w = width.toFloat();
+                var hzH = HORIZON_H * (w / HORIZON_W);
+                dc.drawScaledBitmap(0, mHorizonY - HORIZON_APEX_Y * hzH, w, hzH, horizon);
+            }
+        }
     }
 
     // -------------------------------------------------------- composition
@@ -988,7 +1209,6 @@ class JapaneseInkHeartrateScene {
 
         var w = width.toFloat();
         var h = height.toFloat();
-        computeRelief(w, h);
 
         // The foreground masses carry the two ends of the window: the oldest
         // hour on the left, the newest (now) on the right.

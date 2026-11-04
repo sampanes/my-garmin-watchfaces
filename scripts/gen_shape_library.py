@@ -194,7 +194,8 @@ def main(argv):
     stale = 0
     for path, text in out.items():
         if "--check" in argv:
-            cur = open(path, newline="").read() if os.path.exists(path) else None
+            # Universal newlines: a Windows checkout (autocrlf) is not stale.
+            cur = open(path).read() if os.path.exists(path) else None
             if cur != text:
                 print("stale:", os.path.relpath(path, os.path.join(HERE, "..")))
                 stale += 1

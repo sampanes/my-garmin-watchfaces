@@ -117,7 +117,23 @@ if ($ReadWatch) {
     $copy = Join-Path $dest $logName
     for ($i = 0; $i -lt 80 -and -not (Test-Path -LiteralPath $copy); $i += 1) { Start-Sleep -Milliseconds 250 }
     if (-not (Test-Path -LiteralPath $copy)) { throw "Could not copy $logName off the watch." }
-    $r = Read-BudgetLog (Get-Content -LiteralPath $copy)
+    # Garmin rotates an app log at about 5 KB into .BAK, so a 200-plane run
+    # spans both files: read the .BAK first. The watch restarts a face (an
+    # activity, a face switch) and the probe starts over, so only the lines
+    # from the last BUDGET_START describe one whole run.
+    $bakName = [System.IO.Path]::ChangeExtension($logName, ".bak")
+    $bakItem = Find-Item $w.Logs $bakName
+    $all = @()
+    if ($bakItem) {
+        $w.Shell.Namespace($dest).CopyHere($bakItem, 16)
+        $bakCopy = Join-Path $dest $bakName
+        for ($i = 0; $i -lt 80 -and -not (Test-Path -LiteralPath $bakCopy); $i += 1) { Start-Sleep -Milliseconds 250 }
+        if (Test-Path -LiteralPath $bakCopy) { $all += @(Get-Content -LiteralPath $bakCopy) }
+    }
+    $all += @(Get-Content -LiteralPath $copy)
+    $starts = @(for ($i = 0; $i -lt $all.Count; $i += 1) { if ($all[$i] -like "BUDGET_START,*") { $i } })
+    $runLines = if ($starts.Count) { $all[$starts[-1]..($all.Count - 1)] } else { $all }
+    $r = Read-BudgetLog $runLines
     $count = if (Test-Path -LiteralPath $statePath) { (Get-Content -LiteralPath $statePath | ConvertFrom-Json).WatchCount } else { "?" }
     $report = Join-Path $reportDir "$($stamp)_bitmap-budget-watch.md"
     $out = New-Object System.Collections.Generic.List[string]
@@ -129,6 +145,10 @@ if ($ReadWatch) {
         $out.Add("**The log is empty.** The probe never ran as a watch face, or the watch did not write the log (it only writes to a log file that existed before the app started). Pick Bitmap Budget as the face, wait for DONE, and read again.")
     } else {
         $out.Add("- Heap at start: $($r.Start[3]) of $($r.Start[2]) bytes")
+        if ($starts.Count -gt 1) { $out.Add("- The probe started $($starts.Count) times (the watch restarted the face); the last run is reported") }
+        $ms = @($runLines | Where-Object { $_ -like "BUDGET_LOAD,*,1,*" } | ForEach-Object { [int](($_ -split ',')[3]) } | Sort-Object)
+        if ($ms.Count) { $out.Add("- Load time per plane: fastest $($ms[0]) ms, median $($ms[[int]($ms.Count / 2)]) ms, slowest $($ms[-1]) ms") }
+        if ($r.HoldHeap.Count -ge 2) { $out.Add("- App heap per held plane: $([int](($r.HoldHeap[-1] - $r.HoldHeap[0]) / ($r.HoldHeap.Count - 1))) bytes (the pixels live in the graphics pool, not the app heap)") }
         if ($r.Done) {
             $out.Add("- Sweep (load, draw, drop each): **$($r.Done[2]) of $($r.Done[1]) loaded**, $($r.Done[3]) failed; slowest $($r.Done[4]) ms, total $($r.Done[5]) ms")
             $out.Add("- Held at once: **$($r.Done[6])**$(if ($r.HoldFail) { " (the next one failed: ``$($r.HoldFail)``)" } else { ' (the probe stops at 48)' })")
