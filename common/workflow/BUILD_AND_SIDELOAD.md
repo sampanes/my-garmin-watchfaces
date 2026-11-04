@@ -68,6 +68,14 @@ The simulator is great, but AMOLED screens are hard to judge until they are on y
 2. **Copy** your `YourApp.prg` file into that folder.
 3. Safely disconnect. The watch face will appear in your "Watch Face" selection menu immediately.
 
+### Step D: Removing a sideloaded app
+On newer watches (FR255/265, FR955/965, Fenix 7 and later) the installed `.prg` moves to a
+hidden area and vanishes from `GARMIN/Apps`, so it cannot be deleted over USB, and the watch's
+own watch-face menu offers no Delete for it. What worked on the FR265 (2026-11-03): open the
+**Connect IQ Store app on the watch** (in its app list). It lists sideloaded apps too; pick the
+app and uninstall it there. Garmin Express (watch on USB) and the Connect IQ phone app are
+reported to work for some people. Do not factory-reset the watch for this.
+
 ---
 
 ## 6. Troubleshooting: "Why didn't it work?"

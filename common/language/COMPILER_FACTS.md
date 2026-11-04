@@ -90,7 +90,9 @@ and the runtime null check still protects the call.
 firmware encrypts it (measured 2026-10-30 on the FR265: 7.99 bits of entropy per byte, not
 zlib). Nothing on a PC can read it. Data meant for the PC must leave through `System.println`
 into `GARMIN/Apps/LOGS/<app>.txt` (which has to exist first) or through an activity FIT.
-Sideloaded `.prg` files also vanish from `GARMIN/Apps` over MTP once the watch installs them.
+Sideloaded `.prg` files also vanish from `GARMIN/Apps` over MTP once the watch installs them;
+to remove one, uninstall it from the Connect IQ Store app on the watch
+([BUILD_AND_SIDELOAD.md](../workflow/BUILD_AND_SIDELOAD.md) Step D).
 
 ## 4. Signatures of every API this repo calls (SDK 9.1.0 docs)
 
