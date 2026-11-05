@@ -6,6 +6,7 @@ using Toybox.Math;
 using Toybox.System;
 using Toybox.Time;
 using Toybox.UserProfile;
+using Toybox.Weather;
 using Toybox.WatchUi;
 
 // 2026-10-27 rewrite — baked benchmark planes.
@@ -190,6 +191,10 @@ class JapaneseInkHeartrateScene {
     var mShowTrace as Lang.Boolean = true;
     // The seal carries the live HR (true) or the date ("Red seal = HR" off).
     var mSealHr as Lang.Boolean = true;
+    // The weather painting behind the grasses (WX_*, WX_NONE for none),
+    // read once per scene job; the "Weather" setting.
+    var mWeather as Lang.Number = -1;
+    var mShowWeather as Lang.Boolean = true;
     var mForeground as Lang.Number = 0;   // the "foreground" setting: 0 by season, 1..FG_SEASONS a scene
     // The props' inputs, read once per scene job (readPropInputs).
     var mStepsMet as Lang.Boolean = false;
@@ -293,6 +298,8 @@ class JapaneseInkHeartrateScene {
     const BATTERY_LOW = 30.0;         // percent under which the lantern shows
     const SEAL_WORK = 30.0;           // bpm over the resting baseline that turns the seal rectangular ...
     const SEAL_HYST = 8.0;            // ... and back to the oval this far under that
+    const WIND_LEAVES = 8.0;          // m/s over which the leaves blow without a "windy" forecast
+    const WX_STALE = 10800;           // s: an observation older than this shows no weather
 
     // ------------------------------------------------------- the §13 probe
     // RENDERER_PLAN §13: what can the FR265 blend? Set PROBE to true, build,
@@ -395,6 +402,7 @@ class JapaneseInkHeartrateScene {
     function readSettings() as Void {
         mShowTrace = propBool("trueHrOverlay", true);
         mSealHr = propBool("sealHr", true);
+        mShowWeather = propBool("weather", true);
         mNightStart = propHour("nightStart", 21);
         mNightEnd = propHour("nightEnd", 6);
         mForeground = propNumber("foreground", 0, FG_SEASONS);
@@ -432,6 +440,7 @@ class JapaneseInkHeartrateScene {
         mBatteryLow = battery < BATTERY_LOW;
         var day = Time.Gregorian.info(Time.now(), Time.FORMAT_SHORT).day;
         mDayOfMonth = (day instanceof Lang.Number) ? (day as Lang.Number) : 1;
+        mWeather = readWeather();
         mRestingHr = 0;
         if (Toybox has :UserProfile) {
             var profile = UserProfile.getProfile();
@@ -448,6 +457,61 @@ class JapaneseInkHeartrateScene {
     // SEAL_WORK over the baseline, and rests (the oval) once it falls
     // SEAL_HYST under that again, so it does not flicker on the line
     // (compose_preview.seal_shape). Called by the View on every update.
+    // The weather painting for now (compose_preview.weather_veil): the
+    // current conditions' painting, else the leaves when the wind is over
+    // WIND_LEAVES; none when the observation is stale or missing.
+    function readWeather() as Lang.Number {
+        if (!(Toybox has :Weather)) { return WX_NONE; }
+        var cc = Weather.getCurrentConditions();
+        if (cc == null) { return WX_NONE; }
+        var obs = cc.observationTime;
+        if (obs != null && Time.now().value() - obs.value() > WX_STALE) { return WX_NONE; }
+        var veil = WX_NONE;
+        var c = cc.condition;
+        if (c != null) { veil = weatherForCondition(c); }
+        if (veil == WX_NONE) {
+            var wind = cc.windSpeed;
+            if (wind != null && wind >= WIND_LEAVES) { veil = WX_WIND; }
+        }
+        return veil;
+    }
+
+    // A storm over snow over rain over light rain; then wind.
+    function weatherForCondition(c as Lang.Number) as Lang.Number {
+        if (c == Weather.CONDITION_THUNDERSTORMS || c == Weather.CONDITION_SCATTERED_THUNDERSTORMS
+            || c == Weather.CONDITION_TORNADO || c == Weather.CONDITION_HURRICANE
+            || c == Weather.CONDITION_TROPICAL_STORM) {
+            return WX_STORM;
+        }
+        if (c == Weather.CONDITION_SNOW || c == Weather.CONDITION_WINTRY_MIX
+            || c == Weather.CONDITION_LIGHT_SNOW || c == Weather.CONDITION_HEAVY_SNOW
+            || c == Weather.CONDITION_LIGHT_RAIN_SNOW || c == Weather.CONDITION_HEAVY_RAIN_SNOW
+            || c == Weather.CONDITION_RAIN_SNOW || c == Weather.CONDITION_ICE
+            || c == Weather.CONDITION_FLURRIES || c == Weather.CONDITION_SLEET
+            || c == Weather.CONDITION_ICE_SNOW) {
+            return WX_SNOW;
+        }
+        if (c == Weather.CONDITION_RAIN || c == Weather.CONDITION_HAIL
+            || c == Weather.CONDITION_HEAVY_RAIN || c == Weather.CONDITION_HEAVY_SHOWERS
+            || c == Weather.CONDITION_FREEZING_RAIN) {
+            return WX_RAIN;
+        }
+        if (c == Weather.CONDITION_SCATTERED_SHOWERS || c == Weather.CONDITION_UNKNOWN_PRECIPITATION
+            || c == Weather.CONDITION_LIGHT_RAIN || c == Weather.CONDITION_LIGHT_SHOWERS
+            || c == Weather.CONDITION_SHOWERS || c == Weather.CONDITION_DRIZZLE) {
+            return WX_RAIN_LIGHT;
+        }
+        if (c == Weather.CONDITION_WINDY || c == Weather.CONDITION_SQUALL) {
+            return WX_WIND;
+        }
+        return WX_NONE;
+    }
+
+    // The weather painting showing, or WX_NONE (the setting off, or none).
+    function weatherShown() as Lang.Number {
+        return mShowWeather ? mWeather : WX_NONE;
+    }
+
     function sealShowsHr() as Lang.Boolean {
         return mSealHr;
     }
@@ -1549,7 +1613,11 @@ class JapaneseInkHeartrateScene {
         var h = height.toFloat();
 
         drawPaper(dc);
-        drawCelestial(dc, width, height);
+        // rain, a storm or snow replaces the sun or moon; the wind does not
+        var wx = weatherShown();
+        if (wx == WX_NONE || wx == WX_WIND) {
+            drawCelestial(dc, width, height);
+        }
 
         // 1. the far range as a level line at the window's floor, its crest
         //    row on the crest scale; every mass is a cutout over it
@@ -1596,6 +1664,20 @@ class JapaneseInkHeartrateScene {
 
         // 3c. the hiker on a workout's summit; the geese for the step goal
         drawAirProps(dc, width, w, h);
+
+        // 3d. the weather: one whole-face painting behind the grasses, so
+        //     the near hills, the mist and the foreground frame it
+        if (wx != WX_NONE) {
+            var wxBmp = null;
+            try {
+                wxBmp = loadWeatherBitmap(wx, mNight);
+            } catch (ex) {
+                wxBmp = null;
+            }
+            if (wxBmp != null) {
+                dc.drawScaledBitmap(0, 0, width, height, wxBmp);
+            }
+        }
 
         // 4. the near range: a near hill in each third the masses leave empty
         var near = mNear;

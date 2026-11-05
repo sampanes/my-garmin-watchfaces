@@ -22,7 +22,9 @@ pen and line top are where the ink glyph is drawn (LEFT / TOP justified).
     resources/drawables/halo_d<0-9>[_night].png    minute digits (ink_digits)
     resources/drawables/halo_k<hex>[_night].png    hour kanji (kanji_hours),
                                                     by code point
-    resources/drawables/halo_seal[_night].png      the seal square
+    resources/drawables/halo_seal_<shape>[_night].png   one per seal
+                                                    (oval, rect, square),
+                                                    from its baked prop
     resources/drawables/halo.xml                   their resource ids
 
 Usage: python scripts/gen_halo.py [--grow 9] [--blur 7] [--gain 1.6]
@@ -40,6 +42,7 @@ FONT_DIR = os.path.join(FACE, "fonts")
 DRAW_DIR = os.path.join(FACE, "drawables")
 W = 416            # fr265; the View sizes the seal as width * 85 / 1000
 SEAL = (W * 85) // 1000
+SEAL_SHAPES = ("oval", "rect", "square")
 FLOOR = 3          # halo alpha below this (0..255) is dropped
 PAPER = (242, 238, 230)
 ATTRS = 'dithering="none" automaticPalette="false" packingFormat="png" compress="false"'
@@ -104,10 +107,13 @@ def main():
                *g, xml=xml)
     font_halos("kanji_hours", "halo_k", lambda cid: "%04x" % cid, *g, xml=xml)
     pad = pad_for(args.grow, args.blur)
-    cell = Image.new("L", (SEAL + 2 * pad, SEAL + 2 * pad), 0)
-    ImageDraw.Draw(cell).rounded_rectangle([pad, pad, pad + SEAL - 1, pad + SEAL - 1],
-                                           radius=SEAL // 7, fill=255)
-    save("halo_seal", halo(cell, *g), xml)
+    # each seal's halo follows that seal's own outline (bake_props.py's
+    # prop_seal_<shape>.png), drawn at (seal left - PAD, seal top - PAD)
+    for shape in SEAL_SHAPES:
+        a = Image.open(os.path.join(DRAW_DIR, "prop_seal_%s.png" % shape)).getchannel("A")
+        cell = Image.new("L", (a.width + 2 * pad, a.height + 2 * pad), 0)
+        cell.paste(a, (pad, pad))
+        save("halo_seal_" + shape, halo(cell, *g), xml)
     with open(os.path.join(DRAW_DIR, "halo.xml"), "w", newline="\n") as f:
         f.write('<drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
                 'xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/'

@@ -45,6 +45,10 @@
     <bitmap id="HaloK5341Night" filename="halo_k5341_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="HaloK5eff" filename="halo_k5eff.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="HaloK5effNight" filename="halo_k5eff_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="HaloSeal" filename="halo_seal.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="HaloSealNight" filename="halo_seal_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="HaloSealOval" filename="halo_seal_oval.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="HaloSealOvalNight" filename="halo_seal_oval_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="HaloSealRect" filename="halo_seal_rect.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="HaloSealRectNight" filename="halo_seal_rect_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="HaloSealSquare" filename="halo_seal_square.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="HaloSealSquareNight" filename="halo_seal_square_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

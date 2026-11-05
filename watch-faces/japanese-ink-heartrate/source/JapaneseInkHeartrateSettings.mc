@@ -14,6 +14,8 @@ class JapaneseInkHeartrateSettingsMenu extends WatchUi.Menu2 {
             settingBool("trueHrOverlay", true), null));
         addItem(new WatchUi.ToggleMenuItem("Red seal = HR", "Off: the date", :sealHr,
             settingBool("sealHr", true), null));
+        addItem(new WatchUi.ToggleMenuItem("Weather", "Rain, snow, wind", :weather,
+            settingBool("weather", true), null));
         addItem(new WatchUi.MenuItem("Night from",
             hourLabel(settingHour("nightStart", 21)), :nightStart, null));
         addItem(new WatchUi.MenuItem("Night until",
@@ -40,6 +42,9 @@ class JapaneseInkHeartrateSettingsDelegate extends WatchUi.Menu2InputDelegate {
                 (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :sealHr) {
             Application.Properties.setValue("sealHr",
+                (item as WatchUi.ToggleMenuItem).isEnabled());
+        } else if (id == :weather) {
+            Application.Properties.setValue("weather",
                 (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :nightStart || id == :nightEnd) {
             var key = (id == :nightStart) ? "nightStart" : "nightEnd";

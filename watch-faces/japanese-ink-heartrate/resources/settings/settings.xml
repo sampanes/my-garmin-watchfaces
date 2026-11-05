@@ -5,6 +5,9 @@
     <setting propertyKey="@Properties.sealHr" title="@Strings.SettingSealHr">
         <settingConfig type="boolean" />
     </setting>
+    <setting propertyKey="@Properties.weather" title="@Strings.SettingWeather">
+        <settingConfig type="boolean" />
+    </setting>
     <setting propertyKey="@Properties.nightStart" title="@Strings.SettingNightStart">
         <settingConfig type="numeric" min="0" max="24" />
     </setting>

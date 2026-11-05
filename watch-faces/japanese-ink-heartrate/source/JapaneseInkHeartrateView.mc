@@ -244,8 +244,15 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         var night = mScene.isNight();
         var count = hourGlyphs.size();
         var sealSize = (width * 85) / 1000;
-        var sealX = colX - (sealSize / 2);
         var sealY = (height * 465) / 1000;
+        var sealCy = sealY + (sealSize / 2);
+        // Artist's seal from the sheet, centered where the drawn square was,
+        // live HR inside in the carved seal digits: the oval while the HR
+        // rests near the baseline, the rectangle once it works (Scene sealWork).
+        // With "Red seal = HR" off: the square, carrying the date.
+        var showHr = mScene.sealShowsHr();
+        var shape = !showHr ? PROP_SEAL_SQUARE
+                    : (mScene.sealWork() ? PROP_SEAL_RECT : PROP_SEAL_OVAL);
 
         // Where every glyph lands: the hour glyphs one per line, the minutes
         // one glyph at a time from a pen centred on the pair, each as
@@ -281,9 +288,11 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
                 dc.drawBitmap((p[1] as Lang.Number) - HALO_PAD, (p[2] as Lang.Number) - HALO_PAD,
                               halo(slot, glyph + (night ? "n" : "d"), rez));
             }
-            dc.drawBitmap(sealX - HALO_PAD, sealY - HALO_PAD,
-                          halo(4, night ? "n" : "d",
-                               night ? Rez.Drawables.HaloSealNight : Rez.Drawables.HaloSeal));
+            // the seal's halo follows that seal's outline (gen_halo.py)
+            var sw = propW()[shape];
+            var sh = propH()[shape];
+            dc.drawBitmap(colX - (sw / 2) - HALO_PAD, sealCy - (sh / 2) - HALO_PAD,
+                          halo(4, shape.toString() + (night ? "n" : "d"), sealHaloRez(shape, night)));
         }
         if (isAod) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
@@ -300,13 +309,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             return;
         }
 
-        // Artist's seal from the sheet, centered where the drawn square was,
-        // live HR inside in the carved seal digits: the oval while the HR
-        // rests near the baseline, the rectangle once it works (Scene sealWork).
-        // With "Red seal = HR" off: the square, carrying the date.
-        var showHr = mScene.sealShowsHr();
-        var shape = !showHr ? PROP_SEAL_SQUARE
-                    : (mScene.sealWork() ? PROP_SEAL_RECT : PROP_SEAL_OVAL);
+        // the seal itself (shape chosen above)
         var key = shape.toString() + (night ? "n" : "d");
         if (mSealBmp == null || !key.equals(mSealKey)) {
             mSealBmp = null;
@@ -324,7 +327,6 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             dc.drawBitmap(colX - mSealW / 2, sealY + sealSize / 2 - mSealH / 2, sealBmp);
         }
 
-        var sealCy = sealY + (sealSize / 2);
         dc.setColor(0xF4EEE2, Graphics.COLOR_TRANSPARENT);
         if (showHr) {
             var hrText = currentHeartRateText();
@@ -342,6 +344,17 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
                              top.length());
             }
         }
+    }
+
+    // The halo for a seal shape (gen_halo.py halo_seal_<shape>).
+    function sealHaloRez(shape as Lang.Number, night as Lang.Boolean) as Lang.ResourceId {
+        if (shape == PROP_SEAL_RECT) {
+            return night ? Rez.Drawables.HaloSealRectNight : Rez.Drawables.HaloSealRect;
+        }
+        if (shape == PROP_SEAL_SQUARE) {
+            return night ? Rez.Drawables.HaloSealSquareNight : Rez.Drawables.HaloSealSquare;
+        }
+        return night ? Rez.Drawables.HaloSealOvalNight : Rez.Drawables.HaloSealOval;
     }
 
     // The seal's text centered on (cx, cy), one glyph at a time, each moved

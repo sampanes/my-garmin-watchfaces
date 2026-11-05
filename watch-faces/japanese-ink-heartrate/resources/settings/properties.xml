@@ -6,6 +6,9 @@
     <!-- The red seal under the time carries the live HR; false = the date,
          month over day. -->
     <property id="sealHr" type="boolean">true</property>
+    <!-- Rain, snow, a storm or wind painted over the scene, from the
+         phone's current conditions. -->
+    <property id="weather" type="boolean">true</property>
     <!-- Night mode window (hours, 0-24): black paper, pale ink. Equal = off. -->
     <property id="nightStart" type="number">21</property>
     <property id="nightEnd" type="number">6</property>

@@ -331,6 +331,32 @@ SEAL_WORK = 30.0           # bpm over the resting baseline that turns the seal r
 # center (month over day).
 SEAL_NUDGE = [(0, -1), (0, 1), (-1, 0), (0, 2)]
 SEAL_DATE_DY = (-8, 9)
+# The weather (scripts/bake_weather.py): one whole-face painting behind the
+# grasses. Precipitation replaces the sun or moon; wind does not.
+WX_PRECIP = ("rain_light", "rain", "storm", "snow")
+WIND_LEAVES = 8.0          # m/s over which the leaves blow without a "windy" forecast
+# Toybox.Weather condition numbers, by the Scene's weatherForCondition sets
+WX_CONDITIONS = {
+    "storm": (6, 12, 32, 41, 42),                     # thunderstorms, scattered, tornado, hurricane, tropical storm
+    "snow": (4, 7, 16, 17, 18, 19, 21, 34, 48, 50, 51),   # snow, wintry mix, light/heavy, rain-snow, ice, flurries, sleet, ice-snow
+    "rain": (3, 10, 15, 26, 49),                      # rain, hail, heavy rain, heavy showers, freezing rain
+    "rain_light": (11, 13, 14, 24, 25, 31),           # scattered showers, unknown precip, light rain, light showers, showers, drizzle
+    "wind": (5, 36),                                  # windy, squall
+}
+
+
+def weather_veil(condition, wind_ms=None):
+    """Which weather painting shows for a Toybox.Weather condition and wind
+    speed (m/s), or None: the Scene's weatherForCondition plus its wind
+    rule. Order matters: a storm over snow over rain over light rain."""
+    for name in ("storm", "snow", "rain", "rain_light", "wind"):
+        if condition in WX_CONDITIONS[name]:
+            return name
+    if wind_ms is not None and wind_ms >= WIND_LEAVES:
+        return "wind"
+    return None
+
+
 SEAL_HYST = 8.0            # ... and back to the oval this far under that (the watch only)
 
 
@@ -874,7 +900,8 @@ def mid_plane_layout(history, trace=None):
 
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
             hour24=False, overlay=True, foreground=None, month=None, day=None, scene=0,
-            epoch=None, steps_met=False, battery=100.0, resting=None, seal_hr=True):
+            epoch=None, steps_met=False, battery=100.0, resting=None, seal_hr=True,
+            weather=None):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
     Scene fits its stored trace), or None. overlay: draw the true-HR overlay
@@ -903,6 +930,8 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # (the moon after 18:00 until the night window), the night cut in night
     # mode.
     props = prop_rules(layout, minute_of_day, epoch, day_of_month, steps_met, battery)
+    if weather in WX_PRECIP:
+        props["sky"] = []     # the rain or snow replaces the sun or moon
     base = paint_props(base, props["sky"], night)
 
     # 1. the horizon: the far range as a level line at the window's floor
@@ -922,6 +951,9 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 3c. the hiker on a workout's summit; the geese for the step goal
     base = paint_props(base, props["summit"], night)
     base = paint_props(base, props["air"], night)
+    # 3d. the weather (weather_veil's pick), behind the grasses
+    if weather:
+        base = paste_at(base, load("wx_%s%s.png" % (weather, sfx)), 0, 0)
 
     # 4. the near range (round 5): a near hill in each third of the screen
     #    the masses leave empty, under the half-way line, to balance the
@@ -986,20 +1018,22 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     for font, g, x, top in placed:
         name = ("halo_k%04x" % ord(g)) if font is kanji_font else ("halo_d" + g)
         base = paste_at(base, load(name + sfx + ".png"), x - HALO_PAD, top - HALO_PAD)
-    base = paste_at(base, load("halo_seal" + sfx + ".png"), sx0 - HALO_PAD, sy0 - HALO_PAD)
-    for font, g, x, top in placed:
-        base = font.draw_left(base, g, x, top, ink)
-    # the seal from the sheet, centered where the drawn square was: the oval
-    # at rest, the rectangle at work (seal_shape)
-    # (seal_hr False: the square, carrying the date, month over day)
+    # the seal's halo follows the seal drawn (its shape decided here, as the View does)
     if seal_hr:
         shape = seal_shape(hr_now, resting if resting else layout["floor"])
     else:
         shape = "seal_square"
     sw, sh = {p["name"]: (p["w"], p["h"]) for p in prop_table()["props"]}[shape]
-    base = paste_at(base, prop_image(shape, night), cx - sw // 2, sy0 + seal // 2 - sh // 2)
-    paper = (244, 238, 226)
     scy = sy0 + seal // 2
+    base = paste_at(base, load("halo_%s%s.png" % (shape, sfx)),
+                    cx - sw // 2 - HALO_PAD, scy - sh // 2 - HALO_PAD)
+    for font, g, x, top in placed:
+        base = font.draw_left(base, g, x, top, ink)
+    # the seal from the sheet, centered where the drawn square was: the oval
+    # at rest, the rectangle at work (seal_shape)
+    # (seal_hr False: the square, carrying the date, month over day)
+    base = paste_at(base, prop_image(shape, night), cx - sw // 2, scy - sh // 2)
+    paper = (244, 238, 226)
     if not seal_hr:
         mo, dd = "%02d" % (month or datetime.date.today().month), "%02d" % day_of_month
         base = seal_font.draw_nudged(base, mo, cx, scy + SEAL_DATE_DY[0], paper)
