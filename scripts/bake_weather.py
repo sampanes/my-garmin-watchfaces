@@ -9,16 +9,20 @@ prompts and verdicts in art/sheets/PROMPTS.md), each painted for the whole
 face and cut whole-frame by scripts/cut_art_kit.py; the snow was painted
 white on black and cut by brightness. John's picks (11-05):
 
-    rain_light  ChatGPT's rain thinned to KEEP of its strokes (whole strokes
-                dropped, none redrawn): drizzle, light rain, showers
-    rain        ChatGPT's rain as painted: rain, heavy rain
+    rain_light  ChatGPT's sparse rain (rain2-b) at a tone: drizzle, light
+                rain, showers
+    rain        the same rain doubled (John: "double it in some clever way",
+                each copy fainter): over it the same painting enlarged
+                NEAR_SCALE, bigger strokes for nearer rain; never mirrored
+                (a mirror would slant it the other way)
     storm       ChatGPT's storm, lightning and all, faded to TONE: storms
     snow        Gemini's snow; by day over a grey WASH, the ink painter's
                 way of letting white flakes show on white paper
     wind        Gemini's maple leaves on the wind: windy, or a wind over
                 WIND_LEAVES (the Scene)
 
-One copy, sized to the face: never tiled, never mirrored (John). Nothing
+Sized to the face, never tiled, never mirrored (John); only the heavy rain
+lays its one painting twice. Nothing
 is kept clear for the clock: the inscription's paper halos already fade
 whatever lies under the time (John: a blank corner "looks like we missed a
 spot"). Which one shows is the Scene's weatherForCondition /
@@ -32,11 +36,10 @@ Writes into watch-faces/japanese-ink-heartrate:
     resources/drawables/weather.xml           their bitmap declarations
     source/JapaneseInkHeartrateWeather.mc     the indices and the loader
 
-    py -3.11 scripts/bake_weather.py           bake and write tables (needs scipy)
+    py -3.11 scripts/bake_weather.py           bake and write tables
     py -3.11 scripts/bake_weather.py --check   exit 1 if a table is stale
 """
 import os
-import random
 import sys
 
 import numpy as np
@@ -49,17 +52,20 @@ CUTS = os.path.join(FACE, "art", "cuts")
 SRC = os.path.join(FACE, "source")
 W = 416
 
-# name, cut set, alpha tone, share of strokes kept, day sky wash (alpha share)
+# name, layers [(cut set, alpha tone, how)], day sky wash (alpha share).
+# how: "" as painted, "rot180" turned half round (same slant, strokes
+# elsewhere), "near" enlarged NEAR_SCALE about the center (bigger strokes,
+# nearer rain), "shift" moved SHIFT of the face and wrapped.
 WEATHER = [
-    ("rain_light", "rain-b", 1.0, 0.35, 0.0),
-    ("rain", "rain-b", 1.0, 1.0, 0.0),
-    ("storm", "storm-b", 0.55, 1.0, 0.0),
-    ("snow", "snowfall-a", 1.0, 1.0, 0.22),
-    ("wind", "wind-a", 1.0, 1.0, 0.0),
+    ("rain_light", [("rain2-b", 0.8, "")], 0.0),
+    ("rain", [("rain2-b", 0.6, ""), ("rain2-b", 0.7, "near")], 0.0),
+    ("storm", [("storm-b", 0.55, "")], 0.0),
+    ("snow", [("snowfall-a", 1.0, "")], 0.22),
+    ("wind", [("wind-a", 1.0, "")], 0.0),
 ]
+NEAR_SCALE = 1.6
+SHIFT = (0.37, 0.21)
 WASH = (90, 86, 80)    # the snow day's grey sky, a warm ink grey
-KEEP_SEED = 5          # which strokes the thinned rain keeps (repeatable)
-STROKE_FLOOR = 8       # alpha (0..255) a stroke must reach to count as one
 PALETTE = 256
 
 
@@ -71,30 +77,30 @@ def cut_path(cut, night):
     return p
 
 
-def keep_mask(alpha, keep):
-    """1 over the strokes kept, 0 over the dropped ones; each stroke whole."""
-    from scipy import ndimage
-    lab, n = ndimage.label(alpha >= STROKE_FLOOR)
-    rnd = random.Random(KEEP_SEED)
-    kept = np.zeros(n + 1, dtype=bool)
-    kept[1:] = [rnd.random() < keep for _ in range(n)]
-    # every pixel belongs to its nearest stroke, so the faint edges go with it
-    _, (iy, ix) = ndimage.distance_transform_edt(lab == 0, return_indices=True)
-    return kept[lab[iy, ix]].astype(float)
+def layer(cut, night, tone, how):
+    im = Image.open(cut_path(cut, night)).convert("RGBA").resize((W, W), Image.LANCZOS)
+    if how == "rot180":
+        im = im.rotate(180)
+    elif how == "near":
+        big = im.resize((round(W * NEAR_SCALE), round(W * NEAR_SCALE)), Image.LANCZOS)
+        o = (big.width - W) // 2
+        im = big.crop((o, o, o + W, o + W))
+    elif how == "shift":
+        from PIL import ImageChops
+        im = ImageChops.offset(im, round(SHIFT[0] * W), round(SHIFT[1] * W))
+    p = np.asarray(im, dtype=float).copy()
+    p[..., 3] *= tone
+    return Image.fromarray(np.round(p).astype(np.uint8), "RGBA")
 
 
-def bake_one(cut, tone, keep, wash):
-    day = Image.open(cut_path(cut, False)).convert("RGBA").resize((W, W), Image.LANCZOS)
-    night = Image.open(cut_path(cut, True)).convert("RGBA").resize((W, W), Image.LANCZOS)
-    mask = keep_mask(np.asarray(day)[..., 3], keep) if keep < 1.0 else 1.0
+def bake_one(layers, wash):
     out = []
-    for im, is_day in ((day, True), (night, False)):
-        p = np.asarray(im, dtype=float).copy()
-        p[..., 3] *= mask * tone
-        im = Image.fromarray(np.round(p).astype(np.uint8), "RGBA")
-        if is_day and wash > 0:
-            under = Image.new("RGBA", (W, W), WASH + (int(round(255 * wash)),))
-            im = Image.alpha_composite(under, im)
+    for night in (False, True):
+        im = Image.new("RGBA", (W, W), (0, 0, 0, 0))
+        if not night and wash > 0:
+            im = Image.new("RGBA", (W, W), WASH + (int(round(255 * wash)),))
+        for cut, tone, how in layers:
+            im = Image.alpha_composite(im, layer(cut, night, tone, how))
         out.append(im)
     return out
 
@@ -110,11 +116,11 @@ def camel(s):
 
 
 def bake_all():
-    for name, cut, tone, keep, wash in WEATHER:
-        day, night = bake_one(cut, tone, keep, wash)
+    for name, layers, wash in WEATHER:
+        day, night = bake_one(layers, wash)
         for im, sfx in ((day, ""), (night, "_night")):
             pack(im).save(os.path.join(DRAW, "wx_%s%s.png" % (name, sfx)), optimize=True)
-        print("baked wx_%s from %s" % (name, cut))
+        print("baked wx_%s from %s" % (name, " + ".join(l[0] + (" " + l[2] if l[2] else "") for l in layers)))
 
 
 def tables():

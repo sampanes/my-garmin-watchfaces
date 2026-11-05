@@ -66,6 +66,7 @@ RECIPE = {
     "sealdigits": ("5x2", SEAL_DIGITS, "", "", False),
     # round 10: one image per weather, composed for the whole face
     "rain": ("1x1", "rain", "", "", True),
+    "rain2": ("1x1", "rain2", "", "", True),
     "storm": ("1x1", "storm", "", "", True),
     "snowfall": ("1x1", "snowfall", "", "", True),
     "wind": ("1x1", "wind", "", "", True),
