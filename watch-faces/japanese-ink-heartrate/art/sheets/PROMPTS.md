@@ -606,3 +606,84 @@ leak one sheet's subjects into another.
   cell-sized pieces go too faint to read, by day and worse at night
   (`~/Downloads`-only mock, three depths: behind the horizon, behind the
   grasses, over all but the time column).
+
+## Round 10 (2026-11-05, to send): whole-face weather, one image each
+
+John (11-05): weather should be able to cover the face, from ONE image that
+fits the whole place, never a piece tiled or mirrored twice; rain falls one
+way, top right to bottom left; leaves mean wind. The round 9 pieces fail it:
+they are cell-sized clusters (tiled they go faint, one cell blown up makes
+the flakes huge), and the white-paper snow shows the mountain through every
+flake. So the snow is asked on black: a cut by brightness lifts white
+flakes off black cleanly, where a white-is-transparent cut cannot (cutting
+round 9's snow solid fused nearby flakes into white webs). Send each to both
+painters, a new chat each; for winter, follow the wind prompt in the same
+chat with "the same, but grey dry winter leaves, no red".
+
+Depth (behind the horizon, behind the grasses, over all) is undecided:
+the mock (`~/Downloads/ink-face-weather-one-image.png`) has rain at all
+three.
+
+### 10.1 Rain
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, dry-brush grasses in the foreground, a red artist's seal. The look is restrained, quiet and traditional. Not anime, not cartoon, not colorful watercolor.
+
+I need ONE image that I will lay over that whole landscape as weather. Rules:
+- One square PNG, 2048x2048. Not a grid, not a sprite sheet: a single image whose subject is spread evenly over the entire square, right up to every edge, as if it continues past them.
+- Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no shading.
+- No landscape, ground, horizon, mountains, clouds, sky color, frame, border, text, seal or watermark: only the weather itself.
+- Keep the upper-left area (the left third, top half) noticeably sparser than the rest: the clock sits there.
+- Ink only: black and greys with real brush character. No color.
+- It must read at thumbnail size without becoming busy: favor fewer, bolder marks over many fine ones.
+
+The weather: steady rain. About 70 straight brush strokes of rain, every one falling in the same direction, from top right to bottom left, at the same angle (about 20 degrees off vertical): no crossing strokes, no wind swirls. Strokes vary in length and in grey (some near-black, most mid grey) and are thick enough to see when the whole image is shrunk to 416 pixels. No lightning, no puddles, no splashes.
+```
+
+### 10.2 Storm
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, dry-brush grasses in the foreground, a red artist's seal. The look is restrained, quiet and traditional. Not anime, not cartoon, not colorful watercolor.
+
+I need ONE image that I will lay over that whole landscape as weather. Rules:
+- One square PNG, 2048x2048. Not a grid, not a sprite sheet: a single image whose subject is spread evenly over the entire square, right up to every edge, as if it continues past them.
+- Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no shading.
+- No landscape, ground, horizon, mountains, clouds, sky color, frame, border, text, seal or watermark: only the weather itself.
+- Keep the upper-left area (the left third, top half) noticeably sparser than the rest: the clock sits there.
+- Ink only: black and greys with real brush character. No color.
+- It must read at thumbnail size without becoming busy: favor fewer, bolder marks over many fine ones.
+
+The weather: a heavy storm. About 120 bold dark brush strokes of rain, all falling in the same direction, from top right to bottom left, at the same angle (about 20 degrees off vertical): no crossing strokes. On the right side, one jagged lightning bolt in solid black ink from the top edge about halfway down. No clouds, no ground.
+```
+
+### 10.3 Snow (on black, on purpose)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, dry-brush grasses in the foreground, a red artist's seal. The look is restrained, quiet and traditional. Not anime, not cartoon, not colorful watercolor.
+
+I need ONE image that I will lay over that whole landscape as weather. Rules:
+- One square PNG, 2048x2048. Not a grid, not a sprite sheet: a single image whose subject is spread evenly over the entire square, right up to every edge, as if it continues past them.
+- Background pure flat BLACK (#000000) everywhere, on purpose: the snow is the only light thing in the image, so I can lift it off the black.
+- No landscape, ground, horizon, mountains, clouds, sky color, frame, border, text, seal or watermark: only the weather itself.
+- Keep the upper-left area (the left third, top half) noticeably sparser than the rest: the clock sits there.
+- Ink only: black and greys with real brush character. The snow is white and light greys only; no color.
+- It must read at thumbnail size without becoming busy: favor fewer, bolder marks over many fine ones.
+
+The weather: gentle snowfall. About 70 snowflakes as soft round dabs of white ink, solid in the middle and feathered at the edge, a few larger ones (the nearest) and many small ones (far away), drifting very slightly from top right to bottom left. No crystal or star shapes, no rings, no outlines: soft solid dots of white, like flakes in a sumi-e winter scene.
+```
+
+### 10.4 Wind (maple leaves)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, dry-brush grasses in the foreground, a red artist's seal. The look is restrained, quiet and traditional. Not anime, not cartoon, not colorful watercolor.
+
+I need ONE image that I will lay over that whole landscape as weather. Rules:
+- One square PNG, 2048x2048. Not a grid, not a sprite sheet: a single image whose subject is spread evenly over the entire square, right up to every edge, as if it continues past them.
+- Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no shading.
+- No landscape, ground, horizon, mountains, clouds, sky color, frame, border, text, seal or watermark: only the weather itself.
+- Keep the upper-left area (the left third, top half) noticeably sparser than the rest: the clock sits there.
+- Ink only: black and greys with real brush character. The ONLY color allowed is a vermilion red (#B83A2E) on some leaves.
+- It must read at thumbnail size without becoming busy: favor fewer, bolder marks over many fine ones.
+
+The weather: wind. About 12 small loose maple leaves blown along one gusting path from the top right to the bottom left of the image, tumbling at different angles, four of them vermilion red (#B83A2E), the rest grey ink. Each leaf SMALL: no wider than one twentieth of the image width. A few faint dry-brush wind streaks along the same path are welcome. No branches, no tree.
+```
