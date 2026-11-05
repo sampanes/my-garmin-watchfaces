@@ -521,15 +521,17 @@ measured mean `r = 0.43`, correct peak count in `2/13` synthetic windows, a
 `34 px` mean data-to-ink gap, and `98 px` of painted relief for nearly flat
 resting HR.
 
-Since then the relief was rebuilt twice (PROCEDURE.md, 2026-11-02 and
-2026-11-03): every run of buckets standing over the window's floor is its own
-mass, one whole mountain chosen from a painted shape library and sunk until
-its crest sits on the run's peak. The newest committed report,
-`common/fidelity/2026-11-03_1623_fidelity.md`, measures mean `r = 0.72`,
-correct peak count in `11/13`, a `7 px` mean gap, a 10 min mean peak-timing
-error, and `1 px` of flat-rest relief. The gap, timing and flat-rest targets
-below are met; `r >= 0.80`, episode precision and recall, and the determinism
-and missing-span checks are still open.
+Since then the relief was rebuilt three times (PROCEDURE.md, 2026-11-02,
+2026-11-03 and 2026-11-05): every run of buckets standing over the window's
+floor is its own mass, one whole mountain chosen from the shape library (the
+24 ChatGPT mountains since 2026-11-05), stretched in width to the run and
+sunk until its crest sits on the run's peak. The newest committed report,
+`common/fidelity/2026-11-05_1059_fidelity.md`, measures mean `r = 0.84` over
+all cases and `0.91` over the non-flat ones, correct peak count in `11/13`, a
+`5 px` mean gap, a 13 min mean peak-timing error, and `1 px` of flat-rest
+relief. The gap, timing, flat-rest and `r >= 0.80` targets below are met;
+episode precision and recall, and the determinism and missing-span checks
+are still open.
 
 ### Deliverable
 A renderer revision in which:

@@ -58,10 +58,12 @@ using Toybox.WatchUi;
 // 2026-11-03, later: the shape library. John, on a study that assembled
 // mountains from brush primitives: whole known shapes beat bespoke ones, so
 // have many. Each mass is now one of the library's whole painted mountains
-// (scripts/gen_shape_library.py: 26 planes, 300 px tall, skirt at the
-// bottom, day and night cutouts), CHOSEN per run by the staged fitter against the
-// stored trace and drawn at its baked size with its crest on the run's
-// peak: sunk, never stretched, its foot behind the bank and the mist. The
+// (scripts/gen_shape_library.py: since 2026-11-05 the 24 ChatGPT mountains
+// from the art sheets, 300 px tall, skirt at the bottom, day and night
+// cutouts), CHOSEN per run by the staged fitter against the stored trace
+// and drawn at its baked height with its crest on the run's peak: sunk, its
+// width stretched to the run (FIT_STRETCH_LO..HI, 2026-11-05), its foot
+// behind the bank and the mist. The
 // profile table is generated (JapaneseInkHeartrateShapes.mc), the same
 // numbers the mock reads (scripts/shape_table.json). The fit is plain
 // floating point; the mock's is double precision, so a near tie between two
@@ -131,6 +133,7 @@ class JapaneseInkHeartrateScene {
     var mFitBestErr as Lang.Float = 0.0;
     var mFitBestIndex as Lang.Number = -1;
     var mFitBestLeft as Lang.Float = 0.0;
+    var mFitBestStretch as Lang.Float = 1.0;
 
     // The near hills by index (P_NEAR*): width/height of the PNG and the
     // painted crest inside it (alpha >= 40, measured 2026-11-03 from the day
@@ -193,6 +196,8 @@ class JapaneseInkHeartrateScene {
     const FIT_OVER_TOL = 3.0;     // px a shape may stand over the data before it pays extra ...
     const FIT_OVER_K = 2.0;       // ... this much per px: the art must not claim more effort
     const FIT_APEX_K = 1.0;       // error per px between a shape's apex and the run's summit
+    const FIT_STRETCH_LO = 0.67;  // a shape's width is stretched to its run's width, within ...
+    const FIT_STRETCH_HI = 1.5;   // ... this (compose_preview.FIT_STRETCH)
     const FOOT_Y = 0.80;          // a placed shape's bottom edge must reach this far down (H)
     const LIB_W = 416.0;          // the screen width the library was baked for
     const TREE_MAX = 3;           // ridge trees per window, at most ...
@@ -269,9 +274,9 @@ class JapaneseInkHeartrateScene {
     const PROBE = false;
     const PROBE_GROUND = 0x5A5550;
     const PROBE_INK = 0x18120E;
-    const PROBE_B_W = 300.0;     // shape_peak_300_cut.png
+    const PROBE_B_W = 439.0;     // shape_peak_cut.png
     const PROBE_B_H = 300.0;
-    const PROBE_D_W = 180.0;     // shape_spire_180_cut.png
+    const PROBE_D_W = 310.0;     // shape_spire_cut.png
     const PROBE_D_H = 300.0;
     var mProbeFull as Graphics.BufferedBitmap?;
     var mProbePartial as Graphics.BufferedBitmap?;
@@ -652,7 +657,9 @@ class JapaneseInkHeartrateScene {
         return c;
     }
 
-    // Score one library shape for the current run. Shapes and placements are
+    // Score one library shape for the current run, its width stretched so
+    // that the part of it over the far bank is as wide as the run (within
+    // FIT_STRETCH_LO..HI; the height never changes). Shapes and placements are
     // visited in exactly the same order as compose_preview.fit_shape. The
     // strict comparison keeps the first candidate on a tie, even though the
     // search is now spread across updates. fitCost is inlined in the hot loop
@@ -664,14 +671,25 @@ class JapaneseInkHeartrateScene {
         if (smpX == null || smpY == null || base == null) { return; }
 
         var s = mFitScale;
-        var sw = mShapeW[i] * s;
-        var ax = mShapeAx[i] * s;
         var top0 = mFitCrestY - mShapeAy[i] * s;
         if (top0 + mShapeH[i] * s < FOOT_Y * mFitHeight) { return; }
 
         var tops = mShapeTop;
         var slides = mFitSlide.size();
         var topBase = i * SHAPE_K;
+
+        // the stretch: the shape's columns over the far bank span the run
+        var vis = 0;
+        for (var k = 0; k < SHAPE_K; k++) {
+            var tk = tops[topBase + k];
+            if (tk >= 0 && top0 + tk * s < mFitFloorY) { vis++; }
+        }
+        if (vis < 1) { vis = 1; }
+        var st = (mFitRunX1 - mFitRunX0) * SHAPE_K / (vis * mShapeW[i] * s);
+        if (st < FIT_STRETCH_LO) { st = FIT_STRETCH_LO; }
+        if (st > FIT_STRETCH_HI) { st = FIT_STRETCH_HI; }
+        var sw = mShapeW[i] * s * st;
+        var ax = mShapeAx[i] * s * st;
         for (var p = 0; p <= slides; p++) {
             var left = (p < slides) ? mFitSummitX + mFitSlide[p] - ax :
                        0.5 * (mFitRunX0 + mFitRunX1) - 0.5 * sw;
@@ -703,6 +721,7 @@ class JapaneseInkHeartrateScene {
                 mFitBestErr = err;
                 mFitBestIndex = i;
                 mFitBestLeft = left;
+                mFitBestStretch = st;
             }
         }
     }
@@ -794,7 +813,7 @@ class JapaneseInkHeartrateScene {
         mJobState = JOB_FITTING;
     }
 
-    // Cache the geometry shared by all 26 candidates for one run.
+    // Cache the geometry shared by all SHAPE_COUNT candidates for one run.
     function prepareFitRun() as Void {
         var runs = mFitRuns;
         var smpX = mFitSmpX;
@@ -826,6 +845,7 @@ class JapaneseInkHeartrateScene {
         mFitBestErr = 0.0;
         mFitBestIndex = -1;
         mFitBestLeft = 0.0;
+        mFitBestStretch = 1.0;
     }
 
     // Advance a fixed number of candidates. A chunk may finish one run and
@@ -855,9 +875,10 @@ class JapaneseInkHeartrateScene {
             var si = mFitBestIndex;
             var left = mFitBestLeft;
             var s = mFitScale;
+            var sx = s * mFitBestStretch;
             var cy = mFitCrestY;
-            masses.add([left, cy - mShapeAy[si] * s, mShapeW[si] * s, mShapeH[si] * s,
-                        left + mShapeAx[si] * s, cy, si.toFloat(), 0.0,
+            masses.add([left, cy - mShapeAy[si] * s, mShapeW[si] * sx, mShapeH[si] * s,
+                        left + mShapeAx[si] * sx, cy, si.toFloat(), 0.0,
                         (mFitRunIndex == mFitHost) ? 1.0 : 0.0] as Lang.Array<Lang.Float>);
         }
 
@@ -1509,7 +1530,7 @@ class JapaneseInkHeartrateScene {
         var bX2 = bX + bW + (w * 0.04).toNumber();
         probeFrame(dc, bX, bY, bW, bH);
         probeFrame(dc, bX2, bY, bW, bH);
-        var host = loadShape(SHAPE_PEAK_300, false);
+        var host = loadShape(SHAPE_PEAK, false);
         if (host != null) {
             var hostH = bH.toFloat();
             var hostW = hostH * (PROBE_B_W / PROBE_B_H);
@@ -1574,7 +1595,7 @@ class JapaneseInkHeartrateScene {
         var dX2 = dX + dW + (w * 0.03).toNumber();
         probeFrame(dc, dX, dY, dW, dH);
         probeFrame(dc, dX2, dY, dW, dH);
-        var guest = loadShape(SHAPE_SPIRE_180, false);
+        var guest = loadShape(SHAPE_SPIRE, false);
         if (guest != null) {
             var gH = dH.toFloat() * 0.9;
             var gW = gH * (PROBE_D_W / PROBE_D_H);

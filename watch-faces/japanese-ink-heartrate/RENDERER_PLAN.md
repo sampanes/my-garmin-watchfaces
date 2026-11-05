@@ -1,6 +1,6 @@
 # Japanese Ink Heartrate — Renderer Plan
 
-Last updated: 2026-11-05 (whole library mountains stay the silhouette; fidelity numbers at the 2026-11-03 shape library)
+Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretched to the run; non-flat r 0.91)
 
 > **2026-11-05 ART DECISION -- no procedurally generated art anymore (CURRENT).**
 > Nothing drawn by the watch's code or painted by our own scripts: every
@@ -11,10 +11,11 @@ Last updated: 2026-11-05 (whole library mountains stay the silhouette; fidelity 
 > `gen_ink_layers.py` with new script-made art: the shape library is to be cut
 > from the mountain sheets and measured into the same profile table, and the
 > generated planes (horizon, mist, foreground) replaced by sheet pieces after
-> it. A mock-only test (2026-11-05) with the 48 cut sheet mountains, each
-> stretched in width to its run (0.67x to 1.5x), scored non-flat `r` 0.89
-> against 0.78 for today's library; its first-pass scale painted the cliffs
-> too big and too dark.
+> it. Done for the mountains the same day (PROCEDURE.md §10, 2026-11-05):
+> the library is the 24 ChatGPT mountains, scaled 1.2x, 70% ink, each
+> stretched in width to its run (0.67x to 1.5x); non-flat `r` 0.91 against
+> 0.80 for the painted library. The far range, mist, near hills and
+> foreground are still script-made: they come next.
 
 > **2026-11-05 DECISION -- whole library mountains stay the silhouette (CURRENT).**
 > The 2026-11-03 direction stands: each run of buckets over the window's floor
@@ -27,7 +28,8 @@ Last updated: 2026-11-05 (whole library mountains stay the silhouette; fidelity 
 > mask a painted bitmap to a polygon), and the crest is what the eye reads
 > first; the wrist verdicts (zigzag horizon, primitives assembled into a shape
 > look worse than whole shapes) count against it. The open number is `r`
-> (0.72, target 0.80), to be raised through the fit and the library, not by
+> (0.72 then, target 0.80; 0.91 non-flat since the ChatGPT library and the
+> width stretch, 2026-11-05), to be raised through the fit and the library, not by
 > drawing the curve.
 
 > **2026-11-01 PIVOT -- measured HR-shape fidelity (CURRENT MILESTONE).** The committed
@@ -45,8 +47,9 @@ Last updated: 2026-11-05 (whole library mountains stay the silhouette; fidelity 
 > of the milestone. [The fidelity reports](../../common/fidelity/README.md) are
 > the record. Since then (2026-11-02 round 6, 2026-11-03 the shape library;
 > see PROCEDURE.md) each run of buckets over the window's floor is one whole
-> library mountain sunk onto the run's peak, and the newest report measures
-> `r = 0.72`, `11/13`, a `7 px` gap and `1 px` of flat-rest relief.
+> library mountain sunk onto the run's peak, and the newest report (2026-11-05
+> 10:59, the ChatGPT library) measures `r = 0.84` over all cases (`0.91`
+> non-flat), `11/13`, a `5 px` gap and `1 px` of flat-rest relief.
 
 > **2026-10-27 PIVOT -- baked benchmark planes (CURRENT ASSET BASELINE).** The 2026-06
 > complete-painting kit below read as airbrush (two blurred towers) in the sim

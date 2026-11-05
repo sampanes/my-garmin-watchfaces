@@ -17,11 +17,13 @@ the screen the masses leave empty, under the half-way line, in front of
 them, its feet in the mist. Every mass is a paper cutout, so the horizon
 stays straight and hides behind it.
 
-The shape library (2026-11-03): each mass is one whole painted mountain
-CHOSEN from scripts/gen_shape_library.py's library (fit_shape), drawn at
-its baked size and sunk until its crest sits on the run's peak; it is never
-stretched. The library's profile table (scripts/shape_table.json) is the
-same numbers the Scene compiles (JapaneseInkHeartrateShapes.mc).
+The shape library (2026-11-03; the 24 ChatGPT mountains since 2026-11-05):
+each mass is one whole painted mountain CHOSEN from
+scripts/gen_shape_library.py's library (fit_shape), drawn at its baked
+height, its width stretched to the run (FIT_STRETCH), and sunk until its
+crest sits on the run's peak. The library's profile table
+(scripts/shape_table.json) is the same numbers the Scene compiles
+(JapaneseInkHeartrateShapes.mc).
 
 The inscription uses the baked BMFont pairs in resources/fonts (read from the
 .fnt exactly as the resource compiler reads them), so the preview's digits
@@ -176,6 +178,7 @@ FIT_OVER_K = 2.0         # ... this much per px: the art must not claim more eff
 FOOT_Y = 0.80            # a placed shape's bottom edge must reach this far down (H), under the mist
 FIT_SLIDE = (0.0, -12.0, 12.0, -24.0, 24.0)   # px: the apex tried this far from the run's summit
 FIT_APEX_K = 1.0         # error per px between the shape's apex and the run's summit (its minute)
+FIT_STRETCH = (0.67, 1.5)   # a shape's width is stretched to its run's width, within this
 NEAR_CREST_Y = 0.60      # the near range's crest, under the lowest horizon (0.58 H)
 NEAR_H = 0.21            # its height (fraction of H): the foot under the mist and foreground ...
 NEAR_HR_SPAN = 30.0      # ... up by almost half over this many bpm of its third over the floor
@@ -596,12 +599,16 @@ def fit_cost(py, y, floor_y):
 
 
 def fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y):
-    """The library shape that best paints one run: (error, index, left).
+    """The library shape that best paints one run: (error, index, left,
+    stretch).
 
-    Every shape stands with its crest on the run's peak (cy) and is tried
-    with its apex at the run's summit (sx) and FIT_SLIDE either side of it,
-    and with its middle over the run's middle; FIT_APEX_K per px between
-    apex and summit keeps the painted summit on its minute. Its error is
+    Every shape stands with its crest on the run's peak (cy), its width
+    stretched so that the part of it over the far bank is as wide as the
+    run (within FIT_STRETCH; the watch's drawScaledBitmap does that for
+    free), and is tried with its apex at the run's summit (sx) and
+    FIT_SLIDE either side of it, and with its middle over the run's
+    middle; FIT_APEX_K per px between apex and summit keeps the painted
+    summit on its minute. Its error is
     what it changes: over every sample under it, the cost of the ink's top
     being the shape's profile instead of the far bank (fit_cost), so a long
     shoulder laid over rest pays for itself. A shape whose bottom edge would
@@ -615,20 +622,24 @@ def fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y):
         top0 = cy - sh["ay"]
         if top0 + sh["h"] < FOOT_Y * H:
             continue
-        lefts = [sx + dx - sh["ax"] for dx in FIT_SLIDE]
-        lefts.append(0.5 * (run_x0 + run_x1) - 0.5 * sh["w"])
+        vis = sum(1 for t in sh["top"] if t >= 0 and top0 + t < floor_y)
+        st = (run_x1 - run_x0) * k_cols / (max(vis, 1) * sh["w"])
+        st = min(max(st, FIT_STRETCH[0]), FIT_STRETCH[1])
+        w, ax = sh["w"] * st, sh["ax"] * st
+        lefts = [sx + dx - ax for dx in FIT_SLIDE]
+        lefts.append(0.5 * (run_x0 + run_x1) - 0.5 * w)
         for left in lefts:
-            err = FIT_APEX_K * abs(left + sh["ax"] - sx)
+            err = FIT_APEX_K * abs(left + ax - sx)
             for j, (x, y) in enumerate(samples):
                 d = x - left
-                if d >= sh["w"]:
+                if d >= w:
                     break
                 if d >= 0.0:
-                    t = sh["top"][int(d * k_cols / sh["w"])]
+                    t = sh["top"][int(d * k_cols / w)]
                     if t >= 0 and top0 + t < floor_y:
                         err += fit_cost(top0 + t, y, floor_y) - base[j]
             if best is None or err < best[0]:
-                best = (err, i, left)
+                best = (err, i, left, st)
     return best
 
 
@@ -644,7 +655,7 @@ def mid_plane_layout(history, trace=None):
 
     Each run standing MASS_MIN over the floor gets the library shape that
     fits it best (fit_shape), crest on the run's peak, drawn at its baked
-    size. "vis" is the stretch of the screen where the shape stands over
+    height and "stretch" times its baked width. "vis" is the stretch of the screen where the shape stands over
     the far bank (kept for the record; the near range's cover still counts
     the middle 70% of each mass's bitmap, as in round 6). Draw order: the other masses first (the taller farther),
     the host (the highest crest) last. The near range then takes any third
@@ -679,14 +690,15 @@ def mid_plane_layout(history, trace=None):
         fit = fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y)
         if fit is None:
             continue
-        _, i, left = fit
+        _, i, left, st = fit
         sh = table["shapes"][i]
         top0 = cy - sh["ay"]
+        w, ax = sh["w"] * st, sh["ax"] * st
         cols = [k for k in range(k_cols) if sh["top"][k] >= 0 and top0 + sh["top"][k] < floor_y]
-        vis = ((left + cols[0] * sh["w"] / float(k_cols), left + (cols[-1] + 1) * sh["w"] / float(k_cols))
-               if cols else (left + sh["ax"], left + sh["ax"]))
-        masses.append({"rect": (left, top0, sh["w"], sh["h"]), "crest": (left + sh["ax"], cy),
-                       "plane": sh["name"], "shape": i, "vis": vis, "flip": False,
+        vis = ((left + cols[0] * w / float(k_cols), left + (cols[-1] + 1) * w / float(k_cols))
+               if cols else (left + ax, left + ax))
+        masses.append({"rect": (left, top0, w, sh["h"]), "crest": (left + ax, cy),
+                       "plane": sh["name"], "shape": i, "stretch": st, "vis": vis, "flip": False,
                        "host": r is host, "run": (r["lo"], r["hi"])})
     # depth: the other masses first (the taller farther), the host last
     masses.sort(key=lambda m: (m["host"], m["crest"][1]))

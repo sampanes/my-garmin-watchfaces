@@ -54,12 +54,16 @@ reference they are fitted and scored against, not a ridge drawn on its own.
 Any partial real history remains partial; mock data is reserved for explicit
 simulator/tests.
 
-Where it stands: the newest report (2026-11-03, the shape library: every
-run of buckets over the window's floor is one whole library mountain sunk
-onto the run's peak) measures mean r 0.72, peak count right in 11 of 13
-cases, a 7 px mean gap, a 10 min mean peak-timing error, and 1 px of
-flat-rest relief. The gap, timing and flat-rest targets below are met; the
-first 2026-11-01 baseline was r 0.43, 2 of 13, 34 px and 98 px.
+Where it stands: the newest report (2026-11-05 10:59, the shape library of
+24 ChatGPT mountains: every run of buckets over the window's floor is one
+whole library mountain, stretched in width to the run and sunk onto the
+run's peak, with ridge trees where the data stands over it) measures mean r
+0.84 over all 13 cases and 0.91 over the twelve non-flat ones, peak count
+right in 11 of 13 cases, a 5 px mean gap, a 13 min mean peak-timing error,
+and 1 px of flat-rest relief. Every target below is met except the episode
+precision and recall and the determinism checks, which are not measured
+yet. The 2026-11-03 script-painted library measured r 0.72, and the first
+2026-11-01 baseline r 0.43, 2 of 13, 34 px and 98 px.
 
 A/B prototyping starts with these provisional targets:
 

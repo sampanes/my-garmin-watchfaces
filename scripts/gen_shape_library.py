@@ -1,86 +1,85 @@
 #!/usr/bin/env python
-"""The shape library (2026-11-03): whole painted mountains the face CHOOSES
-from to fit the four hours, instead of a few planes stretched to fit.
+"""The shape library (2026-11-05): the 24 ChatGPT mountains, cut from the
+sheets, as the whole painted mountains the face CHOOSES from to fit the
+four hours.
 
 John, 11-03, on a study that assembled mountains from brush primitives:
-"200 primitives smashed into a bespoke shape is actually worse than 50 known
-shapes like our current mountains". So every shape here is one whole plane
-from the same renderer as the rest of the painting (gen_ink_layers.
-render_plane), baked at its final size, never stretched, cut or assembled
-on the watch. A fit test over 93 windows (the study's fit_library.py) found
-the accuracy comes from CHOOSING among enough profiles and SINKING the
-chosen one until its crest sits on the data (its foot behind the bank and
-the mist, as round 6's deep base already did), and that the miss stops
-improving past about 100 shape choices.
+"200 primitives smashed into a bespoke shape is actually worse than 50
+known shapes like our current mountains". And 11-05, after seeing the
+image-generator sheets: no art drawn by the watch's code or by our scripts
+any more (the decision at the top of ART_PIPELINE.md). So every shape here
+is one whole mountain painted by ChatGPT (art/sheets/*_mountains-b.png and
+*_mountains2-b.png, prompts in art/sheets/PROMPTS.md), cut by
+scripts/cut_art_kit.py into art/cuts/<sheet>/, and baked here:
 
-Every plane is 300 px tall with its skirt at its bottom edge, so a crest
-anywhere on the crest scale leaves the plane's foot under the mist. Width
-and family give the profile: a narrow spire, a broad peak, a dome, a
-plateau with bumps, a long low ridge for a walk, the wide mountain leaning
-either way, a ramp for a slow climb, a range of three, twin summits.
+  * scaled by SCALE (sheet px to face px, one factor for all, so the sheet's
+    relative sizes survive) and never scaled again on the watch, except in
+    width: the fit stretches a shape's width to its run (compose_preview.
+    fit_shape, 0.67x to 1.5x), which drawScaledBitmap does for free;
+  * toned: TONE of the sheet's ink is kept, the rest pulled to paper, so the
+    masses sit between the pale far range and the dark trees and foreground
+    pieces (sumi-e depth: the farther, the paler); the sheets' solid black
+    read too heavy on the face;
+  * paper-backed, with a skirt: everything under the ridge line is body
+    (ink over its own paper, black paper at night) that hides what stands
+    behind, extended down to PLANE_H so a crest anywhere on the crest scale
+    leaves the plane's foot under the mist, and fading out over the bottom
+    BASE_FADE of the plane; over bare paper nothing changes;
+  * packed as a 256-color palette PNG (the ink is one color over one
+    paper: lossless to the eye, about a third of the bytes).
 
 Writes into watch-faces/japanese-ink-heartrate:
-    resources/drawables/shape_<family>_<w>_cut.png, ..._cut_night.png
-        paper-backed cutouts (compose_preview.paper_backed), day and night
+    resources/drawables/shape_<name>_cut.png, ..._cut_night.png
     resources/drawables/shapes.xml       their bitmap declarations
     source/JapaneseInkHeartrateShapes.mc the profile table and the loader
 and scripts/shape_table.json, the same table for the mock.
 
-    python scripts/gen_shape_library.py            render, bake, write tables
+    python scripts/gen_shape_library.py            cut (if needed), bake, write tables
     python scripts/gen_shape_library.py --tables   re-measure the baked PNGs only
-    python scripts/gen_shape_library.py --check    exit 1 if a table is stale
+    python scripts/gen_shape_library.py --check    exit 1 if a table is stale (no scipy)
 
-The profile of a shape is the top of its OPAQUE cutout (alpha 255, which is
-where the ink reaches 12%) at K evenly spaced columns, in px from the
-bitmap's top (-1 where the column has none), and its apex is the topmost
-opaque row, at the middle of that row's opaque columns."""
+The profile of a shape is the top of its OPAQUE cutout (alpha 250 or more)
+at K evenly spaced columns, in px from the bitmap's top (-1 where the
+column has none), and its apex is the topmost opaque row, at the middle of
+that row's opaque columns."""
+import glob
 import json
 import os
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 FACE = os.path.join(HERE, "..", "watch-faces", "japanese-ink-heartrate")
 DRAW = os.path.join(FACE, "resources", "drawables")
+CUTS = os.path.join(FACE, "art", "cuts")
 MC = os.path.join(FACE, "source", "JapaneseInkHeartrateShapes.mc")
 XML = os.path.join(DRAW, "shapes.xml")
 JSON = os.path.join(HERE, "shape_table.json")
 
-PLANE_H = 300
+SHEETS = ("mountains-b", "mountains2-b")   # the ChatGPT mountain sheets, in table order
+SCALE = 1.20          # sheet px -> face px
+TONE = 0.70           # share of the sheet's ink kept; the rest goes to paper
+PLANE_H = 300         # px: every plane at least this tall, its skirt at the bottom edge
+BASE_FADE = 0.30      # the body fades out over this bottom fraction of the plane
+BODY_FLOOR = 0.05     # ink over this is body (as cut_sprite_sheet.paper_back)
 K = 32
-INK = (12, 9, 7)
-
-# family -> (peaks for render_plane in plane-normalized x, widths, roughness,
-# mirrored-from). A mirrored family is the other one's painting flipped, so
-# the pair is the same mountain leaning the other way.
-FAMILIES = [
-    ("spire", [(0.50, 1.0, 0.21), (0.31, 0.50, 0.12), (0.69, 0.56, 0.11)], (120, 180), 0.24, None),
-    ("peak", [(0.50, 1.0, 0.23), (0.21, 0.40, 0.10), (0.80, 0.38, 0.10)], (200, 300), 0.24, None),
-    ("dome", [(0.50, 1.0, 0.30), (0.30, 0.80, 0.16), (0.70, 0.82, 0.16)], (200, 300), 0.14, None),
-    ("lean_l", [(0.34, 1.0, 0.17), (0.62, 0.78, 0.22), (0.12, 0.40, 0.08)], (240, 340), 0.20, None),
-    ("lean_r", None, (240, 340), None, "lean_l"),
-    ("plateau", [(0.50, 0.97, 0.28), (0.42, 1.0, 0.12), (0.15, 0.45, 0.08), (0.85, 0.45, 0.08)],
-     (240, 340, 440), 0.08, None),
-    ("ridge", [(0.50, 0.96, 0.34), (0.32, 1.0, 0.16), (0.70, 0.98, 0.16)], (300, 420, 540), 0.08, None),
-    ("wide_l", [(0.25, 1.0, 0.11), (0.50, 0.86, 0.27), (0.78, 0.84, 0.16), (0.08, 0.45, 0.07)],
-     (300, 420, 540), 0.13, None),
-    ("wide_r", None, (300, 420, 540), None, "wide_l"),
-    ("ramp_up", [(0.82, 1.0, 0.12), (0.60, 0.82, 0.14), (0.38, 0.64, 0.14), (0.16, 0.46, 0.12)],
-     (360, 500), 0.16, None),
-    ("ramp_down", None, (360, 500), None, "ramp_up"),
-]
+OPAQUE = 250          # alpha at or over this is the cutout the fit measures
+PALETTE = 256         # colors per baked PNG (0: keep RGBA)
+PAPER = (242, 238, 230)
 
 
 def shapes():
-    """[(name, family, width, mirror_of_name or None)] in table order."""
+    """[(name, sheet, cut path)] in table order: the sheets' cells in order.
+    The names are the cells' names from the cut (NN_name.png)."""
     out = []
-    for fam, _, widths, _, mirror in FAMILIES:
-        for w in widths:
-            out.append(("shape_%s_%d" % (fam, w), fam, w,
-                        ("shape_%s_%d" % (mirror, w)) if mirror else None))
+    for sheet in SHEETS:
+        files = sorted(f for f in glob.glob(os.path.join(CUTS, sheet, "[0-9][0-9]_*.png"))
+                       if not f.endswith("_night.png"))
+        for f in files:
+            out.append(("shape_" + os.path.basename(f)[3:-4], sheet, f))
     return out
 
 
@@ -88,76 +87,107 @@ def camel(name):
     return "".join(p.capitalize() for p in name.split("_"))
 
 
-def wash_texture(cut, night, seed):
-    """Vary the ink within a cutout without changing its measured outline.
+def ensure_cuts():
+    """Cut a sheet whose cutouts are missing (needs scipy)."""
+    for sheet in SHEETS:
+        if glob.glob(os.path.join(CUTS, sheet, "[0-9][0-9]_*.png")):
+            continue
+        import cut_art_kit as kit
+        path = glob.glob(os.path.join(kit.SHEETS, "20*_%s.*" % sheet))[0]
+        print("cutting", os.path.basename(path), flush=True)
+        kit.one(path, os.path.join(CUTS, sheet), *kit.RECIPE[sheet.rsplit("-", 1)[0]])
 
-    Low-frequency pooling and finer dry paper are baked into the color only;
-    alpha (including the opaque skyline used by the fitter) stays unchanged.
-    """
-    import gen_ink_layers as gl
-    pixels = np.array(cut, dtype=np.uint8)
-    h, w = pixels.shape[:2]
-    pooling = gl.vnoise2(h, w, 42, 29, seed, octaves=3) - 0.5
-    fiber = gl.vnoise2(h, w, 7, 3, seed + 1, octaves=2) - 0.5
-    strength = np.clip(1.0 + 1.10 * pooling + 0.28 * fiber, 0.65, 1.35)
-    paper = np.array((0, 0, 0) if night else gl.PAPER, dtype=float)
-    color = pixels[..., :3].astype(float)
-    pixels[..., :3] = np.clip(paper + (color - paper) * strength[..., None], 0, 255).round().astype(np.uint8)
-    return Image.fromarray(pixels, "RGBA")
+
+def plane_from_cut(path, night, scale=None, tone=None):
+    """One cut (ink over nothing, as cut_sprite_sheet writes it) scaled,
+    toned, paper-backed and skirted: an RGBA image PLANE_H or taller."""
+    scale = SCALE if scale is None else scale
+    tone = TONE if tone is None else tone
+    im = Image.open(path).convert("RGBA")
+    w, h = max(1, int(round(im.width * scale))), max(1, int(round(im.height * scale)))
+    im = im.resize((w, h), Image.LANCZOS)
+    px = np.asarray(im, dtype=float) / 255.0
+    plane_h = max(PLANE_H, h)
+    rgb = np.zeros((plane_h, w, 3))
+    a = np.zeros((plane_h, w))
+    rgb[:h] = px[..., :3]
+    a[:h] = px[..., 3]
+    # the body: everything under the ridge line, down to the plane's foot
+    body = np.maximum.accumulate(a > BODY_FLOOR, axis=0)
+    body = Image.fromarray((body * 255).astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(1.0))
+    body = np.asarray(body, dtype=float) / 255.0
+    start = int(plane_h * (1.0 - BASE_FADE))
+    ramp = np.ones(plane_h)
+    ramp[start:] = np.linspace(1.0, 0.0, plane_h - start)
+    body *= ramp[:, None]
+    ink = a * tone
+    alpha = np.maximum(ink, body)
+    share = np.where(alpha > 0, ink / np.maximum(alpha, 1e-6), 0.0)[..., None]
+    paper = np.zeros(3) if night else np.array(PAPER, dtype=float) / 255.0
+    col = rgb * share + paper * (1.0 - share)
+    out = np.dstack([col, alpha]) * 255.0
+    return Image.fromarray(np.round(np.clip(out, 0, 255)).astype(np.uint8), "RGBA")
+
+
+def pack(img):
+    """The image as it is saved: a palette PNG, or RGBA when PALETTE is 0."""
+    if not PALETTE:
+        return img
+    return img.quantize(colors=PALETTE, method=Image.Quantize.FASTOCTREE)
+
+
+def measure_alpha(a):
+    """The profile table entry of a cutout's alpha (uint8 array)."""
+    h, w = a.shape
+    top = []
+    for k in range(K):
+        x = int((k + 0.5) * w / K)
+        rows = np.nonzero(a[:, x] >= OPAQUE)[0]
+        top.append(int(rows[0]) if len(rows) else -1)
+    ys, xs = np.nonzero(a >= OPAQUE)
+    ay = int(ys.min())
+    row = np.nonzero(a[ay] >= OPAQUE)[0]
+    ax = int(round(0.5 * (row[0] + row[-1])))
+    return {"w": int(w), "h": int(h), "ax": ax, "ay": ay, "top": top}
+
+
+def build(scale=None, tone=None):
+    """Every shape in memory, as saved: [(name, sheet, day, night)] with
+    the images already packed. The mock-only experiments use this."""
+    out = []
+    for name, sheet, path in shapes():
+        day = pack(plane_from_cut(path, False, scale, tone))
+        night = pack(plane_from_cut(path[:-4] + "_night.png", True, scale, tone))
+        out.append((name, sheet, day, night))
+    return out
 
 
 def render_all():
-    import glob
-    import compose_preview as cp
-    import gen_ink_layers as gl
-    names = {n for n, _, _, _ in shapes()}
+    ensure_cuts()
+    names = {n for n, _, _ in shapes()}
     for path in glob.glob(os.path.join(DRAW, "shape_*_cut*.png")):
         base = os.path.basename(path).replace("_cut_night.png", "").replace("_cut.png", "")
         if base not in names:
             os.remove(path)
             print("removed", os.path.basename(path))
-    alphas = {}
-    for i, (name, fam, w, mirror) in enumerate(shapes()):
-        if mirror:
-            a = alphas[mirror][:, ::-1]
-        else:
-            peaks, _, rough = [(f[1], f[2], f[3]) for f in FAMILIES if f[0] == fam][0][0:3]
-            a = gl.render_plane(w, PLANE_H, peaks, amp_frac=0.80, rough=rough, ink=0.62, fade=0.0,
-                                seed=4000 + 37 * i, blur_1x=0.9, cun_count=int(0.5 * w) + 20,
-                                tree_prob=0.018, bleed=0.14, edge_left=0.09, edge_right=0.09,
-                                base_fade=(0.82, 0.99), tree_size=(5.0, 12.0), crown=0.30)
-        alphas[name] = a
-        for night in (False, True):
-            rgb = gl.NIGHT_INK if night else INK
-            scale = 0.80 if night else 1.0
-            arr = np.zeros(a.shape + (4,), np.uint8)
-            arr[..., 0], arr[..., 1], arr[..., 2] = rgb
-            arr[..., 3] = (np.clip(a * scale, 0, 1) * 255).astype(np.uint8)
-            cut = cp.paper_backed(Image.fromarray(arr, "RGBA"), night)
-            cut = wash_texture(cut, night, 8200 + 37 * i)
-            path = os.path.join(DRAW, name + "_cut" + ("_night" if night else "") + ".png")
-            cut.save(path, optimize=True)
-        print("painted", name, w, "x", PLANE_H, flush=True)
+    total = 0
+    for name, sheet, day, night in build():
+        for img, suffix in ((day, "_cut.png"), (night, "_cut_night.png")):
+            path = os.path.join(DRAW, name + suffix)
+            img.save(path, optimize=True)
+            total += os.path.getsize(path)
+        print("baked", name, day.width, "x", day.height, flush=True)
+    print("library: %d shapes, %.2f MB of PNG" % (len(names), total / 1e6))
 
 
 def measure(name):
     im = Image.open(os.path.join(DRAW, name + "_cut.png")).convert("RGBA")
-    a = np.asarray(im.getchannel("A"))
-    h, w = a.shape
-    top = []
-    for k in range(K):
-        x = int((k + 0.5) * w / K)
-        rows = np.nonzero(a[:, x] >= 255)[0]
-        top.append(int(rows[0]) if len(rows) else -1)
-    ys, xs = np.nonzero(a >= 255)
-    ay = int(ys.min())
-    row = np.nonzero(a[ay] >= 255)[0]
-    ax = int(round(0.5 * (row[0] + row[-1])))
-    return {"name": name, "w": int(w), "h": int(h), "ax": ax, "ay": ay, "top": top}
+    return dict(measure_alpha(np.asarray(im.getchannel("A"))), name=name)
 
 
 def tables():
-    table = {"k": K, "shapes": [dict(measure(n), family=f) for n, f, _, _ in shapes()]}
+    table = {"k": K, "scale": SCALE, "tone": TONE,
+             "shapes": [dict(measure(n), sheet=s) for n, s, _ in shapes()]}
     js = json.dumps(table, indent=1) + "\n"
 
     xml = ['<drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
@@ -176,10 +206,11 @@ def tables():
         return "[" + ", ".join(str(v) for v in vals) + "] as Lang.Array<Lang.Number>"
     mc = ["using Toybox.Graphics;", "using Toybox.Lang;", "using Toybox.WatchUi;", "",
           "// Generated by scripts/gen_shape_library.py; do not edit.",
-          "// The shape library: %d whole painted mountains, each %d px tall with its" % (n, PLANE_H),
-          "// skirt at its bottom edge. shapeTop() holds each shape's profile, the",
-          "// top of its opaque cutout at SHAPE_K evenly spaced columns in px from",
-          "// the bitmap's top (-1: none), shape after shape.", "",
+          "// The shape library: %d whole painted mountains from the ChatGPT sheets," % n,
+          "// each at least %d px tall with its skirt at its bottom edge. shapeTop()" % PLANE_H,
+          "// holds each shape's profile, the top of its opaque cutout at SHAPE_K",
+          "// evenly spaced columns in px from the bitmap's top (-1: none), shape",
+          "// after shape.", "",
           "const SHAPE_COUNT = %d;" % n, "const SHAPE_K = %d;" % K, ""]
     mc += ["const %s = %d;" % (s["name"].upper(), i) for i, s in enumerate(table["shapes"])]
     mc += ["",

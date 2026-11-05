@@ -45,8 +45,8 @@ TREES = ("pine_narrow,pine_wide,pine_lean_l,pine_lean_r,pines2,pines3,fir,broadl
 RECIPE = {
     "props": ("4x4", cutter.DEFAULT_NAMES, "moon_full,moon_crescent", "", False),
     "props2": ("4x4", PROPS2, "", "", False),
-    "mountains": ("3x4", MOUNTAINS, "", "*", False),
-    "mountains2": ("3x4", MOUNTAINS2, "", "*", False),
+    "mountains": ("3x4", MOUNTAINS, "", "", False),
+    "mountains2": ("3x4", MOUNTAINS2, "", "", False),
     "strips": ("1x6", STRIPS, "", "near_ridge,near_pines", False),
     "water": ("1x6", WATER, "", "", False),
     "corners": ("2x4", CORNERS, "", "", False),
