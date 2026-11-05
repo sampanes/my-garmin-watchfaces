@@ -19,7 +19,9 @@ white on black and cut by brightness. John's picks (11-05):
     storm       ChatGPT's storm, lightning and all, faded to TONE: storms
     snow        Gemini's snow; by day over a grey WASH, the ink painter's
                 way of letting white flakes show on white paper
-    wind        Gemini's maple leaves on the wind: windy, or a wind over
+    wind        ChatGPT's second wind (wind2-b): a few maple leaves riding
+                long wind streaks, quieter than Gemini's busier leaves
+                (John: "new wind is def better"); windy, or a wind over
                 WIND_LEAVES (the Scene)
 
 Sized to the face, never tiled, never mirrored (John); only the heavy rain
@@ -62,7 +64,7 @@ WEATHER = [
     ("rain", [("rain2-b", 0.75, ""), ("rain2-b", 0.6, "shift")], 0.0),
     ("storm", [("storm-b", 0.55, "")], 0.0),
     ("snow", [("snowfall-a", 1.0, "")], 0.22),
-    ("wind", [("wind-a", 1.0, "")], 0.0),
+    ("wind", [("wind2-b", 1.0, "")], 0.0),
 ]
 NEAR_SCALE = 1.6
 SHIFT = (0.37, 0.21)
