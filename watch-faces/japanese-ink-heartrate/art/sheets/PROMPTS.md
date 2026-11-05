@@ -568,3 +568,27 @@ I need a sprite sheet that I will cut apart by machine and layer onto that lands
 
 This sheet is small digits for an artist's seal stamp. Make one wide image, 2560x1024, laid out as a 5x2 grid of 10 cells. Row 1: 0, 1, 2, 3, 4. Row 2: 5, 6, 7, 8, 9. Each cell holds one Western Arabic numeral in the blocky carved style of a Chinese seal stamp: squared strokes of even weight, slightly chiseled, worn edges, in solid black ink (I will recolor them). They will be shown only 12 pixels tall, so keep them simple, heavy and open: no thin strokes, no closed-up counters. All ten the same height and width, on one shared baseline, each centered in its cell. Nothing else on the sheet.
 ```
+
+## Round 9 results (2026-11-05)
+
+Back from both painters, except Gemini's seal digits (not sent yet), plus
+one extra gathering-clouds sheet each (`clouds-a/b`, asked alone so the cloud
+is not cramped by a cell). Cut by `scripts/cut_art_kit.py` (recipes
+`weather` 3x3, `clouds` 1x1, `digits` and `sealdigits` 5x2, `kanji` 4x3).
+Every sheet matches its own prompt: running several in one chat did not
+leak one sheet's subjects into another.
+
+- **Both painters wrote all twelve kanji correctly**, so the script kanji
+  can go. `scripts/bake_glyphs.py` bakes any painter's digits, kanji and
+  seal digits into the three fonts at the old line metrics, then
+  `gen_halo.py` remakes the halos; the fonts in resources/ are still the
+  script ones until John picks a painter.
+- **The moon in mist needs a hybrid night cut.** Cut solid, its mist turns
+  into an opaque white blob on black; cut plain, the moon goes dark. The
+  answer (prototyped, for the weather bake): the moon disc keeps its own
+  color and only the mist turns to light ink. That works on ChatGPT's moon;
+  Gemini's moon is a drawn ring that defeats the disc fit.
+- **Snow:** the white-paper flakes read as snow by day on both; at night
+  they nearly vanish, as expected, so the night keeps props2 11's dabs.
+- The gathering clouds come in from the right (mirrored), not the left,
+  where the time column is.

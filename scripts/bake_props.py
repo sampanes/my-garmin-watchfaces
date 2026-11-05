@@ -80,7 +80,7 @@ ROTATE = {"seal_oval": 90}
 # ink box (x0, y0, x1, y1), feathered over TRIM_FEATHER px: the hiker's
 # grass and the level ground he walks on, which stuck out sideways from a
 # sloped summit (John, 11-05). A patch stays under his feet.
-TRIM = {"hiker": [(0.0, 0.66, 0.31, 1.0), (0.72, 0.85, 1.0, 1.0)]}
+TRIM = {"hiker": [(0.0, 0.66, 0.40, 1.0), (0.64, 0.80, 1.0, 1.0)]}
 TRIM_FEATHER = 6
 NIGHT_INK = (168, 164, 152)   # cut_sprite_sheet.NIGHT_INK
 NIGHT_RED = 0.60              # the red's brightness at night (bake_foregrounds)

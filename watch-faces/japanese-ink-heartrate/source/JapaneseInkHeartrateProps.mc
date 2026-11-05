@@ -21,7 +21,7 @@ const PROP_SEAL_OVAL = 9;
 const PROP_SEAL_SQUARE = 10;
 
 function propW() as Lang.Array<Lang.Number> {
-    return [34, 34, 29, 29, 78, 96, 84, 31, 45, 46, 35] as Lang.Array<Lang.Number>;
+    return [34, 34, 29, 29, 78, 96, 84, 25, 45, 46, 35] as Lang.Array<Lang.Number>;
 }
 
 function propH() as Lang.Array<Lang.Number> {

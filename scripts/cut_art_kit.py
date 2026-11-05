@@ -41,6 +41,12 @@ ARCS = "arc_grass,arc_reeds,arc_snow,arc_maple"
 TREES = ("pine_narrow,pine_wide,pine_lean_l,pine_lean_r,pines2,pines3,fir,broadleaf,"
          "row5,row5_uneven,bare,snow_pine,umbrella,umbrellas2,cypress,cypresses2")
 
+WEATHER = ("moon_mist,snow,snow_heavy,storm,clouds_gathering,overcast,"
+           "leaves_maple,leaves_winter,drizzle")
+DIGITS = ",".join("d%d" % i for i in range(10))
+KANJI = ",".join(["k%d" % i for i in range(10)] + ["k10", "k20"])   # 〇..九, 十, 廿
+SEAL_DIGITS = ",".join("s%d" % i for i in range(10))
+
 # sheet stem (after the date) -> grid, names, solid, backed, full
 RECIPE = {
     "props": ("4x4", cutter.DEFAULT_NAMES, "moon_full,moon_crescent", "", False),
@@ -53,6 +59,11 @@ RECIPE = {
     "arcs": ("1x4", ARCS, "", "", False),
     "arcs2": ("1x4", ARCS, "", "", False),
     "trees": ("4x4", TREES, "", "", False),
+    "weather": ("3x3", WEATHER, "moon_mist", "", False),
+    "clouds": ("1x1", "clouds_gathering", "", "", False),
+    "digits": ("5x2", DIGITS, "", "", False),
+    "kanji": ("4x3", KANJI, "", "", False),
+    "sealdigits": ("5x2", SEAL_DIGITS, "", "", False),
 }
 for season in ("spring", "summer", "autumn", "winter", "pass"):
     RECIPE["fg-" + season] = ("1x1", "fg", "", "", True)
