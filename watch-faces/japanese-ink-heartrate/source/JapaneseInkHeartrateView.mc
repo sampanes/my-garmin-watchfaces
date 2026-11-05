@@ -1,6 +1,7 @@
 using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.System;
+using Toybox.Time;
 using Toybox.WatchUi;
 
 class JapaneseInkHeartrateView extends WatchUi.WatchFace {
@@ -19,6 +20,15 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     // compose_preview.py does, so the halo bitmaps can be placed exactly.
     const INK_LINE_H = 54;
     const KANJI_LINE_H = 48;
+    const SEAL_LINE_H = 19;
+    // The seal digits' nudge per position (px), on top of their baked
+    // crookedness, counted across both lines of the date; and where the
+    // date's two lines center from the seal's center (compose_preview
+    // SEAL_NUDGE, SEAL_DATE_DY).
+    const SEAL_NUDGE_X = [0, 0, -1, 0];
+    const SEAL_NUDGE_Y = [-1, 1, 0, 2];
+    const SEAL_DATE_DY0 = -8;
+    const SEAL_DATE_DY1 = 9;
 
     // The paper halo under the inscription (scripts/gen_halo.py): one
     // bitmap per glyph, the glyph widened and blurred, in paper colour
@@ -293,7 +303,10 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         // Artist's seal from the sheet, centered where the drawn square was,
         // live HR inside in the carved seal digits: the oval while the HR
         // rests near the baseline, the rectangle once it works (Scene sealWork).
-        var shape = mScene.sealWork() ? PROP_SEAL_RECT : PROP_SEAL_OVAL;
+        // With "Red seal = HR" off: the square, carrying the date.
+        var showHr = mScene.sealShowsHr();
+        var shape = !showHr ? PROP_SEAL_SQUARE
+                    : (mScene.sealWork() ? PROP_SEAL_RECT : PROP_SEAL_OVAL);
         var key = shape.toString() + (night ? "n" : "d");
         if (mSealBmp == null || !key.equals(mSealKey)) {
             mSealBmp = null;
@@ -311,11 +324,40 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             dc.drawBitmap(colX - mSealW / 2, sealY + sealSize / 2 - mSealH / 2, sealBmp);
         }
 
-        var hrText = currentHeartRateText();
-        if (hrText != null) {
-            dc.setColor(0xF4EEE2, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(colX, sealY + (sealSize / 2), mSealFont, hrText,
-                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        var sealCy = sealY + (sealSize / 2);
+        dc.setColor(0xF4EEE2, Graphics.COLOR_TRANSPARENT);
+        if (showHr) {
+            var hrText = currentHeartRateText();
+            if (hrText != null) {
+                drawSealText(dc, hrText, colX, sealCy, 0);
+            }
+        } else {
+            var info = Time.Gregorian.info(Time.now(), Time.FORMAT_SHORT);
+            var mo = info.month;
+            var dd = info.day;
+            if ((mo instanceof Lang.Number) && (dd instanceof Lang.Number)) {
+                var top = (mo as Lang.Number).format("%02d");
+                drawSealText(dc, top, colX, sealCy + SEAL_DATE_DY0, 0);
+                drawSealText(dc, (dd as Lang.Number).format("%02d"), colX, sealCy + SEAL_DATE_DY1,
+                             top.length());
+            }
+        }
+    }
+
+    // The seal's text centered on (cx, cy), one glyph at a time, each moved
+    // by its position's nudge (counted from first) so the digits sit a
+    // little out of line, as carved ones do (compose_preview draw_nudged).
+    function drawSealText(dc as Graphics.Dc, text as Lang.String, cx as Lang.Number,
+                          cy as Lang.Number, first as Lang.Number) as Void {
+        var pen = cx - (dc.getTextWidthInPixels(text, mSealFont) / 2);
+        var top = cy - (SEAL_LINE_H / 2);
+        var n = SEAL_NUDGE_X.size();
+        for (var i = 0; i < text.length(); i++) {
+            var c = text.substring(i, i + 1) as Lang.String;
+            var k = (first + i) % n;
+            dc.drawText(pen + (SEAL_NUDGE_X[k] as Lang.Number), top + (SEAL_NUDGE_Y[k] as Lang.Number),
+                        mSealFont, c, Graphics.TEXT_JUSTIFY_LEFT);
+            pen += dc.getTextWidthInPixels(c, mSealFont);
         }
     }
 

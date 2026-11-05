@@ -1,6 +1,7 @@
 <resources>
     <string id="AppName">Japanese Ink Heartrate</string>
     <string id="SettingTrueHr">Show the true HR shape over the painting</string>
+    <string id="SettingSealHr">Red seal shows the heart rate (off: the date, month over day)</string>
     <string id="SettingNightStart">Night mode from (hour, 0-24)</string>
     <string id="SettingNightEnd">Night mode until (hour, 0-24; same as from = off)</string>
     <string id="SettingForeground">Foreground: 0 = by season, 1 spring, 2 summer, 3 autumn, 4 winter, 5 mountain pass</string>

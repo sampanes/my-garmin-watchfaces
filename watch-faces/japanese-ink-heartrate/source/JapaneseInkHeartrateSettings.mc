@@ -12,6 +12,8 @@ class JapaneseInkHeartrateSettingsMenu extends WatchUi.Menu2 {
         Menu2.initialize({:title => "Ink face"});
         addItem(new WatchUi.ToggleMenuItem("True HR line", null, :overlay,
             settingBool("trueHrOverlay", true), null));
+        addItem(new WatchUi.ToggleMenuItem("Red seal = HR", "Off: the date", :sealHr,
+            settingBool("sealHr", true), null));
         addItem(new WatchUi.MenuItem("Night from",
             hourLabel(settingHour("nightStart", 21)), :nightStart, null));
         addItem(new WatchUi.MenuItem("Night until",
@@ -28,13 +30,16 @@ class JapaneseInkHeartrateSettingsDelegate extends WatchUi.Menu2InputDelegate {
         Menu2InputDelegate.initialize();
     }
 
-    // The toggle flips itself; an hour row steps one hour forward per press
+    // A toggle flips itself; an hour row steps one hour forward per press
     // (23 wraps to 0). Night is off while "from" equals "until". The
     // foreground row steps through by-season and the five scenes.
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :overlay) {
             Application.Properties.setValue("trueHrOverlay",
+                (item as WatchUi.ToggleMenuItem).isEnabled());
+        } else if (id == :sealHr) {
+            Application.Properties.setValue("sealHr",
                 (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :nightStart || id == :nightEnd) {
             var key = (id == :nightStart) ? "nightStart" : "nightEnd";

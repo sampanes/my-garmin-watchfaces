@@ -22,4 +22,6 @@
     <bitmap id="PropSealOvalNight" filename="prop_seal_oval_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropSealRect" filename="prop_seal_rect.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropSealRectNight" filename="prop_seal_rect_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropSealSquare" filename="prop_seal_square.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropSealSquareNight" filename="prop_seal_square_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

@@ -3,6 +3,9 @@
          landscape's own axis and crest scale, with a dot on each painted
          crest: the data against the painting. -->
     <property id="trueHrOverlay" type="boolean">true</property>
+    <!-- The red seal under the time carries the live HR; false = the date,
+         month over day. -->
+    <property id="sealHr" type="boolean">true</property>
     <!-- Night mode window (hours, 0-24): black paper, pale ink. Equal = off. -->
     <property id="nightStart" type="number">21</property>
     <property id="nightEnd" type="number">6</property>

@@ -17,6 +17,13 @@ a shared baseline; kanji are centered on the line, as a kanji box is. The
 coverage is the cut's ink, normalized so the darkest stroke is full ink;
 the View colors it (ink, pale ink at night, paper on the seal).
 
+The seal digits are baked crooked (CROOKED, John 11-05: "cropped wrong
+with shifts looks most authentic"): each glyph turned a few degrees, scaled
+a little, lifted or dropped a px, one side shaved as if its cell were
+cropped wrong. Seeded, so a bake is repeatable and a carved seal's 4 is
+always the same 4. The View adds a fixed nudge per position on top
+(SEAL_NUDGE_X/Y, compose_preview.SEAL_NUDGE).
+
 After a bake, run scripts/gen_halo.py: the paper halos are made from these
 atlases.
 
@@ -26,6 +33,7 @@ The defaults are John's picks (11-05): ChatGPT's digits and seal digits, Gemini'
 """
 import argparse
 import os
+import random
 
 import numpy as np
 from PIL import Image
@@ -45,6 +53,26 @@ FONTS = [
     ("seal_digits", "sealdigits", ["s%d" % i for i in range(10)], DIGITS, 15, 2, 1, "base"),
 ]
 INK_FLOOR = 0.05   # coverage under this is not ink when cropping
+# Fonts baked crooked: seed, max turn (degrees), scale range, shave range
+# (fraction of one side), max lift/drop and sideways shift (px), advance trim.
+CROOKED = {"seal_digits": dict(seed=7, turn=5.0, scale=(0.95, 1.06), shave=(0.05, 0.12),
+                               lift=1, shift=1, trim=1)}
+
+
+def crook(a, rnd, c):
+    """One glyph's ink (float alpha) turned, shaved on one side; returns it
+    with its scale, lift, shift and advance trim."""
+    im = Image.fromarray(np.round(np.clip(a, 0, 1) * 255).astype(np.uint8), "L")
+    im = im.rotate(rnd.uniform(-c["turn"], c["turn"]), resample=Image.BICUBIC, expand=True)
+    s = rnd.uniform(*c["scale"])
+    side = rnd.choice("lrtb")
+    k = rnd.uniform(*c["shave"])
+    w, h = im.size
+    im = im.crop({"l": (round(w * k), 0, w, h), "r": (0, 0, w - round(w * k), h),
+                  "t": (0, round(h * k), w, h), "b": (0, 0, w, h - round(h * k))}[side])
+    out = np.asarray(im, dtype=float) / 255.0
+    return (out, s, rnd.randint(-c["lift"], c["lift"]), rnd.randint(-c["shift"], c["shift"]),
+            rnd.randint(-c["trim"], 0))
 
 
 def cut_alpha(sheet, name):
@@ -67,18 +95,29 @@ def build(name, sheet, cuts, chars, cap, top, bearing, layout, out):
     else:
         scale = cap / float(np.median([max(a.shape) for a in src]))
     glyphs = []
+    crooked = CROOKED.get(name)
+    rnd = random.Random(crooked["seed"]) if crooked else None
     for ch, a in zip(chars, src):
-        w = max(1, int(round(a.shape[1] * scale)))
-        h = max(1, int(round(a.shape[0] * scale)))
-        im = Image.fromarray(np.round(np.clip(a / full, 0, 1) * 255).astype(np.uint8), "L")
+        a = a / full
+        h0 = max(1, int(round(a.shape[0] * scale)))
+        s, lift, shift, trim = 1.0, 0, 0, 0
+        if crooked:
+            a, s, lift, shift, trim = crook(a, rnd, crooked)
+        w = max(1, int(round(a.shape[1] * scale * s)))
+        h = max(1, int(round(a.shape[0] * scale * s)))
+        im = Image.fromarray(np.round(np.clip(a, 0, 1) * 255).astype(np.uint8), "L")
         g = np.asarray(im.resize((w, h), Image.LANCZOS), dtype=np.uint8)
-        yoff = top + cap - h if layout == "base" else (line_h - h) // 2
+        if layout == "base":
+            # a turned glyph grows both ways: keep it centered on its upright place
+            yoff = top + cap - h0 - (h - h0) // 2 + lift
+        else:
+            yoff = (line_h - h) // 2 + lift
         if yoff < 0:                       # taller than the line: clip the top
             g, yoff = g[-yoff:], 0
         if yoff + g.shape[0] > line_h:     # or the bottom
             g = g[:line_h - yoff]
-        glyphs.append({"ch": ch, "bmp": g, "xoff": bearing, "yoff": yoff,
-                       "adv": g.shape[1] + 2 * bearing})
+        glyphs.append({"ch": ch, "bmp": g, "xoff": bearing + shift, "yoff": yoff,
+                       "adv": g.shape[1] + 2 * bearing + trim})
     atlas_w = sum(g["bmp"].shape[1] + 1 for g in glyphs) + 1
     atlas_h = max(g["bmp"].shape[0] for g in glyphs) + 2
     atlas = np.zeros((atlas_h, atlas_w), dtype=np.uint8)

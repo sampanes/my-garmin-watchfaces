@@ -325,6 +325,12 @@ LANTERN_X = 0.64           # the low-battery lantern's middle (W) ...
 LANTERN_FOOT = 0.885       # ... its foot (H), on the foreground's ground
 BATTERY_LOW = 30.0         # percent under which the lantern shows
 SEAL_WORK = 30.0           # bpm over the resting baseline that turns the seal rectangular ...
+# The seal digits' nudge per position (x, y px), on top of their baked
+# crookedness, counted across both lines of the date (the View's
+# SEAL_NUDGE_X/Y); and where the date's two lines center, from the seal's
+# center (month over day).
+SEAL_NUDGE = [(0, -1), (0, 1), (-1, 0), (0, 2)]
+SEAL_DATE_DY = (-8, 9)
 SEAL_HYST = 8.0            # ... and back to the oval this far under that (the watch only)
 
 
@@ -439,6 +445,18 @@ class BmFont:
     def draw(self, img, text, cx, cy, rgb):
         adv = sum(self.glyphs[c]["xadvance"] for c in text)
         return self.draw_left(img, text, cx - adv / 2.0, cy - self.line_h / 2.0, rgb)
+
+    def draw_nudged(self, img, text, cx, cy, rgb, first=0):
+        """The seal's text as the View draws it: centered on (cx, cy) in
+        integer maths, one glyph at a time, each moved by SEAL_NUDGE for its
+        position (counted from first)."""
+        pen = int(cx) - sum(self.glyphs[c]["xadvance"] for c in text) // 2
+        top = int(cy) - self.line_h // 2
+        for i, c in enumerate(text):
+            dx, dy = SEAL_NUDGE[(first + i) % len(SEAL_NUDGE)]
+            img = self.draw_left(img, c, pen + dx, top + dy, rgb)
+            pen += self.glyphs[c]["xadvance"]
+        return img
 
     def draw_left(self, img, text, pen, top, rgb):
         """dc.drawText(pen, top, ..., LEFT): the line box's top-left at (pen, top)"""
@@ -856,7 +874,7 @@ def mid_plane_layout(history, trace=None):
 
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
             hour24=False, overlay=True, foreground=None, month=None, day=None, scene=0,
-            epoch=None, steps_met=False, battery=100.0, resting=None):
+            epoch=None, steps_met=False, battery=100.0, resting=None, seal_hr=True):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
     Scene fits its stored trace), or None. overlay: draw the true-HR overlay
@@ -973,12 +991,21 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
         base = font.draw_left(base, g, x, top, ink)
     # the seal from the sheet, centered where the drawn square was: the oval
     # at rest, the rectangle at work (seal_shape)
-    shape = seal_shape(hr_now, resting if resting else layout["floor"])
+    # (seal_hr False: the square, carrying the date, month over day)
+    if seal_hr:
+        shape = seal_shape(hr_now, resting if resting else layout["floor"])
+    else:
+        shape = "seal_square"
     sw, sh = {p["name"]: (p["w"], p["h"]) for p in prop_table()["props"]}[shape]
     base = paste_at(base, prop_image(shape, night), cx - sw // 2, sy0 + seal // 2 - sh // 2)
-    if hr_now is not None:
-        base = seal_font.draw(base, str(int(round(hr_now))), int(0.22 * W), sy0 + seal / 2.0,
-                              (244, 238, 226))
+    paper = (244, 238, 226)
+    scy = sy0 + seal // 2
+    if not seal_hr:
+        mo, dd = "%02d" % (month or datetime.date.today().month), "%02d" % day_of_month
+        base = seal_font.draw_nudged(base, mo, cx, scy + SEAL_DATE_DY[0], paper)
+        base = seal_font.draw_nudged(base, dd, cx, scy + SEAL_DATE_DY[1], paper, first=len(mo))
+    elif hr_now is not None:
+        base = seal_font.draw_nudged(base, str(int(round(hr_now))), cx, scy, paper)
 
     return round_off(base)
 

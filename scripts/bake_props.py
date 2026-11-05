@@ -20,6 +20,9 @@ shown by one rule, so a prop always means something (John, 11-05).
                    The View draws it, not the Scene. The oval is turned on
                    its side and the square seal widened to a rectangle, so
                    three digits fit inside either.
+    seal_square    the seal carrying the date instead (the "Red seal = HR"
+                   setting off): month over day, stacked as a four-character
+                   seal is laid out (John, 11-05).
 
 The rules live in compose_preview (prop_rules) and the Scene; this script
 only bakes the art. The cuts (scripts/cut_art_kit.py, art/cuts/props-b and
@@ -73,6 +76,7 @@ PROPS = [
     ("lantern", "props2-b/02_lantern", ("h", 50), 1.0, 1.0, False, False),
     ("seal_oval", "props2-b/14_seal_oval", ("h", 32), 0.92, 1.0, False, True),
     ("seal_rect", "props2-b/13_seal_square", ("wh", (52, 34)), 0.92, 1.0, False, True),
+    ("seal_square", "props2-b/13_seal_square", ("wh", (42, 42)), 0.92, 1.0, False, True),
 ]
 # Turned before sizing (degrees counter-clockwise): the sheet's oval stands
 # upright, too narrow for three digits.

@@ -188,6 +188,8 @@ class JapaneseInkHeartrateScene {
 
     // Settings (resources/settings), re-read on every buffered render.
     var mShowTrace as Lang.Boolean = true;
+    // The seal carries the live HR (true) or the date ("Red seal = HR" off).
+    var mSealHr as Lang.Boolean = true;
     var mForeground as Lang.Number = 0;   // the "foreground" setting: 0 by season, 1..FG_SEASONS a scene
     // The props' inputs, read once per scene job (readPropInputs).
     var mStepsMet as Lang.Boolean = false;
@@ -392,6 +394,7 @@ class JapaneseInkHeartrateScene {
 
     function readSettings() as Void {
         mShowTrace = propBool("trueHrOverlay", true);
+        mSealHr = propBool("sealHr", true);
         mNightStart = propHour("nightStart", 21);
         mNightEnd = propHour("nightEnd", 6);
         mForeground = propNumber("foreground", 0, FG_SEASONS);
@@ -445,6 +448,10 @@ class JapaneseInkHeartrateScene {
     // SEAL_WORK over the baseline, and rests (the oval) once it falls
     // SEAL_HYST under that again, so it does not flicker on the line
     // (compose_preview.seal_shape). Called by the View on every update.
+    function sealShowsHr() as Lang.Boolean {
+        return mSealHr;
+    }
+
     function sealWork() as Lang.Boolean {
         var hr = mLatestHr;
         var base = (mRestingHr > 0) ? mRestingHr.toFloat() : mFloor;
