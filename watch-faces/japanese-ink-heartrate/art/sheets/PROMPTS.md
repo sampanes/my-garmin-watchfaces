@@ -297,3 +297,135 @@ subjects, not for shape fixes.
 Correction to round 4: the "grey snow reads as dirt" problem was the
 snowfall prop (grey dabs), not the arcs; both generators' arcs already
 leave snow as white paper.
+
+## Round 6 (2026-11-05): fg-<season>-a/b, one whole-face foreground per image
+
+The flat arcs lost their ends to the round screen, so each foreground became
+its own painting, composed inside the circle. `circle_reference.png` was
+attached to the first message (left: the flat arc cut off by the bezel;
+right: the circle with the foreground zone in grey, tall at the sides, low in
+the middle). Later messages in the same chat went without it. Run in both
+generators: five images each.
+
+Message 1 (with circle_reference.png attached):
+```
+I needed that last foreground sheet to fit in a circle, and it didn't: the
+watch screen is round, so the ends of a flat foreground get cut off (left side
+of the attached image). From now on, paint ONE foreground per image, composed
+for the circle (right side of the attached image).
+
+Rules for every image from now on:
+- PNG, 2048x2048 square. The watch face is the circle that touches all four
+  edges of the square. Everything outside that circle stays pure flat white.
+- Do NOT draw the circle outline, the grey zone or any text. They are only a
+  layout guide.
+- Paint only in the grey zone: the foreground hugs the circle's lower edge,
+  rising tall up both sides and staying low and sparse in the middle. Grasses
+  and branches may reach a little above the zone at the sides, never into the
+  middle of the circle.
+- The foreground's ink runs right to the circle's edge at the bottom, as if
+  the painting continues past the watch bezel.
+- Above the zone stays pure white: no sky, no mountains, no mist, no sun.
+- Same sumi-e style as before: black and grey ink with real brush character,
+  bold and readable at small size. The only color is vermilion red (#B83A2E)
+  where named.
+
+First image: SPRING. Tall dry-brush grasses, small wildflowers and a few
+rocks, with one low plum branch reaching in from the left bearing a few
+vermilion red (#B83A2E) blossoms.
+```
+
+Message 2:
+```
+Same rules. SUMMER: tall reeds and cattails rising up both sides, and in the
+low middle a narrow strip of still water with a few ripple strokes.
+```
+
+Message 3:
+```
+Same rules. AUTUMN: rocks and grass up both sides, small maple trees whose
+leaves are vermilion red (#B83A2E), and a few red leaves fallen along the
+low middle.
+```
+
+Message 4:
+```
+Same rules. WINTER: snowy rocks and low pine boughs heavy with snow rising up
+both sides. The snow is the white paper left bare, shaped only by grey ink
+shadows underneath. No snow on anything outside the grey zone.
+```
+
+Message 5:
+```
+Same rules. MOUNTAIN PASS: dark craggy rocks and one gnarled pine rising up
+the left side, mossy boulders and ferns up the right side, bare ground in
+the low middle. Ink only, no red.
+```
+
+Results, judged on the real preview face (mountains, sun, time, HR seal):
+
+- **ChatGPT (b): all five work as painted,** day and night. The mountains
+  stay visible and the inscription stays readable.
+- **Gemini (a) spring and summer work.** Grass and reeds reach the text
+  column but are light enough to read through (and, since round 7, the
+  paper halo fades them back around each glyph).
+- **Gemini autumn, winter and pass are too tall:** trees cover the time and
+  HR, and the right sides cover the newest HR data. A soft rectangle faded
+  out of the painting behind the text was tried and rejected: solid trunks
+  cannot fade believably, so it leaves a ghostly slice.
+- Gemini built all five on the same rocks and path: one place through the
+  seasons. Worth keeping.
+- The red maple stays full red at night, which is loud. Dim red at night in
+  code; no new art needed.
+
+## Round 7 (2026-11-05): fg-redo-a, Gemini's autumn, winter and pass again
+
+`circle_reference_v2.png` attached (left: Gemini's winter covering the text;
+right: the allowed zone, with the text column as a red box, the left side
+allowed higher, the right side kept low). Same chat as round 6:
+
+```
+Close, and beautiful, but too tall for this watch (left side of the attached
+image): the trees cover the time and heart rate, which are printed in the red
+box, and the right side covers the newest data. Please repaint AUTUMN, WINTER
+and MOUNTAIN PASS, one image each, keeping the same place, rocks and path you
+used, with these new limits (right side of the attached image):
+- Nothing at all inside the red box: no branches, leaves or rocks crossing it.
+  Trees on the left grow from the far left edge and lean OUTWARD, away from
+  the box, or stay below it.
+- The left side may rise higher than the right, but only outside the box.
+- The right side stays low: nothing above the grey zone.
+- Everything else as before: same circle, pure white outside it and above the
+  zone, no outline or text, same brush and ink.
+```
+
+Gemini returned all three circles on ONE sheet. `scripts/cut_art_kit.py`
+splits it into three square paintings (each square is its circle's ink
+width, sat on its ink bottom) and cuts them as fg-autumn-c, fg-winter-c and
+fg-pass-c.
+
+- **Winter fits on its own.**
+- **Autumn and pass still put the tree crown where the time goes;** their
+  right sides now stay low. The paper halo (`scripts/gen_halo.py`, on the
+  face since c73b9f1) makes the time read cleanly over them, so no further
+  redo is needed.
+
+## The picks, and rebuilding the cuts
+
+Ten usable whole-face foregrounds: ChatGPT's five (fg-spring-b, fg-summer-b,
+fg-autumn-b, fg-winter-b, fg-pass-b) and Gemini's fg-spring-a, fg-summer-a,
+fg-autumn-c, fg-winter-c, fg-pass-c (one place through the seasons).
+
+The cutouts are build output, not committed. From the repo root:
+
+```
+py -3.11 scripts\cut_art_kit.py
+py -3.11 scripts\preview_foreground.py art-picks.png
+```
+
+The first rebuilds every sheet's cutouts into
+`watch-faces/japanese-ink-heartrate/art/cuts/` (git-ignored), with the grid,
+names and flags recorded in its RECIPE table; `--only fg-` limits it to the
+foregrounds. The second renders the ten picks on the preview face (time,
+seal, halo, mock HR day), day over night, one column each; pass cut folders
+to render others. Both need Pillow, numpy and scipy.

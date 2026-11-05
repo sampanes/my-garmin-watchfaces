@@ -139,8 +139,8 @@ def cut(sheet, out, cols, rows, names, solid, backed=False, base_fade=0.3, full=
                 # with a disk, then fill. A crescent's inner arc is far wider
                 # than the disk, so it survives.
                 rad = max(6, int(0.08 * min(aa.shape)))
-                yy, xx = np.mgrid[-rad:rad + 1, -rad:rad + 1]
-                disk = xx * xx + yy * yy <= rad * rad
+                dy, dx = np.mgrid[-rad:rad + 1, -rad:rad + 1]
+                disk = dx * dx + dy * dy <= rad * rad
                 body = np.pad(aa > 0.02, rad)
                 body = ndimage.binary_closing(body, structure=disk)[rad:-rad, rad:-rad]
                 disc = ndimage.binary_fill_holes(body)

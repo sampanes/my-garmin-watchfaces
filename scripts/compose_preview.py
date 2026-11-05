@@ -653,11 +653,13 @@ def mid_plane_layout(history, trace=None):
 
 
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
-            hour24=False, overlay=True):
+            hour24=False, overlay=True, foreground=None):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
     Scene fits its stored trace), or None. overlay: draw the true-HR overlay
-    over the painting (the watch's "True HR line" setting)."""
+    over the painting (the watch's "True HR line" setting). foreground: an
+    RGBA painting composed for the whole face (art/cuts/fg-*), laid 1:1 in
+    place of the stock fg_left / fg_right masses."""
     sfx = "_night" if night else ""
     fg_l = load("fg_left%s.png" % sfx)
     fg_r = load("fg_right%s.png" % sfx)
@@ -717,12 +719,15 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     base = paste_scaled(base, mist, -0.03 * W, 0.66 * H, 1.06 * W, 0.22 * H)
 
     # 6. foreground masses: left = oldest hour, right = newest
-    l_h = 0.58 * H * (0.65 + 0.45 * h_start)
-    l_w = 0.74 * W
-    base = paste_scaled(base, fg_l, -0.04 * W, H - l_h + 0.03 * H, l_w, l_h)
-    r_h = 0.52 * H * (0.65 + 0.45 * h_end)
-    r_w = 0.68 * W
-    base = paste_scaled(base, fg_r, W - r_w + 0.04 * W, H - r_h + 0.03 * H, r_w, r_h)
+    if foreground is not None:
+        base = paste_scaled(base, foreground, 0, 0, W, H)
+    else:
+        l_h = 0.58 * H * (0.65 + 0.45 * h_start)
+        l_w = 0.74 * W
+        base = paste_scaled(base, fg_l, -0.04 * W, H - l_h + 0.03 * H, l_w, l_h)
+        r_h = 0.52 * H * (0.65 + 0.45 * h_end)
+        r_w = 0.68 * W
+        base = paste_scaled(base, fg_r, W - r_w + 0.04 * W, H - r_h + 0.03 * H, r_w, r_h)
 
     # 7. paper grain over everything (day only: black paper stays black)
     if grain is not None:
