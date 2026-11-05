@@ -5,6 +5,7 @@ using Toybox.Lang;
 using Toybox.Math;
 using Toybox.System;
 using Toybox.Time;
+using Toybox.UserProfile;
 using Toybox.WatchUi;
 
 // 2026-10-27 rewrite — baked benchmark planes.
@@ -192,6 +193,11 @@ class JapaneseInkHeartrateScene {
     var mStepsMet as Lang.Boolean = false;
     var mBatteryLow as Lang.Boolean = false;
     var mDayOfMonth as Lang.Number = 1;
+    // The seal's baseline: the profile's resting HR (0 = none), else the
+    // window's floor; and whether the seal shows working (sealWork).
+    var mRestingHr as Lang.Number = 0;
+    var mFloor as Lang.Float = 0.0;
+    var mSealWork as Lang.Boolean = false;
     var mPropW as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
     var mPropH as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
     var mNightStart as Lang.Number = 21;
@@ -283,6 +289,8 @@ class JapaneseInkHeartrateScene {
     const LANTERN_X = 0.64;           // the low-battery lantern's middle (W) ...
     const LANTERN_FOOT = 0.885;       // ... its foot (H)
     const BATTERY_LOW = 30.0;         // percent under which the lantern shows
+    const SEAL_WORK = 30.0;           // bpm over the resting baseline that turns the seal square ...
+    const SEAL_HYST = 8.0;            // ... and back to the oval this far under that
 
     // ------------------------------------------------------- the §13 probe
     // RENDERER_PLAN §13: what can the FR265 blend? Set PROBE to true, build,
@@ -421,6 +429,33 @@ class JapaneseInkHeartrateScene {
         mBatteryLow = battery < BATTERY_LOW;
         var day = Time.Gregorian.info(Time.now(), Time.FORMAT_SHORT).day;
         mDayOfMonth = (day instanceof Lang.Number) ? (day as Lang.Number) : 1;
+        mRestingHr = 0;
+        if (Toybox has :UserProfile) {
+            var profile = UserProfile.getProfile();
+            if (profile != null && (profile has :restingHeartRate)) {
+                var rest = profile.restingHeartRate;
+                if (rest != null && rest > 0) {
+                    mRestingHr = rest;
+                }
+            }
+        }
+    }
+
+    // The seal under the time works (the square) once the latest HR stands
+    // SEAL_WORK over the baseline, and rests (the oval) once it falls
+    // SEAL_HYST under that again, so it does not flicker on the line
+    // (compose_preview.seal_shape). Called by the View on every update.
+    function sealWork() as Lang.Boolean {
+        var hr = mLatestHr;
+        var base = (mRestingHr > 0) ? mRestingHr.toFloat() : mFloor;
+        if (hr == null || base <= 0.0) {
+            mSealWork = false;
+        } else if (hr.toFloat() >= base + SEAL_WORK) {
+            mSealWork = true;
+        } else if (hr.toFloat() < base + SEAL_WORK - SEAL_HYST) {
+            mSealWork = false;
+        }
+        return mSealWork;
     }
 
     // The moon's prop now (compose_preview.moon_prop): -1 near new moon,
@@ -922,6 +957,7 @@ class JapaneseInkHeartrateScene {
             return;
         }
         var floor = floorLevel(history);
+        mFloor = floor;
         if (floor <= 0.0) {
             mJobState = JOB_READY;
             return;

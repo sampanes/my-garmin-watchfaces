@@ -18,4 +18,8 @@
     <bitmap id="PropHikerNight" filename="prop_hiker_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropLantern" filename="prop_lantern.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropLanternNight" filename="prop_lantern_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropSealOval" filename="prop_seal_oval.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropSealOvalNight" filename="prop_seal_oval_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropSealSquare" filename="prop_seal_square.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropSealSquareNight" filename="prop_seal_square_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

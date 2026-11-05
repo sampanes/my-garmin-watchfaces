@@ -39,17 +39,18 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     // (a load costs ~57 ms on the watch, so not every update).
     var mHaloKeys as Lang.Array<Lang.String> = ["", "", "", "", ""];
     var mHaloBmps as Lang.Array<Graphics.BitmapType or Null> = [null, null, null, null, null];
+    // The seal from the sheet (bake_props.py: PROP_SEAL_OVAL at rest,
+    // PROP_SEAL_SQUARE at work), held like a halo slot: reloaded only when
+    // the shape or day/night changes.
+    var mSealKey as Lang.String = "";
+    var mSealBmp as Graphics.BitmapType or Null = null;
+    var mSealW as Lang.Number = 0;
+    var mSealH as Lang.Number = 0;
 
     // Sumi ink for the inscription digits (the darkest ink in the painting),
-    // pale ink on the night paper; vermillion for the seal, dimmed at night.
+    // pale ink on the night paper.
     const INK = 0x18120E;
     const INK_NIGHT = 0xD8D2C6;
-    const SEAL_RED_R = 176;
-    const SEAL_RED_G = 52;
-    const SEAL_RED_B = 38;
-    const SEAL_NIGHT_R = 150;
-    const SEAL_NIGHT_G = 44;
-    const SEAL_NIGHT_B = 32;
 
     function initialize() {
         WatchUi.WatchFace.initialize();
@@ -289,14 +290,26 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
             return;
         }
 
-        // Artist's seal: rounded vermillion square, live HR inside in the
-        // carved seal digits (three of them fit with the 8.5% size).
-        if (night) {
-            dc.setFill(Graphics.createColor(0xEB, SEAL_NIGHT_R, SEAL_NIGHT_G, SEAL_NIGHT_B));
-        } else {
-            dc.setFill(Graphics.createColor(0xEB, SEAL_RED_R, SEAL_RED_G, SEAL_RED_B));
+        // Artist's seal from the sheet, centered where the drawn square was,
+        // live HR inside in the carved seal digits: the oval while the HR
+        // rests near the baseline, the square once it works (Scene sealWork).
+        var shape = mScene.sealWork() ? PROP_SEAL_SQUARE : PROP_SEAL_OVAL;
+        var key = shape.toString() + (night ? "n" : "d");
+        if (mSealBmp == null || !key.equals(mSealKey)) {
+            mSealBmp = null;
+            try {
+                mSealBmp = loadPropBitmap(shape, night);
+            } catch (ex) {
+                mSealBmp = null;
+            }
+            mSealKey = key;
+            mSealW = propW()[shape];
+            mSealH = propH()[shape];
         }
-        dc.fillRoundedRectangle(sealX, sealY, sealSize, sealSize, sealSize / 7);
+        var sealBmp = mSealBmp;
+        if (sealBmp != null) {
+            dc.drawBitmap(colX - mSealW / 2, sealY + sealSize / 2 - mSealH / 2, sealBmp);
+        }
 
         var hrText = currentHeartRateText();
         if (hrText != null) {

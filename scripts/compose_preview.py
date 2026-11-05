@@ -324,6 +324,18 @@ HIKER_SINK = 3             # px the hiker's ground patch sinks into the summit
 LANTERN_X = 0.64           # the low-battery lantern's middle (W) ...
 LANTERN_FOOT = 0.885       # ... its foot (H), on the foreground's ground
 BATTERY_LOW = 30.0         # percent under which the lantern shows
+SEAL_WORK = 30.0           # bpm over the resting baseline that turns the seal square ...
+SEAL_HYST = 8.0            # ... and back to the oval this far under that (the watch only)
+
+
+def seal_shape(hr_now, baseline):
+    """The seal under the time: "seal_square" once the HR stands SEAL_WORK
+    over the baseline (working), else "seal_oval" (resting). baseline is the
+    profile's resting HR, or the window's floor without one. The Scene's
+    sealWork, which also holds the square until SEAL_HYST under the line."""
+    if hr_now is not None and baseline and hr_now >= baseline + SEAL_WORK:
+        return "seal_square"
+    return "seal_oval"
 
 
 def moon_age(epoch):
@@ -844,7 +856,7 @@ def mid_plane_layout(history, trace=None):
 
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
             hour24=False, overlay=True, foreground=None, month=None, day=None, scene=0,
-            epoch=None, steps_met=False, battery=100.0):
+            epoch=None, steps_met=False, battery=100.0, resting=None):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
     Scene fits its stored trace), or None. overlay: draw the true-HR overlay
@@ -854,7 +866,8 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     (the watch's "foreground" setting, 0 = by season) choose the baked one
     (foreground_index). epoch (now by default) sets the moon's phase,
     steps_met (today's step goal met) the geese, battery (percent) the
-    lantern (prop_rules)."""
+    lantern (prop_rules), resting (the profile's resting HR; the window's
+    floor without it) the seal's shape (seal_shape)."""
     import time
     epoch = time.time() if epoch is None else epoch
     day_of_month = datetime.date.today().day if day is None else day
@@ -958,11 +971,11 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     base = paste_at(base, load("halo_seal" + sfx + ".png"), sx0 - HALO_PAD, sy0 - HALO_PAD)
     for font, g, x, top in placed:
         base = font.draw_left(base, g, x, top, ink)
-    seal_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(seal_layer).rounded_rectangle(
-        [sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7,
-        fill=(150, 44, 32, 235) if night else (176, 52, 38, 235))
-    base = Image.alpha_composite(base, seal_layer)
+    # the seal from the sheet, centered where the drawn square was: the oval
+    # at rest, the square at work (seal_shape)
+    shape = seal_shape(hr_now, resting if resting else layout["floor"])
+    sw, sh = {p["name"]: (p["w"], p["h"]) for p in prop_table()["props"]}[shape]
+    base = paste_at(base, prop_image(shape, night), cx - sw // 2, sy0 + seal // 2 - sh // 2)
     if hr_now is not None:
         base = seal_font.draw(base, str(int(round(hr_now))), int(0.22 * W), sy0 + seal / 2.0,
                               (244, 238, 226))

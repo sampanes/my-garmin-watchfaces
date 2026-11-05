@@ -46,7 +46,7 @@
   {
    "name": "hiker",
    "cut": "props-b/15_hiker",
-   "w": 44,
+   "w": 31,
    "h": 34
   },
   {
@@ -54,6 +54,18 @@
    "cut": "props2-b/02_lantern",
    "w": 45,
    "h": 50
+  },
+  {
+   "name": "seal_oval",
+   "cut": "props2-b/14_seal_oval",
+   "w": 46,
+   "h": 32
+  },
+  {
+   "name": "seal_square",
+   "cut": "props2-b/13_seal_square",
+   "w": 35,
+   "h": 35
   }
  ]
 }

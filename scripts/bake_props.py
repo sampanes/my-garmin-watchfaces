@@ -14,6 +14,11 @@ shown by one rule, so a prop always means something (John, 11-05).
     hiker          a workout in the window (the host stands HIKER_ELEV bpm
                    over the floor): on the host's summit
     lantern        the battery is under 30%: on the foreground's ground
+    seal_oval /    the artist's seal under the time, carrying the live HR:
+    seal_square    the oval while the HR is near the resting baseline, the
+                   square once it is SEAL_WORK bpm over it (John, 11-05).
+                   The View draws it, not the Scene. The oval is turned on
+                   its side so three digits fit.
 
 The rules live in compose_preview (prop_rules) and the Scene; this script
 only bakes the art. The cuts (scripts/cut_art_kit.py, art/cuts/props-b and
@@ -65,7 +70,18 @@ PROPS = [
     ("hut", "props2-b/03_hut", ("w", 84), 0.55, 0.75, False, False),
     ("hiker", "props-b/15_hiker", ("h", 34), 1.0, 1.0, False, False),
     ("lantern", "props2-b/02_lantern", ("h", 50), 1.0, 1.0, False, False),
+    ("seal_oval", "props2-b/14_seal_oval", ("h", 32), 0.92, 1.0, False, True),
+    ("seal_square", "props2-b/13_seal_square", ("h", 35), 0.92, 1.0, False, True),
 ]
+# Turned before sizing (degrees counter-clockwise): the sheet's oval stands
+# upright, too narrow for three digits.
+ROTATE = {"seal_oval": 90}
+# Ink erased from a cut before cropping, as boxes in fractions of the cut's
+# ink box (x0, y0, x1, y1), feathered over TRIM_FEATHER px: the hiker's
+# grass and the level ground he walks on, which stuck out sideways from a
+# sloped summit (John, 11-05). A patch stays under his feet.
+TRIM = {"hiker": [(0.0, 0.66, 0.31, 1.0), (0.72, 0.85, 1.0, 1.0)]}
+TRIM_FEATHER = 6
 NIGHT_INK = (168, 164, 152)   # cut_sprite_sheet.NIGHT_INK
 NIGHT_RED = 0.60              # the red's brightness at night (bake_foregrounds)
 INK_FLOOR = 12                # alpha under this is not ink when cropping
@@ -82,8 +98,33 @@ def cut_path(cut):
     return p
 
 
-def bake_one(cut, size, tone, night_share, mirror, own):
+def trim(im, boxes):
+    """Erase the boxes (fractions of the ink box) with a soft edge."""
+    p = np.asarray(im, dtype=float).copy()
+    ys, xs = np.nonzero(p[..., 3] >= INK_FLOOR)
+    x0, y0 = xs.min(), ys.min()
+    bw, bh = xs.max() - x0 + 1, ys.max() - y0 + 1
+    yy, xx = np.mgrid[0:p.shape[0], 0:p.shape[1]]
+    keep = np.ones(p.shape[:2])
+    for fx0, fy0, fx1, fy1 in boxes:
+        ax0, ay0 = x0 + fx0 * bw, y0 + fy0 * bh
+        ax1, ay1 = x0 + fx1 * bw, y0 + fy1 * bh
+        # distance inside the box, 0 at its edge; the image border is no edge
+        d = np.minimum.reduce([xx - ax0 if fx0 > 0 else np.full_like(xx, 1e9, dtype=float),
+                               ax1 - xx if fx1 < 1 else np.full_like(xx, 1e9, dtype=float),
+                               yy - ay0 if fy0 > 0 else np.full_like(yy, 1e9, dtype=float),
+                               ay1 - yy if fy1 < 1 else np.full_like(yy, 1e9, dtype=float)])
+        keep = np.minimum(keep, 1.0 - np.clip(d / TRIM_FEATHER, 0.0, 1.0))
+    p[..., 3] *= keep
+    return Image.fromarray(np.round(p).astype(np.uint8), "RGBA")
+
+
+def bake_one(name, cut, size, tone, night_share, mirror, own):
     im = Image.open(cut_path(cut)).convert("RGBA")
+    if name in TRIM:
+        im = trim(im, TRIM[name])
+    if name in ROTATE:
+        im = im.rotate(ROTATE[name], expand=True, resample=Image.BICUBIC)
     a = np.asarray(im)[..., 3]
     ys, xs = np.nonzero(a >= INK_FLOOR)
     im = im.crop((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
@@ -114,7 +155,7 @@ def bake_one(cut, size, tone, night_share, mirror, own):
 def bake_all():
     total = 0
     for name, cut, size, tone, share, mirror, own in PROPS:
-        day, night = bake_one(cut, size, tone, share, mirror, own)
+        day, night = bake_one(name, cut, size, tone, share, mirror, own)
         for im, sfx in ((day, ""), (night, "_night")):
             path = os.path.join(DRAW, "prop_%s%s.png" % (name, sfx))
             im.save(path, optimize=True)

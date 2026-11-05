@@ -478,3 +478,93 @@ John's verdicts on the unused props (2026-11-05, day beside night): the
 **sun in mist** (props 02, both painters) looks great by day and by night;
 the **snow pine** (props2 12) is poor at night, its snow lost on black (the
 same fault that kept trees-b's snow pine off the ridges).
+
+## Round 9 (2026-11-05, to send): weather, and the inscription's numerals
+
+John agreed the signals assessment the same evening (weather in the sky
+slot, a heron for sitting too long, a small swallow for unread
+notifications, and the rest; PROCEDURE.md section 10). Four sheets fill its
+gaps and replace the last script-made art (gen_ink_font.py's digits and
+kanji). Send each to both painters, a new chat each, and pick per piece as
+before.
+
+- **Weather.** The moon in mist is the night twin of the sun in mist. The
+  snow is asked as white paper in grey rings because grey dabs read as dirt
+  on day paper; at night the old dabs (props2 11) stay, since white paper
+  vanishes on black. The lightning is asked in black ink for the same
+  reason.
+- **Minute digits, hour kanji, seal digits.** The halos (gen_halo.py) are
+  made from whatever glyphs the font has, so they carry over. The seal
+  digits are asked in black and recolored to paper at the bake. Image
+  models often garble kanji: if both painters do, the script kanji stay.
+
+### 9.1 Weather (3x3)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, small dry-brush grasses in the foreground, and a single red sun disc. The look is restrained, quiet and traditional, with lots of empty space. Not anime, not cartoon, not colorful watercolor.
+
+I need a sprite sheet that I will cut apart by machine and layer onto that landscape. The rules matter more than the art:
+- Output a PNG. Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no grid lines, no borders, no frames, no shadows.
+- One subject per cell, centered, with wide empty white space around it. Nothing may touch or cross into another cell.
+- No text, labels, signatures, seals or watermarks anywhere.
+- Ink only: black and greys with real brush character (wet wash edges, dry-brush texture, varied stroke weight). The ONLY color allowed is a vermilion red (#B83A2E) where a subject says so.
+- Every subject must read at thumbnail size: favor solid ink masses and bold strokes over hairline outlines and fine detail.
+- Pale subjects must still have a soft but complete grey edge all the way round, so their shape is never lost into the white.
+- Same brush, same hand, same scale feel across the whole sheet.
+
+This sheet is weather for the sky. Make one square image, 2048x2048, laid out as a 3x3 grid of 9 subjects. Left to right, top to bottom:
+Row 1: (1) a full moon half hidden behind two soft bands of mist, the moon a pale grey wash disc with a darker grey rim, no red; (2) falling snow: about twenty round flakes of varied size, each flake left as bare white paper inside a soft grey wash ring; (3) heavier snowfall in the same style, more flakes, slanting slightly.
+Row 2: (4) a storm: dark slanted rain strokes with one thin jagged lightning stroke in solid black ink through them; (5) dark clouds gathering: a heavy grey-black cloud bank with a flat underside, as if rolling in from the left edge of the sky; (6) a long, low, flat band of grey overcast cloud, wide and thin, with a soft complete edge.
+Row 3: (7) about eight loose maple leaves tumbling on the wind along a diagonal, three of them vermilion red (#B83A2E), the rest grey ink, no branch; (8) about eight loose dry winter leaves, grey ink only, blown along a diagonal, no branch; (9) light drizzle: short, fine, sparse slanted grey strokes, much lighter than rain.
+```
+
+### 9.2 Minute digits (5x2)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, small dry-brush grasses in the foreground, and a single red sun disc. The look is restrained, quiet and traditional, with lots of empty space. Not anime, not cartoon, not colorful watercolor.
+
+I need a sprite sheet that I will cut apart by machine and layer onto that landscape. The rules matter more than the art:
+- Output a PNG. Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no grid lines, no borders, no frames, no shadows.
+- One subject per cell, centered, with wide empty white space around it. Nothing may touch or cross into another cell.
+- The only writing on the sheet is the numerals asked for below: no other text, labels, signatures, seals or watermarks.
+- Ink only: black and greys with real brush character (wet wash edges, dry-brush texture, varied stroke weight). The ONLY color allowed is a vermilion red (#B83A2E) where a subject says so.
+- Every subject must read at thumbnail size: favor solid ink masses and bold strokes over hairline outlines and fine detail.
+- Pale subjects must still have a soft but complete grey edge all the way round, so their shape is never lost into the white.
+- Same brush, same hand, same scale feel across the whole sheet.
+
+This sheet is the clock's minute digits. Make one wide image, 2560x1024, laid out as a 5x2 grid of 10 cells. Row 1: 0, 1, 2, 3, 4. Row 2: 5, 6, 7, 8, 9. Each cell holds one Western Arabic numeral written with a single loaded sumi brush, the way a calligrapher writes the date in an ink painting's inscription: bold, upright, dark ink, wet edges, a little dry-brush at the stroke ends. All ten digits the same height (about 70% of the cell) and the same stroke weight, standing on one shared baseline, each centered in its cell. Legible first: no serifs, no flourishes, no slant. Nothing else on the sheet.
+```
+
+### 9.3 Hour kanji (4x3)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, small dry-brush grasses in the foreground, and a single red sun disc. The look is restrained, quiet and traditional, with lots of empty space. Not anime, not cartoon, not colorful watercolor.
+
+I need a sprite sheet that I will cut apart by machine and layer onto that landscape. The rules matter more than the art:
+- Output a PNG. Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no grid lines, no borders, no frames, no shadows.
+- One subject per cell, centered, with wide empty white space around it. Nothing may touch or cross into another cell.
+- The only writing on the sheet is the numerals asked for below: no other text, labels, signatures, seals or watermarks.
+- Ink only: black and greys with real brush character (wet wash edges, dry-brush texture, varied stroke weight). The ONLY color allowed is a vermilion red (#B83A2E) where a subject says so.
+- Every subject must read at thumbnail size: favor solid ink masses and bold strokes over hairline outlines and fine detail.
+- Pale subjects must still have a soft but complete grey edge all the way round, so their shape is never lost into the white.
+- Same brush, same hand, same scale feel across the whole sheet.
+
+This sheet is the clock's hour numerals in kanji. Make one image, 2048x1536, laid out as a 4x3 grid of 12 cells. Row 1: 〇, 一, 二, 三. Row 2: 四, 五, 六, 七. Row 3: 八, 九, 十, 廿. Each cell holds exactly that one character, correctly formed, written with a sumi brush in regular script (kaisho): bold, dark ink, wet edges, a little dry-brush at the stroke ends. 〇 is a brushed circle for zero; 廿 is twenty. All twelve the same visual size and stroke weight, each centered in its cell (一 sits in the vertical middle of its cell, not at the top or bottom). Nothing else on the sheet.
+```
+
+### 9.4 Seal digits (5x2)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, small dry-brush grasses in the foreground, and a single red sun disc. The look is restrained, quiet and traditional, with lots of empty space. Not anime, not cartoon, not colorful watercolor.
+
+I need a sprite sheet that I will cut apart by machine and layer onto that landscape. The rules matter more than the art:
+- Output a PNG. Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no grid lines, no borders, no frames, no shadows.
+- One subject per cell, centered, with wide empty white space around it. Nothing may touch or cross into another cell.
+- The only writing on the sheet is the numerals asked for below: no other text, labels, signatures, seals or watermarks.
+- Ink only: black and greys with real brush character (wet wash edges, dry-brush texture, varied stroke weight). The ONLY color allowed is a vermilion red (#B83A2E) where a subject says so.
+- Every subject must read at thumbnail size: favor solid ink masses and bold strokes over hairline outlines and fine detail.
+- Pale subjects must still have a soft but complete grey edge all the way round, so their shape is never lost into the white.
+- Same brush, same hand, same scale feel across the whole sheet.
+
+This sheet is small digits for an artist's seal stamp. Make one wide image, 2560x1024, laid out as a 5x2 grid of 10 cells. Row 1: 0, 1, 2, 3, 4. Row 2: 5, 6, 7, 8, 9. Each cell holds one Western Arabic numeral in the blocky carved style of a Chinese seal stamp: squared strokes of even weight, slightly chiseled, worn edges, in solid black ink (I will recolor them). They will be shown only 12 pixels tall, so keep them simple, heavy and open: no thin strokes, no closed-up counters. All ten the same height and width, on one shared baseline, each centered in its cell. Nothing else on the sheet.
+```

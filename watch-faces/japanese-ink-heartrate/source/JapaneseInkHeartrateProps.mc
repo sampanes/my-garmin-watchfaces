@@ -7,7 +7,7 @@ using Toybox.WatchUi;
 // rule (the Scene's props; compose_preview.prop_rules). Baked at the size
 // they are drawn on a 416 px face, drawn 1:1.
 
-const PROP_COUNT = 9;
+const PROP_COUNT = 11;
 const PROP_SUN = 0;
 const PROP_MOON_FULL = 1;
 const PROP_MOON_WAXING = 2;
@@ -17,13 +17,15 @@ const PROP_VILLAGE = 5;
 const PROP_HUT = 6;
 const PROP_HIKER = 7;
 const PROP_LANTERN = 8;
+const PROP_SEAL_OVAL = 9;
+const PROP_SEAL_SQUARE = 10;
 
 function propW() as Lang.Array<Lang.Number> {
-    return [34, 34, 29, 29, 78, 96, 84, 44, 45] as Lang.Array<Lang.Number>;
+    return [34, 34, 29, 29, 78, 96, 84, 31, 45, 46, 35] as Lang.Array<Lang.Number>;
 }
 
 function propH() as Lang.Array<Lang.Number> {
-    return [34, 34, 34, 34, 46, 74, 76, 34, 50] as Lang.Array<Lang.Number>;
+    return [34, 34, 34, 34, 46, 74, 76, 34, 50, 32, 35] as Lang.Array<Lang.Number>;
 }
 
 // Prop i, day or night; the caller catches a refusal.
@@ -37,5 +39,7 @@ function loadPropBitmap(i as Lang.Number, night as Lang.Boolean) as Graphics.Bit
     if (i == 6) { return WatchUi.loadResource(night ? Rez.Drawables.PropHutNight : Rez.Drawables.PropHut) as Graphics.BitmapType; }
     if (i == 7) { return WatchUi.loadResource(night ? Rez.Drawables.PropHikerNight : Rez.Drawables.PropHiker) as Graphics.BitmapType; }
     if (i == 8) { return WatchUi.loadResource(night ? Rez.Drawables.PropLanternNight : Rez.Drawables.PropLantern) as Graphics.BitmapType; }
+    if (i == 9) { return WatchUi.loadResource(night ? Rez.Drawables.PropSealOvalNight : Rez.Drawables.PropSealOval) as Graphics.BitmapType; }
+    if (i == 10) { return WatchUi.loadResource(night ? Rez.Drawables.PropSealSquareNight : Rez.Drawables.PropSealSquare) as Graphics.BitmapType; }
     return null;
 }
