@@ -592,3 +592,17 @@ leak one sheet's subjects into another.
   they nearly vanish, as expected, so the night keeps props2 11's dabs.
 - The gathering clouds come in from the right (mirrored), not the left,
   where the time column is.
+- **Out (garbage pass, 11-05):** Gemini's moon in mist (a glass ring, the
+  mist shows through the disc), Gemini's heavy snow (grey diagonal smears
+  read as dirt), Gemini's gathering clouds in the weather sheet (a faint
+  wash runs straight into both sides of its cell: a visible box on the
+  face), ChatGPT's drizzle (too faint to read at watch size, gone at
+  night). Weak but kept as spares: ChatGPT's storm (smudged rain, thin
+  bolt), Gemini's extra cloud sheet (its left side is cropped, usable only
+  flush with the rim). Left for John's eyes: moon in mist b, snow b, heavy
+  snow b, storm a, gathering clouds b and clouds-b, overcast a and b, both
+  maple and both winter leaves, drizzle a.
+- **Whole-face weather needs its own sheet.** Tiled over the face, these
+  cell-sized pieces go too faint to read, by day and worse at night
+  (`~/Downloads`-only mock, three depths: behind the horizon, behind the
+  grasses, over all but the time column).
