@@ -3,7 +3,7 @@
 
 Feeds many four-hour HR windows through compose_preview.py (the 1:1 offline
 mock of the watch recipe), reads the PAINTED skyline of the two landmark
-relief (horizon + masses) column by column along the face's time axis, and
+relief (horizon + masses + ridge trees) column by column along the face's time axis, and
 scores it against the true curve:
 
     r          Pearson correlation of painted height and true HR per column
@@ -175,13 +175,14 @@ def smooth(series, radius):
 
 
 def skyline(history, trace):
-    """Top inked row of the horizon + masses per screen column, as painted
+    """Top inked row of the horizon + masses + ridge trees per column, as painted
     (the same painters compose() uses; the near range sits under the
     horizon and is not relief)."""
     layout = cp.mid_plane_layout(history, trace)
     canvas = Image.new("RGBA", (cp.W, cp.H), (0, 0, 0, 0))
     canvas = cp.paint_horizon(canvas, layout, False)
     canvas = cp.paint_masses(canvas, layout, False)
+    canvas = cp.paint_trees(canvas, layout, False)
     alpha = canvas.getchannel("A").load()
     tops = []
     for x in range(cp.W):

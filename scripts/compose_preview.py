@@ -181,6 +181,11 @@ NEAR_H = 0.21            # its height (fraction of H): the foot under the mist a
 NEAR_HR_SPAN = 30.0      # ... up by almost half over this many bpm of its third over the floor
 NEAR_EMPTY = 0.25        # a third of the screen with less mass cover than this is empty
 NEAR_LEAN = (-0.05, 0.03, 0.05)   # the near hills lean outward from their third's center (W)
+TREE_MAX = 3             # ridge trees per window, at most ...
+TREE_NEED = 9.0          # ... each where the data stands this many px over the ridge ...
+TREE_OVER = 3.0          # ... the tallest baked size within this many px over the data ...
+TREE_GAP = 16.0          # ... this far from another tree (px) ...
+TREE_SINK = 2            # ... its foot this many px into the ridge
 KNOCKOUT = (0.02, 0.12)  # a mass's paper cutout is opaque where its ink is over 12%
                          # and gone under 2% (paper_backed): the washes are faint
 
@@ -497,6 +502,76 @@ def shape_image(name, night):
     return _SHAPES[key]
 
 
+def tree_table():
+    """The ridge trees' size table (scripts/bake_trees.py)."""
+    if "trees" not in _SHAPES:
+        import json
+        with open(os.path.join(HERE, "tree_table.json")) as f:
+            _SHAPES["trees"] = json.load(f)
+    return _SHAPES["trees"]
+
+
+def tree_image(i, k, night):
+    t = tree_table()
+    return load("tree_%s_%d%s.png" % (t["trees"][i]["name"], t["sizes"][k], "_night" if night else ""))
+
+
+def place_trees(masses, samples, floor_y):
+    """Up to TREE_MAX ridge trees: [{"tree": i, "size": k, "pos": (x, y)}].
+
+    Where a sample of the data stands TREE_NEED or more over the painted
+    ridge (the topmost mass profile there, from the shape table, as the
+    watch knows it), a tree stands on the ridge: the biggest, the most
+    over first, TREE_GAP apart; its baked height is the tallest that stays
+    within TREE_OVER of the data. Which tree is (sample index * 3 + pick)
+    mod the tree count, so a window always grows the same trees."""
+    table, trees_t = shape_table(), tree_table()
+    k_cols, sizes = table["k"], trees_t["sizes"]
+    need = []
+    for x, y in samples:
+        ridge = None
+        for m in masses:
+            left, top, w, h = m["rect"]
+            sh = table["shapes"][m["shape"]]
+            d = x - left
+            if d < 0.0 or d >= w:
+                continue
+            t = sh["top"][int(d * k_cols / w)]
+            if t < 0:
+                continue
+            py = top + t * h / sh["h"]
+            if py < floor_y and (ridge is None or py < ridge):
+                ridge = py
+        need.append((ridge - y, ridge) if ridge is not None else (-1.0, 0.0))
+    out, xs = [], []
+    for pick in range(TREE_MAX):
+        best = None
+        for j, (x, _) in enumerate(samples):
+            if need[j][0] < TREE_NEED or any(abs(x - tx) < TREE_GAP for tx in xs):
+                continue
+            if best is None or need[j][0] > need[best][0]:
+                best = j
+        if best is None:
+            break
+        n, ridge = need[best]
+        k = max(q for q in range(len(sizes)) if sizes[q] <= n + TREE_OVER)
+        i = (best * 3 + pick) % len(trees_t["trees"])
+        x = samples[best][0]
+        xs.append(x)
+        out.append({"tree": i, "size": k,
+                    "pos": (int(x + 0.5) - trees_t["trees"][i]["foot"][k],
+                            int(ridge + 0.5) - sizes[k] + TREE_SINK)})
+    return out
+
+
+def paint_trees(base, layout, night):
+    """The ridge trees, 1:1 (drawBitmap). scripts/fidelity_test.py paints
+    them into the scored skyline too."""
+    for t in layout.get("trees", []):
+        base = paste_at(base, tree_image(t["tree"], t["size"], night), *t["pos"])
+    return base
+
+
 def fit_samples(history, trace):
     """The heart rate the fit scores against, as (x px, y px) on the crest
     scale: the thinned trace the Scene keeps, or the buckets without one."""
@@ -576,7 +651,7 @@ def mid_plane_layout(history, trace=None):
     of the screen the masses leave empty (both outer thirds when all three
     are), its foot under the mist."""
     floor = floor_level(history)
-    out = {"floor": floor, "horizon_y": None, "masses": [], "near": [],
+    out = {"floor": floor, "horizon_y": None, "masses": [], "near": [], "trees": [],
            "host": None, "host_crest": None, "host_plane": None,
            "guest": None, "guest_crest": None, "guest_plane": None}
     if floor <= 0.0:
@@ -616,6 +691,7 @@ def mid_plane_layout(history, trace=None):
     # depth: the other masses first (the taller farther), the host last
     masses.sort(key=lambda m: (m["host"], m["crest"][1]))
     out["masses"] = masses
+    out["trees"] = place_trees(masses, samples, floor_y)
 
     # the near range: a third of the screen the masses leave empty gets a
     # near hill, its height nudged by that third's heart rate over the floor
@@ -707,6 +783,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
 
     # 3. the masses: the library shapes, the host last (none on a flat day)
     base = paint_masses(base, layout, night)
+    base = paint_trees(base, layout, night)
 
     # 4. the near range (round 5): a near hill in each third of the screen
     #    the masses leave empty, under the half-way line, to balance the

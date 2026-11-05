@@ -145,6 +145,11 @@ class JapaneseInkHeartrateScene {
     var mShapeAx as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
     var mShapeAy as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
     var mShapeTop as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    // The ridge trees' size table (JapaneseInkHeartrateTrees.mc), read once,
+    // and this scene's trees as [left, top, tree, size], drawn 1:1.
+    var mTreeSizes as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    var mTreeFoot as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    var mTrees as Lang.Array<Lang.Array<Lang.Number>>?;
     // px: the apex is tried this far from the run's summit (FIT_SLIDE)
     var mFitSlide as Lang.Array<Lang.Float> = [0.0, -12.0, 12.0, -24.0, 24.0] as Lang.Array<Lang.Float>;
     // The near hills lean outward from their third's center (fraction of W).
@@ -190,6 +195,11 @@ class JapaneseInkHeartrateScene {
     const FIT_APEX_K = 1.0;       // error per px between a shape's apex and the run's summit
     const FOOT_Y = 0.80;          // a placed shape's bottom edge must reach this far down (H)
     const LIB_W = 416.0;          // the screen width the library was baked for
+    const TREE_MAX = 3;           // ridge trees per window, at most ...
+    const TREE_NEED = 9.0;        // ... each where the data stands this many px over the ridge ...
+    const TREE_OVER = 3.0;        // ... the tallest baked size within this many px over the data ...
+    const TREE_GAP = 16.0;        // ... this far from another tree (px) ...
+    const TREE_SINK = 2;          // ... its foot this many px into the ridge
     const NEAR_CREST_Y = 0.60;    // the near range's crest (fraction of H)
     const NEAR_H = 0.21;          // its height (fraction of H) ...
     const NEAR_HR_SPAN = 30.0;    // ... up by almost half over this much of its third over the floor
@@ -275,6 +285,8 @@ class JapaneseInkHeartrateScene {
         mShapeAx = shapeApexX();
         mShapeAy = shapeApexY();
         mShapeTop = shapeTop();
+        mTreeSizes = treeSizes();
+        mTreeFoot = treeFoot();
         readSettings();
         mNight = computeNight();
         mDisplayedNight = mNight;
@@ -391,6 +403,17 @@ class JapaneseInkHeartrateScene {
         var bmp = null;
         try {
             bmp = loadShapeBitmap(i, night);
+        } catch (ex) {
+            bmp = null;
+        }
+        return bmp;
+    }
+
+    // A ridge tree at one baked size, loaded for one render (null when refused).
+    function loadTree(i as Lang.Number, k as Lang.Number, night as Lang.Boolean) as Graphics.BitmapType? {
+        var bmp = null;
+        try {
+            bmp = loadTreeBitmap(i, k, night);
         } catch (ex) {
             bmp = null;
         }
@@ -694,6 +717,7 @@ class JapaneseInkHeartrateScene {
     // scored in this callback; advanceReliefJob does that on later updates.
     function startReliefJob(w as Lang.Float, h as Lang.Float) as Void {
         mHorizonY = -1.0;
+        mTrees = null;
         var masses = [] as Lang.Array<Lang.Array<Lang.Float>>;
         var near = [] as Lang.Array<Lang.Array<Lang.Float>>;
         mMasses = masses;
@@ -915,6 +939,77 @@ class JapaneseInkHeartrateScene {
             near.add([cx - mPlaneApexX[p] * nw, NEAR_CREST_Y * h - mPlaneApexY[p] * nh,
                       nw, nh, p.toFloat()] as Lang.Array<Lang.Float>);
         }
+    }
+
+    // Up to TREE_MAX ridge trees (compose_preview.place_trees). Where a
+    // sample of the data stands TREE_NEED or more over the painted ridge
+    // (the topmost mass profile there, from the shape table), a tree stands
+    // on the ridge: the most over first, TREE_GAP apart, at the tallest
+    // baked size within TREE_OVER of the data. Which tree is (sample index
+    // * 3 + pick) mod TREE_COUNT. Runs in the painting update, after the fit.
+    function placeTrees() as Void {
+        mTrees = null;
+        var masses = mMasses;
+        var smpX = mFitSmpX;
+        var smpY = mFitSmpY;
+        if (masses == null || smpX == null || smpY == null) { return; }
+        var floorY = mFitFloorY;
+        var n = smpX.size();
+        var need = [] as Lang.Array<Lang.Float>;
+        var ridge = [] as Lang.Array<Lang.Float>;
+        for (var j = 0; j < n; j++) {
+            var x = smpX[j];
+            var top = 0.0;
+            var found = false;
+            for (var q = 0; q < masses.size(); q++) {
+                var m = masses[q];
+                var d = x - m[0];
+                if (d < 0.0 || d >= m[2]) { continue; }
+                var si = m[M_PLANE].toNumber();
+                var t = mShapeTop[si * SHAPE_K + (d * SHAPE_K / m[2]).toNumber()];
+                if (t < 0) { continue; }
+                var py = m[1] + t * m[3] / mShapeH[si];
+                if (py < floorY && (!found || py < top)) {
+                    top = py;
+                    found = true;
+                }
+            }
+            need.add(found ? top - smpY[j] : -1.0);
+            ridge.add(top);
+        }
+
+        var trees = [] as Lang.Array<Lang.Array<Lang.Number>>;
+        var xs = [] as Lang.Array<Lang.Float>;
+        var sizes = mTreeSizes;
+        for (var pick = 0; pick < TREE_MAX; pick++) {
+            var best = -1;
+            for (var j = 0; j < n; j++) {
+                if (need[j] < TREE_NEED) { continue; }
+                var tooClose = false;
+                for (var q = 0; q < xs.size(); q++) {
+                    var dx = smpX[j] - xs[q];
+                    if (dx < 0.0) { dx = -dx; }
+                    if (dx < TREE_GAP) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (tooClose) { continue; }
+                if (best < 0 || need[j] > need[best]) { best = j; }
+            }
+            if (best < 0) { break; }
+            var k = 0;
+            for (var q = 0; q < sizes.size(); q++) {
+                if (sizes[q] <= need[best] + TREE_OVER) { k = q; }
+            }
+            var i = (best * 3 + pick) % TREE_COUNT;
+            var x = smpX[best];
+            xs.add(x);
+            trees.add([(x + 0.5).toNumber() - mTreeFoot[i * TREE_SIZES + k],
+                       (ridge[best] + 0.5).toNumber() - sizes[k] + TREE_SINK,
+                       i, k] as Lang.Array<Lang.Number>);
+        }
+        mTrees = trees;
     }
 
     function cancelSceneJob() as Void {
@@ -1150,6 +1245,7 @@ class JapaneseInkHeartrateScene {
     function finishBufferedScene() as Void {
         var buffer = mBuffer;
         if (buffer == null) { return; }
+        placeTrees();
         renderScene(buffer.getDc(), mBufferWidth, mBufferHeight);
         mLastSceneKey = mJobSceneKey;
         mHasBufferedScene = true;
@@ -1171,6 +1267,7 @@ class JapaneseInkHeartrateScene {
             return;
         }
         if (mJobState == JOB_READY) {
+            placeTrees();
             renderScene(dc, width, height);
             mLastSceneKey = mJobSceneKey;
             mDisplayedNight = mNight;
@@ -1242,6 +1339,18 @@ class JapaneseInkHeartrateScene {
                 var bmp = loadShape(m[M_PLANE].toNumber(), mNight);
                 if (bmp != null) {
                     dc.drawScaledBitmap(m[0], m[1], m[2], m[3], bmp);
+                }
+            }
+        }
+
+        // 3b. ridge trees where the data stands over the painted ridge, 1:1
+        var trees = mTrees;
+        if (trees != null) {
+            for (var i = 0; i < trees.size(); i++) {
+                var t = trees[i];
+                var bmp = loadTree(t[2], t[3], mNight);
+                if (bmp != null) {
+                    dc.drawBitmap(t[0], t[1], bmp);
                 }
             }
         }
