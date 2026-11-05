@@ -463,3 +463,9 @@ to render others. Both need Pillow, numpy and scipy.
 `scripts/bake_foregrounds.py` bakes the same ten onto the face
 (`resources/drawables/fg_*.png`, day and night), one a day by season and
 painter (PROCEDURE.md section 10, 2026-11-05).
+
+`scripts/bake_planes.py` bakes five of ChatGPT's six strips (4.2) into the
+face's fixed planes: far_hills is the far range, mist_dense and mist_wisps
+the two mist bands, near_pines and near_ridge the near hills. far_pale went
+unused: at the face's size it all but vanished. The water sheet (4.3) is
+cut but not on the face yet.

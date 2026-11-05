@@ -27,7 +27,7 @@ def main(argv):
     count = int(argv[0])
     sources = sorted(glob.glob(os.path.join(FACE, "*_cut*.png")))
     if not sources:
-        sys.exit("no *_cut*.png in " + FACE + " (run scripts/bake_cutouts.py)")
+        sys.exit("no *_cut*.png in " + FACE + " (run scripts/gen_shape_library.py)")
     res = os.path.join(PROBE, "resources-gen")
     src = os.path.join(PROBE, "source-gen")
     for d in (res, src):

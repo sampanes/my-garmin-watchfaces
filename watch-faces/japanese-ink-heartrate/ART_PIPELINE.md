@@ -14,8 +14,9 @@
 > stretched in width to its run (0.67x to 1.5x); non-flat `r` 0.91 against
 > 0.80 for the painted library. The foreground followed the same afternoon
 > (ten whole-face paintings from the sheets, one a day:
-> `scripts/bake_foregrounds.py`). The far range, mist and near hills are
-> still script-made: they come next.
+> `scripts/bake_foregrounds.py`), then the far range, both mist bands and
+> the near hills (five strips of the ChatGPT strip sheet:
+> `scripts/bake_planes.py`). Only the paper grain is still script-made.
 
 Last updated: 2026-10-27. This is the methods document for the current
 architecture. It records *how* the assets are made and *why* each technique
@@ -110,11 +111,9 @@ paper. `mist_band_lite.png` is the same image at 62% alpha, baked because
 
 | File | Native | Ink RGB | Role |
 |---|---|---|---|
-| far_range.png | 416×120 | 70,66,60 | ghost (ink .09, blur 7) over far (ink .19, blur 3.5) |
-| guest_mountain.png | 260×190 | 12,9,7 | second landmark, ink .36, crown .16, apex nx .42 |
-| host_mountain.png | 340×260 | 12,9,7 | strongest landmark, ink .62, crown .30, apex nx .47 |
+| far_range.png, host_mountain.png, guest_mountain.png | retired | | gone from the face since 11-03, the PNGs removed 2026-11-05 |
 | fg_left.png, fg_right.png | retired 2026-11-05 | | the foreground is a whole-face painting from the sheets now (`scripts/bake_foregrounds.py`, `fg_*.png`) |
-| mist_band.png (+_lite) | 416×110 | 242,238,230 | organic mist, alpha .58 (lite ×.62) |
+| horizon.png, mist_band.png, mist_band_lite.png, near_hill.png, near_hill2.png | from the strip sheet since 2026-11-05 | | `scripts/bake_planes.py` (PROCEDURE.md §10) |
 | paper_grain.png | 240×240 | 96,84,70 | washi grain, upscaled on-device, alpha ≤ .16 |
 | `*_night.png` (all but grain) | same | 168,164,152 ink; far 120,118,110; mist 0,0,0 | night mode's pale ink on black paper; alpha × .75 fg, .80 host, .85 guest, .90 far, mist as is (`write_pair`) |
 

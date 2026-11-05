@@ -30,6 +30,13 @@ baked by scripts/bake_foregrounds.py and chosen by the month, the day and
 the watch's "foreground" setting (foreground_index), in place of the two
 script-painted foreground masses.
 
+The fixed planes (2026-11-05, later): the far range (horizon.png), the two
+mist bands and the near hills are pieces of the ChatGPT strip sheet, baked
+by scripts/bake_planes.py (the near hills as paper cutouts, the mist
+re-toned to paper), the last script-painted art gone but the grain. The
+mock places them as before; their crests are measured from the PNGs here
+and written into the Scene by the bake.
+
 The inscription uses the baked BMFont pairs in resources/fonts (read from the
 .fnt exactly as the resource compiler reads them), so the preview's digits
 are the device's digits. --night composes the moonlit negative set (what the
@@ -195,8 +202,6 @@ TREE_NEED = 9.0          # ... each where the data stands this many px over the 
 TREE_OVER = 3.0          # ... the tallest baked size within this many px over the data ...
 TREE_GAP = 16.0          # ... this far from another tree (px) ...
 TREE_SINK = 2            # ... its foot this many px into the ridge
-KNOCKOUT = (0.02, 0.12)  # a mass's paper cutout is opaque where its ink is over 12%
-                         # and gone under 2% (paper_backed): the washes are faint
 
 
 def floor_level(history):
@@ -363,9 +368,11 @@ def kanji_hour(hour):
 CREST_LO_Y = 0.58        # the crest scale: 45 bpm sits here (fraction of H) ...
 CREST_HI_Y = 0.26        # ... and 160 bpm here (round 3: 1.7x the 10-29 scale)
 
-# The near range and the horizon by role. "apex" is the crest (x frac, y
-# frac) inside the bitmap, measured from the PNG (measure_apex) the first
-# time it is used. The masses come from the shape library (shape_table).
+# The near range and the horizon by role (scripts/bake_planes.py bakes
+# them). "apex" is the crest (x frac, y frac) inside the bitmap, measured
+# from the PNG (measure_apex) the first time it is used; the bake writes the
+# same numbers into the Scene. The masses come from the shape library
+# (shape_table).
 PLANES = {
     "near_hill": {"name": "near_hill", "aspect": 320.0 / 160.0, "apex": None},
     "near_hill2": {"name": "near_hill2", "aspect": 320.0 / 160.0, "apex": None},
@@ -405,42 +412,6 @@ def thin_trace(trace, cols=TRACE_COLS):
     return [max(trace[i:i + stride], key=lambda t: t[1]) for i in range(0, len(trace), stride)]
 
 
-_MASS_CACHE = {}
-
-
-def paper_backed(img, night):
-    """A mass as a cutout: its ink over its own paper (black paper at
-    night), so whatever stands behind it, the horizon or a farther mass, is
-    hidden the way a nearer mountain is painted over a gap left in the
-    farther one. The cutout's alpha ramps from KNOCKOUT[0] to [1] of the
-    ink's (a wash body is 20% ink and must still hide the line), and the
-    color is chosen so that over bare paper every pixel is unchanged. The
-    port bakes this into the plane PNGs (or draws a paper-colored
-    silhouette polygon first)."""
-    import numpy as np
-    a = np.asarray(img.getchannel("A"), dtype=float) / 255.0
-    rgb = np.asarray(img.convert("RGB"), dtype=float)
-    paper = np.array((0.0, 0.0, 0.0) if night else PAPER[:3], dtype=float)
-    k0, k1 = KNOCKOUT
-    a2 = np.clip((a - k0) / (k1 - k0), 0.0, 1.0)
-    share = np.clip(np.where(a2 > 0.0, a / np.maximum(a2, 1e-6), 0.0), 0.0, 1.0)[..., None]
-    rgb2 = rgb * share + paper * (1.0 - share)
-    out = np.dstack([rgb2, a2 * 255.0]).round().astype(np.uint8)
-    return Image.fromarray(out, "RGBA")
-
-
-def mass_image(name, night, flip=False):
-    """The cutout of a plane, mirrored when asked (the wide mountain with
-    its summit on the right: drawBitmap2 with a flip, or a baked twin)."""
-    key = (name, night, flip)
-    if key not in _MASS_CACHE:
-        img = paper_backed(load(name + ("_night" if night else "") + ".png"), night)
-        if flip:
-            img = img.transpose(Image.FLIP_LEFT_RIGHT)
-        _MASS_CACHE[key] = img
-    return _MASS_CACHE[key]
-
-
 def paint_horizon(base, layout, night):
     """The far range as a level line at the window's floor, full width, its
     crest row on the crest scale. Nothing on an empty window."""
@@ -462,9 +433,10 @@ def paint_masses(base, layout, night):
 
 
 def paint_near(base, layout, night):
-    """The near range, in front of the masses and under the horizon."""
+    """The near range, in front of the masses and under the horizon: the
+    baked cutouts (scripts/bake_planes.py) at their own size."""
     for n in layout["near"]:
-        base = paste_scaled(base, mass_image(n["plane"], night), *n["rect"])
+        base = paste_scaled(base, load(n["plane"] + ("_night" if night else "") + ".png"), *n["rect"])
     return base
 
 
@@ -923,7 +895,6 @@ def round_off(base):
 # firmware refusing the call. The labels use Pillow's default face; the
 # watch uses FONT_XTINY, so their width differs, and the title's API level
 # and buffer note ("full" = ALPHA_BLENDING_FULL accepted) are the watch's.
-MIST_W, MIST_H = 416, 110
 PROBE_GROUND = (0x5A, 0x55, 0x50, 255)
 PROBE_INK = (24, 18, 14, 255)
 
@@ -932,8 +903,8 @@ def compose_probe():
     from PIL import ImageChops, ImageFont
     # the Scene's probe uses two library shapes since 11-03 (the round-6
     # planes left the watch)
-    host = load("shape_peak_300_cut.png")
-    guest = load("shape_spire_180_cut.png")
+    host = load("shape_peak_cut.png")
+    guest = load("shape_spire_cut.png")
     mist = load("mist_band.png")
     mist_lite = load("mist_band_lite.png")
     base = Image.new("RGBA", (W, H), PAPER)
@@ -953,7 +924,7 @@ def compose_probe():
         d.text((W // 2, int(cy)), text, fill=PROBE_INK, font=font, anchor="mm")
 
     def mist_middle(img, w, h):
-        ox, oy = (MIST_W - w) // 2, (MIST_H - h) // 2
+        ox, oy = (img.width - w) // 2, (img.height - h) // 2
         return img.crop((ox, oy, ox + w, oy + h))
 
     label(0.075 * H, "PROBE 5.2.1 full")
@@ -971,7 +942,7 @@ def compose_probe():
     # B: the 300 px peak, point sampling | bilinear
     bx, by, bw, bh = int(W * 0.08), int(H * 0.36), int(W * 0.40), int(H * 0.18)
     bx2 = bx + bw + int(W * 0.04)
-    host_w = int(round(bh * 300.0 / 300.0))
+    host_w = int(round(bh * host.width / float(host.height)))
     inset = int((bw - host_w) / 2.0)
     frame(bx, by, bw, bh)
     frame(bx2, by, bw, bh)
@@ -995,7 +966,7 @@ def compose_probe():
     dx, dy, dw, dh = int(W * 0.235), int(H * 0.78), int(W * 0.25), int(H * 0.12)
     dx2 = dx + dw + int(W * 0.03)
     gh = dh * 0.9
-    gw = gh * 180.0 / 300.0
+    gw = gh * guest.width / float(guest.height)
     gy = int(round(dy + (dh - gh) / 2.0))
     g = guest.resize((int(round(gw)), int(round(gh))), Image.LANCZOS)
     g_over_white = Image.alpha_composite(Image.new("RGBA", g.size, (255, 255, 255, 255)), g)

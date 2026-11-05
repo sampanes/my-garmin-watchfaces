@@ -1,6 +1,6 @@
 # Japanese Ink Heartrate — Renderer Plan
 
-Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretched to the run, non-flat r 0.91; the foreground is a whole-face sheet painting, one a day)
+Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretched to the run; the foreground is a whole-face sheet painting, one a day; the far range, mist and near hills are sheet strips, non-flat r 0.90)
 
 > **2026-11-05 ART DECISION -- no procedurally generated art anymore (CURRENT).**
 > Nothing drawn by the watch's code or painted by our own scripts: every
@@ -16,8 +16,9 @@ Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretch
 > stretched in width to its run (0.67x to 1.5x); non-flat `r` 0.91 against
 > 0.80 for the painted library. The foreground followed the same afternoon
 > (ten whole-face paintings from the sheets, one a day:
-> `scripts/bake_foregrounds.py`). The far range, mist and near hills are
-> still script-made: they come next.
+> `scripts/bake_foregrounds.py`), then the far range, both mist bands and
+> the near hills (five strips of the ChatGPT strip sheet:
+> `scripts/bake_planes.py`). Only the paper grain is still script-made.
 
 > **2026-11-05 DECISION -- whole library mountains stay the silhouette (CURRENT).**
 > The 2026-11-03 direction stands: each run of buckets over the window's floor
@@ -50,8 +51,10 @@ Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretch
 > the record. Since then (2026-11-02 round 6, 2026-11-03 the shape library;
 > see PROCEDURE.md) each run of buckets over the window's floor is one whole
 > library mountain sunk onto the run's peak, and the newest report (2026-11-05
-> 10:59, the ChatGPT library) measures `r = 0.84` over all cases (`0.91`
-> non-flat), `11/13`, a `5 px` gap and `1 px` of flat-rest relief.
+> 13:31, the ChatGPT library and the strip-sheet far range) measures `r = 0.83`
+> over all cases (`0.90` non-flat), `11/13`, a `10 px` gap and `28 px` of
+> flat-rest relief (the far range's own hills; `0.84`, `5 px` and `1 px` with
+> the level script horizon at 10:59).
 
 > **2026-10-27 PIVOT -- baked benchmark planes (CURRENT ASSET BASELINE).** The 2026-06
 > complete-painting kit below read as airbrush (two blurred towers) in the sim

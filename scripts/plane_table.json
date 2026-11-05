@@ -1,0 +1,46 @@
+{
+ "sheet": "strips-b",
+ "face": 416,
+ "horizon": {
+  "strip": "far_hills",
+  "w": 416,
+  "h": 41,
+  "apex_y": 0.0732
+ },
+ "mist": {
+  "mist_band": {
+   "strip": "mist_dense",
+   "w": 441,
+   "h": 92,
+   "gain": 1.6
+  },
+  "mist_band_lite": {
+   "strip": "mist_wisps",
+   "w": 499,
+   "h": 71,
+   "gain": 0.8
+  }
+ },
+ "near": [
+  {
+   "name": "near_hill",
+   "strip": "near_pines",
+   "left": 0.424,
+   "w": 320,
+   "h": 160,
+   "aspect": 2.0,
+   "apex_x": 0.5672,
+   "apex_y": 0.0437
+  },
+  {
+   "name": "near_hill2",
+   "strip": "near_ridge",
+   "left": 0.352,
+   "w": 320,
+   "h": 160,
+   "aspect": 2.0,
+   "apex_x": 0.5156,
+   "apex_y": 0.05
+  }
+ ]
+}
