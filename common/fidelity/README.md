@@ -48,10 +48,11 @@ only committed on purpose.
 
 ## Current milestone targets
 
-The next renderer promotes the lightly smoothed sixteen-bucket HR profile to
-the primary ink ridge. Baked mountains remain as texture, atmosphere, and
-sparse crest accents rather than replacing the data shape. Any partial real
-history remains partial; mock data is reserved for explicit simulator/tests.
+Whole library mountains stay the painted silhouette (decision, 2026-11-05;
+see RENDERER_PLAN.md). The lightly smoothed sixteen-bucket HR profile is the
+reference they are fitted and scored against, not a ridge drawn on its own.
+Any partial real history remains partial; mock data is reserved for explicit
+simulator/tests.
 
 Where it stands: the newest report (2026-11-03, the shape library: every
 run of buckets over the window's floor is one whole library mountain sunk
