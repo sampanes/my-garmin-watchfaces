@@ -18,7 +18,9 @@ Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretch
 > (ten whole-face paintings from the sheets, one a day:
 > `scripts/bake_foregrounds.py`), then the far range, both mist bands and
 > the near hills (five strips of the ChatGPT strip sheet:
-> `scripts/bake_planes.py`). Only the paper grain is still script-made.
+> `scripts/bake_planes.py`), then the props, each by one rule
+> (`scripts/bake_props.py`; the sun and moon replaced the code-drawn discs).
+> Only the paper grain is still script-made.
 
 > **2026-11-05 DECISION -- whole library mountains stay the silhouette (CURRENT).**
 > The 2026-11-03 direction stands: each run of buckets over the window's floor

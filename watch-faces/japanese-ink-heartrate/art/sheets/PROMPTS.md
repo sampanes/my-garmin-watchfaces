@@ -469,3 +469,7 @@ face's fixed planes: far_hills is the far range, mist_dense and mist_wisps
 the two mist bands, near_pines and near_ridge the near hills. far_pale went
 unused: at the face's size it all but vanished. The water sheet (4.3) is
 cut but not on the face yet.
+
+`scripts/bake_props.py` bakes nine props, each shown by one rule (PROCEDURE.md
+section 10): props-b's sun, full moon, crescent (and its mirror), geese and
+hiker; props2-b's village, hut and lantern.

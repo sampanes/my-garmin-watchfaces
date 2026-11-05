@@ -16,7 +16,9 @@
 > (ten whole-face paintings from the sheets, one a day:
 > `scripts/bake_foregrounds.py`), then the far range, both mist bands and
 > the near hills (five strips of the ChatGPT strip sheet:
-> `scripts/bake_planes.py`). Only the paper grain is still script-made.
+> `scripts/bake_planes.py`), then the props, each by one rule
+> (`scripts/bake_props.py`; the sun and moon replaced the code-drawn discs).
+> Only the paper grain is still script-made.
 
 Last updated: 2026-10-27. This is the methods document for the current
 architecture. It records *how* the assets are made and *why* each technique

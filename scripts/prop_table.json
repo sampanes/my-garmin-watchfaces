@@ -1,0 +1,59 @@
+{
+ "face": 416,
+ "props": [
+  {
+   "name": "sun",
+   "cut": "props-b/01_sun",
+   "w": 34,
+   "h": 34
+  },
+  {
+   "name": "moon_full",
+   "cut": "props-b/03_moon_full",
+   "w": 34,
+   "h": 34
+  },
+  {
+   "name": "moon_waxing",
+   "cut": "props-b/04_moon_crescent",
+   "w": 29,
+   "h": 34
+  },
+  {
+   "name": "moon_waning",
+   "cut": "props-b/04_moon_crescent",
+   "w": 29,
+   "h": 34
+  },
+  {
+   "name": "geese",
+   "cut": "props-b/06_geese",
+   "w": 78,
+   "h": 46
+  },
+  {
+   "name": "village",
+   "cut": "props2-b/08_village",
+   "w": 96,
+   "h": 74
+  },
+  {
+   "name": "hut",
+   "cut": "props2-b/03_hut",
+   "w": 84,
+   "h": 76
+  },
+  {
+   "name": "hiker",
+   "cut": "props-b/15_hiker",
+   "w": 44,
+   "h": 34
+  },
+  {
+   "name": "lantern",
+   "cut": "props2-b/02_lantern",
+   "w": 45,
+   "h": 50
+  }
+ ]
+}

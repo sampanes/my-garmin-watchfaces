@@ -81,6 +81,14 @@ using Toybox.WatchUi;
 // Their sizes, crests and loaders are generated
 // (JapaneseInkHeartratePlanes.mc); the placement is unchanged.
 //
+// 2026-11-05, evening: the props (scripts/bake_props.py), each by one rule
+// so a prop always means something (compose_preview.prop_rules): the sun,
+// and the moon by its phase, on the arc in place of the drawn discs; geese
+// when today's step goal is met; a village or hut in a window with no
+// mountain; a hiker on the highest workout summit clear of the time
+// column; a lantern under 30% battery. Read once per scene job (five
+// minutes), drawn 1:1.
+//
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
 //
@@ -180,6 +188,12 @@ class JapaneseInkHeartrateScene {
     // Settings (resources/settings), re-read on every buffered render.
     var mShowTrace as Lang.Boolean = true;
     var mForeground as Lang.Number = 0;   // the "foreground" setting: 0 by season, 1..FG_SEASONS a scene
+    // The props' inputs, read once per scene job (readPropInputs).
+    var mStepsMet as Lang.Boolean = false;
+    var mBatteryLow as Lang.Boolean = false;
+    var mDayOfMonth as Lang.Number = 1;
+    var mPropW as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
+    var mPropH as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
     var mNightStart as Lang.Number = 21;
     var mNightEnd as Lang.Number = 6;
     var mNight as Lang.Boolean = false;
@@ -250,6 +264,25 @@ class JapaneseInkHeartrateScene {
     const M_PLANE = 6;
     const M_FLIP = 7;
     const M_HOST = 8;
+    const M_ELEV = 9;
+
+    // The props (compose_preview's constants of the same names).
+    const SYNODIC = 29.530588853;     // days from new moon to new moon
+    const NEW_MOON_EPOCH = 947182440; // a new moon: 2000-01-06 18:14 UTC
+    const MOON_NEW = 1.85;            // days either side of new moon with no moon ...
+    const MOON_FULL = 1.85;           // ... and either side of full with the full moon
+    const GEESE_Y = 0.21;             // the geese's middle (H) ...
+    const GEESE_X_SUN_LEFT = 0.68;    // ... here (W) when the sun/moon is on the left half
+    const GEESE_X_SUN_RIGHT = 0.45;   // ... here when it is on the right
+    const VILLAGE_X = 0.56;           // a quiet window's village or hut, its middle (W) ...
+    const VILLAGE_DROP = 0.075;       // ... its foot this far (H) under the far range's crest
+    const HIKER_ELEV = 30.0;          // bpm a mass stands over the floor for the hiker
+    const HIKER_SINK = 3;             // px its ground patch sinks into the summit
+    const INSCRIPTION_BOX_X = 0.36;   // the time column and seal with their halos:
+    const INSCRIPTION_BOX_Y = 0.60;   // x and y under these (W, H) take no prop
+    const LANTERN_X = 0.64;           // the low-battery lantern's middle (W) ...
+    const LANTERN_FOOT = 0.885;       // ... its foot (H)
+    const BATTERY_LOW = 30.0;         // percent under which the lantern shows
 
     // ------------------------------------------------------- the §13 probe
     // RENDERER_PLAN §13: what can the FR265 blend? Set PROBE to true, build,
@@ -298,11 +331,14 @@ class JapaneseInkHeartrateScene {
         mShapeAy = shapeApexY();
         mShapeTop = shapeTop();
         mTreeSizes = treeSizes();
+        mPropW = propW();
+        mPropH = propH();
         mPlaneAspect = planeAspect();
         mPlaneApexX = planeApexX();
         mPlaneApexY = planeApexY();
         mTreeFoot = treeFoot();
         readSettings();
+        readPropInputs();
         mNight = computeNight();
         mDisplayedNight = mNight;
         loadPlanes(mNight);
@@ -365,6 +401,110 @@ class JapaneseInkHeartrateScene {
         var season = (mForeground >= 1 && mForeground <= FG_SEASONS) ? mForeground - 1
                      : ((month % 12) / 3 + 3) % 4;
         return season * FG_PAINTERS + day % FG_PAINTERS;
+    }
+
+    // The props' inputs, once per scene job: today's step goal, the
+    // battery, the day of the month (village or hut).
+    function readPropInputs() as Void {
+        mStepsMet = false;
+        if (Toybox has :ActivityMonitor) {
+            var info = ActivityMonitor.getInfo();
+            if (info != null) {
+                var steps = info.steps;
+                var goal = info.stepGoal;
+                if (steps != null && goal != null && goal > 0 && steps >= goal) {
+                    mStepsMet = true;
+                }
+            }
+        }
+        var battery = System.getSystemStats().battery;
+        mBatteryLow = battery < BATTERY_LOW;
+        var day = Time.Gregorian.info(Time.now(), Time.FORMAT_SHORT).day;
+        mDayOfMonth = (day instanceof Lang.Number) ? (day as Lang.Number) : 1;
+    }
+
+    // The moon's prop now (compose_preview.moon_prop): -1 near new moon,
+    // PROP_MOON_FULL near full, else the waxing or waning crescent.
+    function moonProp() as Lang.Number {
+        var days = (Time.now().value() - NEW_MOON_EPOCH).toFloat() / 86400.0;
+        var age = days - (days / SYNODIC).toNumber() * SYNODIC;   // days > 0: truncation is floor
+        var half = SYNODIC / 2.0;
+        if (age < MOON_NEW || age > SYNODIC - MOON_NEW) { return -1; }
+        var off = age - half;
+        if (off < 0.0) { off = -off; }
+        if (off <= MOON_FULL) { return PROP_MOON_FULL; }
+        return (age < half) ? PROP_MOON_WAXING : PROP_MOON_WANING;
+    }
+
+    // A prop at (x, y), its top-left, 1:1; skipped when the pool refuses it.
+    function drawProp(dc as Graphics.Dc, i as Lang.Number, x as Lang.Number, y as Lang.Number) as Void {
+        var bmp = null;
+        try {
+            bmp = loadPropBitmap(i, mNight);
+        } catch (ex) {
+            bmp = null;
+        }
+        if (bmp != null) {
+            dc.drawBitmap(x, y, bmp);
+        }
+    }
+
+    // The sun or moon's x on the arc (drawCelestial), for the geese's side.
+    function celestialX(width as Lang.Number) as Lang.Number {
+        var clockTime = System.getClockTime();
+        var minuteOfDay = (clockTime.hour * 60) + clockTime.min;
+        var t;
+        if (minuteOfDay < 360 || minuteOfDay >= 1080) {
+            var nightMin = (minuteOfDay >= 1080) ? minuteOfDay - 1080 : minuteOfDay + 360;
+            t = nightMin.toFloat() / 720.0;
+        } else {
+            t = (minuteOfDay - 360).toFloat() / 720.0;
+        }
+        return (width * 20) / 100 + ((width * 60) / 100 * t).toNumber();
+    }
+
+    // The village (even days) or hut (odd) in a window with a horizon and
+    // no mountain, in the valley under the far range.
+    function drawValleyProp(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float) as Void {
+        var masses = mMasses;
+        if (mHorizonY < 0.0 || (masses != null && masses.size() > 0)) { return; }
+        var i = (mDayOfMonth % 2 == 0) ? PROP_VILLAGE : PROP_HUT;
+        drawProp(dc, i, (VILLAGE_X * w - mPropW[i] / 2.0).toNumber(),
+                 (mHorizonY + VILLAGE_DROP * h - mPropH[i]).toNumber());
+    }
+
+    // The hiker on the highest summit standing HIKER_ELEV over the floor
+    // whose hiker would be clear of the time column; the geese for the
+    // step goal, on the side away from the sun or moon.
+    function drawAirProps(dc as Graphics.Dc, width as Lang.Number, w as Lang.Float, h as Lang.Float) as Void {
+        var masses = mMasses;
+        if (masses != null) {
+            var bw = mPropW[PROP_HIKER];
+            var bh = mPropH[PROP_HIKER];
+            var best = -1;
+            var bestY = 0.0;
+            for (var i = 0; i < masses.size(); i++) {
+                var m = masses[i];
+                if (m[M_ELEV] < HIKER_ELEV) { continue; }
+                var x = m[M_CX] - bw / 2.0;
+                var y = m[M_CY] - bh + HIKER_SINK;
+                if (x < INSCRIPTION_BOX_X * w && y < INSCRIPTION_BOX_Y * h) { continue; }
+                if (best < 0 || m[M_CY] < bestY) {
+                    best = i;
+                    bestY = m[M_CY];
+                }
+            }
+            if (best >= 0) {
+                var m = masses[best];
+                drawProp(dc, PROP_HIKER, (m[M_CX] - bw / 2.0).toNumber(),
+                         (m[M_CY] - bh + HIKER_SINK).toNumber());
+            }
+        }
+        if (mStepsMet) {
+            var gx = (celestialX(width) < width / 2) ? GEESE_X_SUN_LEFT : GEESE_X_SUN_RIGHT;
+            drawProp(dc, PROP_GEESE, (gx * w - mPropW[PROP_GEESE] / 2.0).toNumber(),
+                     (GEESE_Y * h - mPropH[PROP_GEESE] / 2.0).toNumber());
+        }
     }
 
     // Night mode is a clock window from the settings; equal hours = off.
@@ -914,7 +1054,8 @@ class JapaneseInkHeartrateScene {
             var cy = mFitCrestY;
             masses.add([left, cy - mShapeAy[si] * s, mShapeW[si] * sx, mShapeH[si] * s,
                         left + mShapeAx[si] * sx, cy, si.toFloat(), 0.0,
-                        (mFitRunIndex == mFitHost) ? 1.0 : 0.0] as Lang.Array<Lang.Float>);
+                        (mFitRunIndex == mFitHost) ? 1.0 : 0.0,
+                        runs[mFitRunIndex][R_ELEV]] as Lang.Array<Lang.Float>);
         }
 
         mFitRunIndex++;
@@ -1280,6 +1421,7 @@ class JapaneseInkHeartrateScene {
         // Five-minute refresh tracks new history samples without doing the
         // iterator on every one-second update. It gets a callback of its own.
         readSettings();
+        readPropInputs();
         mNight = computeNight();
         loadPlanes(mNight);
         refreshHistory();
@@ -1376,6 +1518,9 @@ class JapaneseInkHeartrateScene {
             }
         }
 
+        // 1b. a quiet window's village or hut, under the far range
+        drawValleyProp(dc, w, h);
+
         // 2. light mist between the far and mid planes
         var mistLite = mMistLite;
         if (mistLite != null) {
@@ -1406,6 +1551,9 @@ class JapaneseInkHeartrateScene {
             }
         }
 
+        // 3c. the hiker on a workout's summit; the geese for the step goal
+        drawAirProps(dc, width, w, h);
+
         // 4. the near range: a near hill in each third the masses leave empty
         var near = mNear;
         if (near != null) {
@@ -1430,6 +1578,12 @@ class JapaneseInkHeartrateScene {
         var fg = loadForeground(foregroundIndex(), mNight);
         if (fg != null) {
             dc.drawScaledBitmap(0, 0, width, height, fg);
+        }
+
+        // 6b. the low-battery lantern on the foreground's ground
+        if (mBatteryLow) {
+            drawProp(dc, PROP_LANTERN, (LANTERN_X * w - mPropW[PROP_LANTERN] / 2.0).toNumber(),
+                     (LANTERN_FOOT * h - mPropH[PROP_LANTERN]).toNumber());
         }
 
         // 7. paper grain over everything: converts "screen" to "paper"
@@ -1754,27 +1908,12 @@ class JapaneseInkHeartrateScene {
 
         var x = (width * 20) / 100 + ((width * 60) / 100 * t).toNumber();
         var y = (height * 14) / 100 - (Math.sin(t * 3.14159) * (height * 6) / 100).toNumber();
-        var rHalo = (width * 46) / 1000;
-        var rCore = (width * 34) / 1000;
-
-        if (isNight && !mNight) {
-            // 18:00 until the night window: the moon on day paper, in pale
-            // ink (the moonlit cream disk is invisible on cream paper);
-            // compose_preview MOON_INK_HALO / MOON_INK_CORE
-            dc.setFill(Graphics.createColor(0x20, 24, 18, 14));
-            dc.fillCircle(x, y, rHalo);
-            dc.setFill(Graphics.createColor(0x50, 24, 18, 14));
-            dc.fillCircle(x, y, rCore);
-        } else if (isNight) {
-            dc.setFill(Graphics.createColor(0x30, 240, 235, 220));
-            dc.fillCircle(x, y, rHalo);
-            dc.setFill(Graphics.createColor(0xC0, 248, 244, 232));
-            dc.fillCircle(x, y, rCore);
-        } else {
-            dc.setFill(Graphics.createColor(0x40, 200, 70, 50));
-            dc.fillCircle(x, y, rHalo);
-            dc.setFill(Graphics.createColor(0xCC, 175, 38, 28));
-            dc.fillCircle(x, y, rCore);
+        // The sun, or the moon by its phase (none near new moon): props from
+        // the sheet, centered on the arc; the day cut on day paper (the moon
+        // after 18:00 until the night window), the night cut in night mode.
+        var prop = isNight ? moonProp() : PROP_SUN;
+        if (prop >= 0) {
+            drawProp(dc, prop, x - mPropW[prop] / 2, y - mPropH[prop] / 2);
         }
     }
 

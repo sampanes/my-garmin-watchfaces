@@ -30,6 +30,12 @@ baked by scripts/bake_foregrounds.py and chosen by the month, the day and
 the watch's "foreground" setting (foreground_index), in place of the two
 script-painted foreground masses.
 
+The props (2026-11-05, evening): small pieces of the ChatGPT prop sheets
+(scripts/bake_props.py), each shown by one rule (prop_rules) so a prop
+always means something: the sun and the moon by its phase on the arc, geese
+for the step goal, a village or hut in an empty window, a hiker on a
+workout's summit, a lantern for a low battery.
+
 The fixed planes (2026-11-05, later): the far range (horizon.png), the two
 mist bands and the near hills are pieces of the ChatGPT strip sheet, baked
 by scripts/bake_planes.py (the near hills as paper cutouts, the mist
@@ -60,8 +66,6 @@ OUT = os.path.join(FACE, "art", "kit_preview.png")
 W = H = 416
 PAPER = (242, 238, 230, 255)
 HALO_PAD = 27      # scripts/gen_halo.py; the View's HALO_PAD
-MOON_INK_HALO = (24, 18, 14, 0x20)   # the moon on day paper (18:00 to night)
-MOON_INK_CORE = (24, 18, 14, 0x50)
 
 # ---- mock HR history (same binning and landmark model as Monkey C) --------
 MOCK = [72, 74, 76, 78, 82, 88, 95, 105, 112, 108, 100, 92, 85, 80, 77, 75,
@@ -303,15 +307,103 @@ def paste_at(base, img, x, y):
     return Image.alpha_composite(base, layer)
 
 
-def blend_ellipse(base, cx, cy, r, rgba):
-    """A translucent disk source-over the paper, like fillCircle after
-    setFill(createColor(a, r, g, b)). ImageDraw on an RGBA image REPLACES
-    pixels, alpha included, and the final circle mask then shows that color
-    opaque: the sun's 0x40 halo came out as a solid red disk until the
-    2026-10-30 simulator sheet caught it."""
-    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    ImageDraw.Draw(layer).ellipse([cx - r, cy - r, cx + r, cy + r], fill=rgba)
-    return Image.alpha_composite(base, layer)
+# ---- the props (2026-11-05): one rule each, bake_props.py bakes the art ----
+
+SYNODIC = 29.530588853     # days from new moon to new moon
+NEW_MOON_EPOCH = 947182440 # a new moon: 2000-01-06 18:14 UTC
+MOON_NEW = 1.85            # days either side of new moon with no moon drawn ...
+MOON_FULL = 1.85           # ... and either side of full with the full moon
+GEESE_Y = 0.21             # the geese's middle (H), on the side away from the sun/moon:
+GEESE_X = (0.68, 0.45)     # here (W) when the sun/moon is on the left half, else here
+VILLAGE_X = 0.56           # a quiet window's village or hut, its middle (W) ...
+VILLAGE_DROP = 0.075       # ... its foot this far (H) under the far range's crest
+HIKER_ELEV = 30.0          # bpm a mass stands over the floor for the hiker (a workout)
+INSCRIPTION_BOX = (0.36, 0.60)   # the time column and seal with their halos: x and y
+                                 # under these (W, H); no prop lands there
+HIKER_SINK = 3             # px the hiker's ground patch sinks into the summit
+LANTERN_X = 0.64           # the low-battery lantern's middle (W) ...
+LANTERN_FOOT = 0.885       # ... its foot (H), on the foreground's ground
+BATTERY_LOW = 30.0         # percent under which the lantern shows
+
+
+def moon_age(epoch):
+    """The days since the last new moon (mean lunation; within about half a day)."""
+    return ((epoch - NEW_MOON_EPOCH) / 86400.0) % SYNODIC
+
+
+def moon_prop(epoch):
+    """The moon's prop for a moment: None near new moon, "moon_full" near
+    full, else the waxing or waning crescent. The Scene's moonProp."""
+    age = moon_age(epoch)
+    half = SYNODIC / 2.0
+    if age < MOON_NEW or age > SYNODIC - MOON_NEW:
+        return None
+    if abs(age - half) <= MOON_FULL:
+        return "moon_full"
+    return "moon_waxing" if age < half else "moon_waning"
+
+
+_PROPS = {}
+
+
+def prop_table():
+    if not _PROPS:
+        with open(os.path.join(HERE, "prop_table.json")) as f:
+            _PROPS.update(json.load(f))
+    return _PROPS
+
+
+def prop_image(name, night):
+    return load("prop_%s%s.png" % (name, "_night" if night else ""))
+
+
+def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery):
+    """Which props show, and where: {layer: [(name, x, y)]} with (x, y) the
+    bitmap's top-left on the 416 face. Layers: "sky" with the sun or moon,
+    "valley" after the far range, "summit" and "air" after the masses (the
+    hiker on the highest workout summit clear of INSCRIPTION_BOX),
+    "ground" after the foreground. The Scene's placeProps is the same."""
+    import math
+    out = {"sky": [], "valley": [], "summit": [], "air": [], "ground": []}
+    size = {p["name"]: (p["w"], p["h"]) for p in prop_table()["props"]}
+    moon = minute_of_day < 360 or minute_of_day >= 1080
+    t = ((minute_of_day - 1080) % 1440) / 720.0 if moon else (minute_of_day - 360) / 720.0
+    sx = int(W * 0.20 + W * 0.60 * t)
+    sy = int(H * 0.14 - math.sin(t * math.pi) * H * 0.06)
+    cel = moon_prop(epoch) if moon else "sun"
+    if cel is not None:
+        w, h = size[cel]
+        out["sky"].append((cel, sx - w // 2, sy - h // 2))
+    if steps_met:
+        w, h = size["geese"]
+        gx = GEESE_X[0] if sx < W / 2 else GEESE_X[1]
+        out["air"].append(("geese", int(gx * W - w / 2), int(GEESE_Y * H - h / 2)))
+    if layout["horizon_y"] is not None and not layout["masses"]:
+        name = "village" if day % 2 == 0 else "hut"
+        w, h = size[name]
+        out["valley"].append((name, int(VILLAGE_X * W - w / 2),
+                              int(layout["horizon_y"] + VILLAGE_DROP * H - h)))
+    # the hiker: on the highest workout summit clear of the time column
+    w, h = size["hiker"]
+    for m in sorted(layout["masses"], key=lambda m: m["crest"][1]):
+        if m["elev"] < HIKER_ELEV:
+            continue
+        cx, cy = m["crest"]
+        x, y = int(cx - w / 2), int(cy - h + HIKER_SINK)
+        if x < INSCRIPTION_BOX[0] * W and y < INSCRIPTION_BOX[1] * H:
+            continue
+        out["summit"].append(("hiker", x, y))
+        break
+    if battery < BATTERY_LOW:
+        w, h = size["lantern"]
+        out["ground"].append(("lantern", int(LANTERN_X * W - w / 2), int(LANTERN_FOOT * H - h)))
+    return out
+
+
+def paint_props(base, placed, night):
+    for name, x, y in placed:
+        base = paste_at(base, prop_image(name, night), x, y)
+    return base
 
 
 class BmFont:
@@ -709,7 +801,7 @@ def mid_plane_layout(history, trace=None):
                if cols else (left + ax, left + ax))
         masses.append({"rect": (left, top0, w, sh["h"]), "crest": (left + ax, cy),
                        "plane": sh["name"], "shape": i, "stretch": st, "vis": vis, "flip": False,
-                       "host": r is host, "run": (r["lo"], r["hi"])})
+                       "host": r is host, "run": (r["lo"], r["hi"]), "elev": r["elev"]})
     # depth: the other masses first (the taller farther), the host last
     masses.sort(key=lambda m: (m["host"], m["crest"][1]))
     out["masses"] = masses
@@ -751,7 +843,8 @@ def mid_plane_layout(history, trace=None):
 
 
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
-            hour24=False, overlay=True, foreground=None, month=None, day=None, scene=0):
+            hour24=False, overlay=True, foreground=None, month=None, day=None, scene=0,
+            epoch=None, steps_met=False, battery=100.0):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
     Scene fits its stored trace), or None. overlay: draw the true-HR overlay
@@ -759,7 +852,12 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     RGBA painting composed for the whole face (a cut from art/cuts/fg-*) to
     lay instead of the baked one; month, day (today's by default) and scene
     (the watch's "foreground" setting, 0 = by season) choose the baked one
-    (foreground_index)."""
+    (foreground_index). epoch (now by default) sets the moon's phase,
+    steps_met (today's step goal met) the geese, battery (percent) the
+    lantern (prop_rules)."""
+    import time
+    epoch = time.time() if epoch is None else epoch
+    day_of_month = datetime.date.today().day if day is None else day
     sfx = "_night" if night else ""
     mist = load("mist_band%s.png" % sfx)
     mist_lite = load("mist_band_lite%s.png" % sfx)
@@ -769,30 +867,19 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     layout = mid_plane_layout(history, trace)
     base = Image.new("RGBA", (W, H), (0, 0, 0, 255) if night else PAPER)
 
-    # sun / moon on the day arc (sun 06:00-18:00 west to east)
-    # (moon, not night: night mode is the settings window passed in, and it
-    # must not be shadowed here or the ink goes pale on day paper after
-    # 18:00, which the watch never does)
-    moon = minute_of_day < 360 or minute_of_day >= 1080
-    t = ((minute_of_day - 1080) % 1440) / 720.0 if moon else (minute_of_day - 360) / 720.0
-    import math
-    sx = int(W * 0.20 + W * 0.60 * t)
-    sy = int(H * 0.14 - math.sin(t * math.pi) * H * 0.06)
-    r_halo, r_core = int(W * 0.046), int(W * 0.034)
-    if moon and not night:
-        # 18:00 until the night window: the moon on day paper, in pale ink
-        # (the moonlit cream disk is invisible on cream paper)
-        halo, core = MOON_INK_HALO, MOON_INK_CORE
-    elif moon:
-        halo, core = (240, 235, 220, 0x30), (248, 244, 232, 0xC0)
-    else:
-        halo, core = (200, 70, 50, 0x40), (175, 38, 28, 0xCC)
-    base = blend_ellipse(base, sx, sy, r_halo, halo)
-    base = blend_ellipse(base, sx, sy, r_core, core)
+    # the sun (06:00-18:00) or the moon by its phase on the arc, west to
+    # east: props from the sheet (prop_rules). The day cut on day paper
+    # (the moon after 18:00 until the night window), the night cut in night
+    # mode.
+    props = prop_rules(layout, minute_of_day, epoch, day_of_month, steps_met, battery)
+    base = paint_props(base, props["sky"], night)
 
     # 1. the horizon: the far range as a level line at the window's floor
     #    (round 4, 11-02). Drawn first; every mass is a cutout over it.
     base = paint_horizon(base, layout, night)
+
+    # 1b. a quiet window's village or hut, in the valley under the far range
+    base = paint_props(base, props["valley"], night)
 
     # 2. light mist between far and mid planes
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
@@ -800,6 +887,10 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 3. the masses: the library shapes, the host last (none on a flat day)
     base = paint_masses(base, layout, night)
     base = paint_trees(base, layout, night)
+
+    # 3c. the hiker on a workout's summit; the geese for the step goal
+    base = paint_props(base, props["summit"], night)
+    base = paint_props(base, props["air"], night)
 
     # 4. the near range (round 5): a near hill in each third of the screen
     #    the masses leave empty, under the half-way line, to balance the
@@ -816,6 +907,9 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     if foreground is None:
         foreground = foreground_image(foreground_index(month, day, scene), night)
     base = paste_scaled(base, foreground, 0, 0, W, H)
+
+    # 6b. the low-battery lantern on the foreground's ground
+    base = paint_props(base, props["ground"], night)
 
     # 7. paper grain over everything (day only: black paper stays black)
     if grain is not None:
