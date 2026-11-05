@@ -473,3 +473,8 @@ cut but not on the face yet.
 `scripts/bake_props.py` bakes nine props, each shown by one rule (PROCEDURE.md
 section 10): props-b's sun, full moon, crescent (and its mirror), geese and
 hiker; props2-b's village, hut and lantern.
+
+John's verdicts on the unused props (2026-11-05, day beside night): the
+**sun in mist** (props 02, both painters) looks great by day and by night;
+the **snow pine** (props2 12) is poor at night, its snow lost on black (the
+same fault that kept trees-b's snow pine off the ridges).
