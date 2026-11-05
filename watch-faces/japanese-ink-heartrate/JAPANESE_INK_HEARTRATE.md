@@ -509,6 +509,63 @@ Possible issues to solve:
 
 ---
 
+## Phase 4b: Prove HR-shape fidelity (current milestone)
+Goal: make the painted mountain silhouette preserve the meaningful shape and
+chronology of the real four-hour HR window without turning the face into a
+stock line chart.
+
+The first HR-driven version was not sufficient: it reduced the mid-plane
+chronology from sixteen 15-minute buckets to a host and guest landmark, then
+moved and scaled two fixed mountain PNGs. Its fidelity baseline (2026-11-01)
+measured mean `r = 0.43`, correct peak count in `2/13` synthetic windows, a
+`34 px` mean data-to-ink gap, and `98 px` of painted relief for nearly flat
+resting HR.
+
+Since then the relief was rebuilt twice (PROCEDURE.md, 2026-11-02 and
+2026-11-03): every run of buckets standing over the window's floor is its own
+mass, one whole mountain chosen from a painted shape library and sunk until
+its crest sits on the run's peak. The newest committed report,
+`common/fidelity/2026-11-03_1623_fidelity.md`, measures mean `r = 0.72`,
+correct peak count in `11/13`, a `7 px` mean gap, a 10 min mean peak-timing
+error, and `1 px` of flat-rest relief. The gap, timing and flat-rest targets
+below are met; `r >= 0.80`, episode precision and recall, and the determinism
+and missing-span checks are still open.
+
+### Deliverable
+A renderer revision in which:
+- the lightly smoothed sixteen-bucket real HR profile defines the primary
+  mid-plane ridge on the true oldest-to-newest time axis
+- baked mountain art supplies ink texture, depth, and sparse crest accents,
+  but its fixed outline no longer replaces the data shape
+- two to four prominent HR episodes may guide accent placement, never replace
+  the full ridge profile
+- any valid partial real history stays partial and unknown spans stay unknown;
+  the watch does not replace one to seven real samples with a full mock window
+- `scripts/fidelity_test.py` compares the candidate with the committed baseline
+  before the Monkey C renderer is installed
+
+### Provisional targets
+The milestone first extends the harness to render baseline and candidate
+side-by-side, detect peaks from the painted skyline, exclude flat/no-peak cases
+from inappropriate aggregates, assert missing-span behavior, and repeat-render
+for determinism. Then the A/B prototype calibrates and locks the binding gates.
+Initial targets are:
+
+- mean skyline correlation `r >= 0.80` across the non-flat core synthetic cases
+- mean data-to-ink gap `<= 12 px`
+- mean dominant-peak timing error `<= 15 min` on cases with a prominent peak
+- prominent-episode precision and recall each `>= 0.80` within `+/-15 min`
+- `flat_rest` has `<= 15 px` of painted relief and no prominent painted peak
+- the same input rasterizes deterministically, missing spans are not bridged,
+  and time/HR readability and buffered-render performance remain acceptable
+
+The test contract and newest report live in
+[`common/fidelity/`](../../common/fidelity/README.md). A red diagnostic overlay
+that follows HR while the ink does not is useful debugging, but does not
+complete this milestone.
+
+---
+
 ## Phase 5: Atmospheric depth
 Goal: add mist and possibly a second ridge layer.
 
@@ -614,6 +671,11 @@ The sky reacts to time.
 
 ## Done for Phase 4
 The mountain is meaningfully connected to heart-rate input.
+
+## Done for Phase 4b
+The painted skyline passes the A/B-calibrated, committed fidelity gates and is
+confirmed on the physical Forerunner 265; two moving landmark bitmaps alone do
+not qualify.
 
 ## Done for Phase 5
 The face has atmosphere and depth.

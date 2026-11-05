@@ -1,8 +1,26 @@
 # Japanese Ink Heartrate — Renderer Plan
 
-Last updated: 2026-10-27 (§13 API audit and the pivot below; §1–§12 are 2026-06-10)
+Last updated: 2026-11-05 (fidelity numbers brought up to the 2026-11-03 shape library)
 
-> **2026-10-27 PIVOT — baked benchmark planes (CURRENT).** The 2026-06
+> **2026-11-01 PIVOT -- measured HR-shape fidelity (CURRENT MILESTONE).** The committed
+> four-hour fidelity harness proved that the host/guest landmark system throws
+> away too much physiology: mean skyline correlation `r = 0.43`, correct peak
+> count in `2/13` deterministic cases, `34 px` mean data-to-ink gap, and
+> `98 px` of relief for nearly flat resting HR. In the Phase 4b target, the
+> complete lightly smoothed sixteen-bucket profile will own the primary
+> mid-plane silhouette. Authored
+> PNGs remain essential, but as tonal texture, atmosphere, and sparse event
+> accents beneath and subordinate to that data-shaped ridge -- not as two fixed
+> outlines standing in for four hours. Any partial real history must remain
+> real and partial rather than becoming a full mock window. The current
+> harness records the baseline; extending it into the Phase 4b A/B gate is part
+> of the milestone. [The fidelity reports](../../common/fidelity/README.md) are
+> the record. Since then (2026-11-02 round 6, 2026-11-03 the shape library;
+> see PROCEDURE.md) each run of buckets over the window's floor is one whole
+> library mountain sunk onto the run's peak, and the newest report measures
+> `r = 0.72`, `11/13`, a `7 px` gap and `1 px` of flat-rest relief.
+
+> **2026-10-27 PIVOT -- baked benchmark planes (CURRENT ASSET BASELINE).** The 2026-06
 > complete-painting kit below read as airbrush (two blurred towers) in the sim
 > and on the wrist. The benchmark in §1 was always the target, so
 > `scripts/gen_ink_layers.py` now ports its primitives (gradient fill, cun,
@@ -11,8 +29,9 @@ Last updated: 2026-10-27 (§13 API audit and the pivot below; §1–§12 are 202
 > grain. Methods: [ART_PIPELINE.md](ART_PIPELINE.md). The 2026-06 note below
 > is kept as history.
 
-> **2026-06-10 PIVOT — complete-painting grammar (superseded).** The small-stamp
-> asset family below (§4–§7, §12) is superseded. The working architecture,
+> **2026-06-10 PIVOT -- complete-painting grammar (superseded).** The historical
+> small-stamp asset family and composer preserved in sections 6-7 are superseded. The
+> working architecture,
 > proven on-device in iter11/11b, inverts it: each mountain is authored
 > offline as a FINISHED sumi-e painting (tower-profile spires `h·(1-t^q)^p`,
 > facet shading, domain-warped dry-brush streaks, cun hatch, flying-white
@@ -53,7 +72,7 @@ Surviving cross-references:
 
 - [Project Vision](JAPANESE_INK_HEARTRATE.md) — north-star, unchanged
 - [HR Facts](ROOT_HR_FACTS.md) — Garmin HR API behavior
-- [Procedural Pass Workflow](art/checkpoints/procedural/PROCEDURAL_PASS_WORKFLOW.md) — build/run/checkpoint loop
+- [Working Procedure](PROCEDURE.md) -- build/run/checkpoint loop
 
 ## 1. Benchmark And The Missing Primitive
 
@@ -82,28 +101,47 @@ Monkey C can vary alpha per call (`Graphics.createColor(alpha, r, g, b)`) but ca
 | Shared wash slab (Codex 4) | Gray fog bank | Wash had no internal tonal structure |
 | 72-sample ridge (rtruth) | Waveform zig-zag | HR sampled too densely → reads as chart |
 
-Current `JapaneseInkHeartrateScene.mc` runs *all of these simultaneously* (`drawRangeBody` + `drawSharedMountainMass` + `drawHostRidgeBone` + `drawGuestCrest` + `drawRidgeBlots` + `drawMistCuts`). None replace the missing gradient, so the scene still looks algorithmic.
+The superseded 2026-06 renderer ran *all of these simultaneously*
+(`drawRangeBody` + `drawSharedMountainMass` + `drawHostRidgeBone` +
+`drawGuestCrest` + `drawRidgeBlots` + `drawMistCuts`). None replaced the
+missing gradient, so that scene still looked algorithmic.
 
-Secondary repeating mistake: `generateField(72, seed)` in `scene.mc:267`. A shanshui painting has 2–4 major forms, not 72 samples. Every push toward "more ridge fidelity" drags the renderer back toward chart aesthetics.
+Secondary repeating mistake: `generateField(72, seed)` in `scene.mc:267` made
+raw sample noise look like a waveform. The current milestone uses sixteen
+lightly smoothed time buckets for truthful large-scale geometry. Avoiding a
+stock-chart look is a rendering constraint, not permission to discard the
+history's chronology.
 
 ## 3. What Already Works
 
-- `VerticalFadeDescentTuned` PNG — first and only Garmin-imported asset with convincing grayscale-alpha survival. Proof that the authored-asset path is viable.
+- The tuned day/night plane set proves that authored grayscale-alpha ink assets
+  survive Garmin import and can carry convincing wash, cun, dry-brush, bleed,
+  mist, and sparse trees.
 - Tuned bitmap import settings: `dithering="none"`, `automaticPalette="false"`, `packingFormat="png"`, `compress="false"`. Default import is unacceptable.
 - Warm paper tone.
-- Minute-keyed `BufferedBitmap` cache (`mBuffer`, `getSceneKey()`).
-- Time placed low (`centerY = (height * 72) / 100`) so the ridge owns the center.
+- Five-minute-keyed `BufferedBitmap` cache (`mBuffer`, `getSceneKey()`).
+- Upper-left kanji/minutes/seal inscription column, clear of the main ridge.
 - AOD fallback with tiny abstracted ridge.
 
 ## 4. Strategy
 
-**Replace the missing gradient with authored PNG stamps. Drive their placement from a tiny HR descriptor, not a ridge field.**
+**Use the complete coarse HR profile for large-scale geometry and authored PNGs
+for the ink material. Fidelity determines the landform; art determines how the
+landform is painted.**
 
-Three tracks:
+Four tracks:
 
-1. **Data → scene descriptor** (cheap, runs at minute boundaries): HR history → 3–5 Gaussian peak descriptors.
-2. **Asset family** (authored once): 5 small tuned-import PNGs that carry the tonal variation the gradient used to carry.
-3. **Composer** (runs into the buffered bitmap): fixed 12-step draw recipe that places assets based on the descriptor.
+1. **Data -> primary ridge** (cheap, runs on the five-minute scene key): real
+   history -> sixteen 15-minute buckets -> short-gap interpolation -> light
+   smoothing -> one oldest-to-newest ridge profile.
+2. **Data -> sparse accents:** extract two to four prominent episodes only for
+   crest texture, descents, and trees. Accent descriptors never replace the
+   primary profile.
+3. **Asset family** (authored once): tuned-import PNGs carry the tonal variation
+   and brush character Garmin cannot generate dynamically.
+4. **Composer** (runs into the buffered bitmap): draw the data-shaped wash,
+   keep texture and landmark art below its skyline, then dissolve the base with
+   mist and cache the result.
 
 ## 5. HR Pipeline
 
@@ -111,27 +149,45 @@ Window: last 4 hours. API: `ActivityMonitor.getHeartRateHistory(new Time.Duratio
 
 Reduction:
 
-1. Smooth with a ~15–20 min Gaussian window (kills short noise, preserves effort shape).
-2. Extract **3–5 local maxima** above a baseline → `{nx, h, s}` descriptors exactly like `hrToPeaks()` in `ink-sandbox/main.js:156`.
-3. `nx` = normalized time-of-peak within the window (oldest → left edge, newest → right edge).
-4. `h` = normalized HR relative to the window's min/max.
-5. `s` = base spread, slightly jittered.
+1. Bin by timestamp into sixteen 15-minute buckets. Never infer chronology from
+   iterator position alone.
+2. Interpolate only short internal holes. Preserve leading, trailing, and long
+   unknown spans instead of drawing invented history through them.
+3. Lightly smooth each contiguous real segment (initial kernel `[1, 2, 1]`) so
+   sensor noise does not become chart-like teeth while real climbs, plateaus,
+   dips, and distinct efforts survive.
+4. Map bucket time directly to the shared oldest-to-newest x axis and map HR on
+   a stable absolute scale. Do not normalize a flat window into a huge range.
+5. Keep the full smoothed profile as the primary ridge geometry.
+6. Separately extract **2-4 prominent episodes** for optional `{nx, h, s}`
+   texture/accent placement. Their deterministic roughness may change brush
+   character, never peak time or height.
 
 Parallel aggregates derived from the same samples:
 
-- `maxHR` → host peak height amplifier
-- `minHR` → valley depth, mist opacity
-- `stddev(HR)` → edge roughness selector
-- `latest zone` → ink density modifier on host only
+- `minHR` -> bounded mist/floor treatment below the ridge
+- `stddev(HR)` -> bounded edge-roughness selector
+- `latest zone` -> optional ink-density/material modifier near the current edge
+
+These aggregates may change material treatment below the computed skyline;
+they must not move its time or HR coordinates.
 
 Fallbacks in order:
 
-1. Full 4hr history → 5 peaks
-2. Partial history (≥ 30 min) → 3 peaks
-3. Current HR only → seed a deterministic 3-peak landscape
-4. No HR → seed a calm default landscape by time-of-day
+1. Full four-hour history -> complete data ridge plus sparse accents.
+2. Partial history with any valid samples -> draw only the evidence-supported
+   segment(s); keep unknown time visually unknown.
+3. Current HR only -> a small recent form at "now", not a fabricated four-hour
+   story.
+4. No HR -> a calm static fallback whose blank HR seal makes its non-data state
+   honest. Mock windows remain explicit simulator/test fixtures only.
 
-## 6. Asset Family (5 PNGs, All Tuned Import)
+## 6. Historical Small-Stamp Asset Family (Superseded)
+
+This five-stamp proposal predates the baked benchmark planes now in
+`resources/drawables/`. Do not create these missing files for Phase 4b; reuse
+the current baked art beneath the new data ridge unless an A/B report proves a
+new asset is needed.
 
 All authored as grayscale + alpha. All under 2KB. All scalable via `drawScaledBitmap`.
 
@@ -150,9 +206,16 @@ Asset-authoring rules:
 - Never render the same stamp at the same scale twice in one scene.
 - Mirrored/flipped reuse is fine if the Garmin bitmap path handles it cleanly.
 
-## 7. Scene Composer (Fixed 12-Step Recipe)
+## 7. Historical Small-Stamp Composer (Superseded)
 
-All draws go into the minute-cached `BufferedBitmap`. `View.onUpdate` blits the buffer and draws the time over it.
+All draws go into the five-minute-keyed `BufferedBitmap`. `View.onUpdate` blits the buffer and draws the time over it.
+
+The recipe below is retained as a historical small-stamp proposal, not as the
+current baked-plane composition. The current watch-side order is documented in
+[ART_PIPELINE section 4](ART_PIPELINE.md#4-the-watch-side). For Phase 4b, the
+data-shaped ridge replaces the fitted library masses as the primary silhouette;
+the current assets move beneath it as texture and sparse accents. Section 12 below is
+the future Phase 4b implementation order.
 
 ```
 1.  paper fill (flat warm #F2EFE9)
@@ -173,15 +236,20 @@ Step 5 is the pivot. One broad body-wash scaled to span grouped peaks provides t
 
 ## 8. Hard Caps
 
-- ≤ 5 HR peaks, ever
+- <= 31 primary ridge control points (including interpolation), under the
+  64-point `fillPolygon` cap with floor corners
+- <= 4 prominent-event descriptors for accents
 - ≤ 2 descent stamps
 - ≤ 2 crest stamps (1 dominant + 1 subordinate)
 - ≤ 2 mist strips per scene
 - ≤ 2 trees
 - No procedural per-pixel loops in `onUpdate` path
-- Redraw buffer only on scene-key change (20-min bucket) or HR refresh
+- Redraw buffer only on the five-minute scene-key change or an explicit refresh
 
-## 9. Current `JapaneseInkHeartrateScene.mc` Teardown List
+## 9. Historical `JapaneseInkHeartrateScene.mc` Teardown List
+
+This teardown was completed by the baked-plane pivot and is retained as failure
+history. It is not a list of functions in the current Scene.
 
 Delete:
 
@@ -234,18 +302,42 @@ A scene is acceptable when:
 - The main range reads as one shared landform first, anchors second
 - Mist visibly conceals at least part of the lower body
 - No single primitive is obvious on first glance
-- HR influence is believable, not literal
+- HR chronology and large-scale shape are faithful; sumi-e treatment prevents
+  the faithful ridge from reading as a stock chart
 - No single stamp repeats at the same scale within one scene
+
+Provisional Phase 4b targets are:
+
+- mean skyline `r >= 0.80` across non-flat core synthetic cases
+- mean overlay-to-ink gap `<= 12 px`
+- mean dominant-peak timing error `<= 15 min` on cases with a prominent peak
+- prominent-episode precision and recall each `>= 0.80` within `+/-15 min`
+- `flat_rest` relief `<= 15 px` with no prominent painted peak
+- deterministic same-input raster, no bridge across unknown spans
+
+The current harness does not enforce all of these yet: it reports one recipe,
+counts host/guest landmarks rather than detecting skyline peaks, includes the
+flat case in aggregate timing, and does not rerender for a determinism check or
+assert gap preservation. Section 12 must add those measurements and an explicit
+baseline/candidate A/B sheet. Calibrate the final binding gates from that
+prototype, then change them only with a checked-in report and visible evidence.
 
 ## 12. Build Order
 
-1. Author the 4 new PNGs. Commit with tuned-import XML entries alongside `vertical_fade_descent.png`.
-2. Strip `JapaneseInkHeartrateScene.mc` per §9.
-3. Implement `hrToPeaks` on mock HR data.
-4. Implement the 12-step composer.
-5. Build, sideload to simulator, save checkpoint pair (`YYYY-MM-DD_name.png` + `.md`) per the procedural workflow doc.
-6. Iterate asset tuning before touching composition logic.
-7. Replace mock HR with `ActivityMonitor.getHeartRateHistory` once composition reads correctly.
+1. Preserve the newest committed fidelity report (2026-11-03, the shape
+   library) as the baseline.
+2. Implement one shared `ridgeProfile` contract in `compose_preview.py`: sixteen
+   time buckets, short-gap policy, light smoothing, stable HR scale.
+3. Extend the contact sheet to show baseline and candidate together; tune the
+   candidate until it passes section 11 without losing the shanshui read.
+4. Port the exact accepted profile math to `JapaneseInkHeartrateScene.mc` and
+   keep the baked planes below the dynamic skyline as material/accents.
+5. Add sparse/partial/outlier and rolling-window stability cases, then rerun the
+   deterministic suite.
+6. Compile for `fr265`, compare simulator raster with the preview, and record a
+   checkpoint pair (`YYYY-MM-DD_HHMM_name.png` + `.md`).
+7. Sideload only the passing candidate and confirm legibility, performance, and
+   real-history behavior on the physical watch.
 
 ## 13. API Audit (2026-10-27): What The FR265 Can Do That This Renderer Does Not Use
 
