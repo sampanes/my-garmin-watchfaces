@@ -2,6 +2,18 @@
 
 Last updated: 2026-11-05 (whole library mountains stay the silhouette; fidelity numbers at the 2026-11-03 shape library)
 
+> **2026-11-05 ART DECISION -- no generated shapes anymore (CURRENT).** Every
+> piece of art on the face is to come from the ChatGPT and Gemini sheets in
+> `art/sheets/` (prompts and lessons in `art/sheets/PROMPTS.md`), cut by
+> `scripts/cut_sprite_sheet.py`. Do not extend `gen_shape_library.py` or
+> `gen_ink_layers.py` with new generated art: the shape library is to be cut
+> from the mountain sheets and measured into the same profile table, and the
+> generated planes (horizon, mist, foreground) replaced by sheet pieces after
+> it. A mock-only test (2026-11-05) with the 48 cut sheet mountains, each
+> stretched in width to its run (0.67x to 1.5x), scored non-flat `r` 0.89
+> against 0.78 for today's library; its first-pass scale painted the cliffs
+> too big and too dark.
+
 > **2026-11-05 DECISION -- whole library mountains stay the silhouette (CURRENT).**
 > The 2026-11-03 direction stands: each run of buckets over the window's floor
 > is one whole painted mountain chosen from the shape library to fit the HR.
