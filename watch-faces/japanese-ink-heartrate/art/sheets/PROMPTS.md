@@ -687,3 +687,27 @@ I need ONE image that I will lay over that whole landscape as weather. Rules:
 
 The weather: wind. About 12 small loose maple leaves blown along one gusting path from the top right to the bottom left of the image, tumbling at different angles, four of them vermilion red (#B83A2E), the rest grey ink. Each leaf SMALL: no wider than one twentieth of the image width. A few faint dry-brush wind streaks along the same path are welcome. No branches, no tree.
 ```
+
+## Round 10 results (2026-11-05)
+
+All eight back (`rain`, `storm`, `snowfall`, `wind`, each `-a` Gemini and
+`-b` ChatGPT; ChatGPT's at 1254 px, Gemini's at 2048). Every one followed
+the prompt: rain one way, top right to bottom left; the upper left left
+sparse for the clock; the snow on black. Cut whole-frame by
+`cut_art_kit.py` (recipes `rain`, `storm`, `snowfall`, `wind`, 1x1 full);
+the snow by brightness (`cut_sprite_sheet.py --light`: turned over, it cuts
+like any ink sheet; by day the flakes are paper with a faint grey rim, by
+night light ink). Mocked on the face, one copy sized to the face, at three
+depths and at night (`~/Downloads/ink-face-weather-<kind>.png`):
+
+- **Rain:** both read; Gemini's is heavier and darker, ChatGPT's softer.
+- **Storm:** both far too loud at full strength (black slashes across the
+  mountain); about 55% alpha reads as a storm, 35% as rain with a grey
+  bolt. Gemini's bolt runs into the rim.
+- **Snow:** at night both are lovely. By day white flakes vanish on white
+  paper; a grey wash over the sky (about 22%) brings them out, the ink
+  painter's own way, but the wash needs a soft fade toward the clock, not
+  a box (it showed as a band).
+- **Wind:** both work; the leaves are small now. On the autumn foreground
+  the red leaves blend with the maples.
+

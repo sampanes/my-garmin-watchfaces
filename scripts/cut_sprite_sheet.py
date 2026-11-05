@@ -29,6 +29,12 @@ from scipy import ndimage
 INK = np.array((12, 9, 7), dtype=float) / 255.0          # gen_ink_layers day ink
 NIGHT_INK = np.array((168, 164, 152), dtype=float) / 255.0  # gen_ink_layers NIGHT_INK
 NIGHT_SCALE = 0.80                                         # night alpha, as the planes use
+# light=True sheets (snow painted white on black, round 10): the brightness is
+# the subject. By day it is paper with a faint grey rim (RIM_* : its share
+# and blur), so a flake reads on bare paper too; by night light ink at full
+# alpha.
+RIM_SHARE = 0.35
+RIM_BLUR = 2.5
 PAPER = (242, 238, 230)
 
 DEFAULT_NAMES = ("sun,sun_mist,moon_full,moon_crescent,"
@@ -96,8 +102,12 @@ def paper_back(rgb, a, paper, base_fade):
     return col, alpha
 
 
-def cut(sheet, out, cols, rows, names, solid, backed=False, base_fade=0.3, full=False):
+def cut(sheet, out, cols, rows, names, solid, backed=False, base_fade=0.3, full=False,
+        light=False):
     rgb = np.asarray(Image.open(sheet).convert("RGB"), dtype=float) / 255.0
+    if light:
+        # white on black: turned over, it is ink on white like every sheet
+        rgb = 1.0 - rgb
     norm, col, a, red = uncomposite(rgb)
     lab, cells, split = find_subjects(a, cols, rows)
     H, W = a.shape
@@ -148,6 +158,14 @@ def cut(sheet, out, cols, rows, names, solid, backed=False, base_fade=0.3, full=
                 day = norm[y0:y1, x0:x1]
                 night = day * 0.92
                 aa = an = np.clip(disc, 0.0, 1.0)
+            elif light:
+                rim = np.clip(ndimage.gaussian_filter(aa, RIM_BLUR) * 1.6 - aa, 0.0, 1.0) * RIM_SHARE
+                alpha = aa + rim * (1.0 - aa)
+                w_paper = (aa / np.maximum(alpha, 1e-6))[..., None]
+                day = PAPER_F * w_paper + INK * (1.0 - w_paper)
+                night = np.empty_like(day)
+                night[:] = NIGHT_INK
+                aa, an = alpha, aa
             elif backed and ("*" in backed or name in backed):
                 day, aa = paper_back(day, aa, PAPER_F, base_fade)
                 night, an = paper_back(night, an, np.zeros(3), base_fade)
@@ -188,6 +206,8 @@ def main():
                          "alone for every subject, or a comma list of names")
     ap.add_argument("--full", action="store_true",
                     help="1x1 painting composed for the whole face: keep the full frame")
+    ap.add_argument("--light", action="store_true",
+                    help="the subject is light on a black sheet (snow): cut by brightness")
     ap.add_argument("--base-fade", type=float, default=0.3,
                     help="with --backed: fraction of height the body fades over")
     args = ap.parse_args()
@@ -196,7 +216,7 @@ def main():
     solid = set(n.strip() for n in args.solid.split(",") if n.strip())
     backed = set(n.strip() for n in args.backed.split(",") if n.strip())
     written = cut(args.sheet, args.out, cols, rows, names, solid,
-                  backed, args.base_fade, args.full)
+                  backed, args.base_fade, args.full, args.light)
     if args.preview:
         contact(written, args.preview)
 

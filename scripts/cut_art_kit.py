@@ -64,7 +64,14 @@ RECIPE = {
     "digits": ("5x2", DIGITS, "", "", False),
     "kanji": ("4x3", KANJI, "", "", False),
     "sealdigits": ("5x2", SEAL_DIGITS, "", "", False),
+    # round 10: one image per weather, composed for the whole face
+    "rain": ("1x1", "rain", "", "", True),
+    "storm": ("1x1", "storm", "", "", True),
+    "snowfall": ("1x1", "snowfall", "", "", True),
+    "wind": ("1x1", "wind", "", "", True),
 }
+# sheets painted light on black (cut by brightness)
+LIGHT = {"snowfall"}
 for season in ("spring", "summer", "autumn", "winter", "pass"):
     RECIPE["fg-" + season] = ("1x1", "fg", "", "", True)
 
@@ -95,12 +102,12 @@ def split_circles(sheet, names, out_dir):
     return paths
 
 
-def one(sheet, out, grid, names, solid, backed, full):
+def one(sheet, out, grid, names, solid, backed, full, light=False):
     cols, rows = (int(v) for v in grid.split("x"))
     names = [n.strip() for n in names.split(",")]
     solid = set(n for n in solid.split(",") if n)
     backed = set(n for n in backed.split(",") if n)
-    written = cutter.cut(sheet, out, cols, rows, names, solid, backed, 0.3, full)
+    written = cutter.cut(sheet, out, cols, rows, names, solid, backed, 0.3, full, light)
     cutter.contact(written, out + "-contact.png")
 
 
@@ -127,7 +134,7 @@ def main():
             print("[!] %s: no recipe, skipped" % stem)
             continue
         print("== " + stem)
-        one(path, os.path.join(args.out, stem), *RECIPE[kind])
+        one(path, os.path.join(args.out, stem), *RECIPE[kind], light=kind in LIGHT)
 
 
 if __name__ == "__main__":
