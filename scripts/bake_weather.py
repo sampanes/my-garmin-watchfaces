@@ -12,9 +12,10 @@ white on black and cut by brightness. John's picks (11-05):
     rain_light  ChatGPT's sparse rain (rain2-b) at a tone: drizzle, light
                 rain, showers
     rain        the same rain doubled (John: "double it in some clever way",
-                each copy fainter): over it the same painting enlarged
-                NEAR_SCALE, bigger strokes for nearer rain; never mirrored
-                (a mirror would slant it the other way)
+                each copy fainter): over it the same painting shifted SHIFT
+                and wrapped (John's pick over turned, which "looks like
+                rain is shooting back up", and enlarged); a mirror only
+                across the rain's own slant would keep its direction
     storm       ChatGPT's storm, lightning and all, faded to TONE: storms
     snow        Gemini's snow; by day over a grey WASH, the ink painter's
                 way of letting white flakes show on white paper
@@ -58,7 +59,7 @@ W = 416
 # nearer rain), "shift" moved SHIFT of the face and wrapped.
 WEATHER = [
     ("rain_light", [("rain2-b", 0.8, "")], 0.0),
-    ("rain", [("rain2-b", 0.6, ""), ("rain2-b", 0.7, "near")], 0.0),
+    ("rain", [("rain2-b", 0.75, ""), ("rain2-b", 0.6, "shift")], 0.0),
     ("storm", [("storm-b", 0.55, "")], 0.0),
     ("snow", [("snowfall-a", 1.0, "")], 0.22),
     ("wind", [("wind-a", 1.0, "")], 0.0),

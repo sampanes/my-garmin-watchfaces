@@ -70,6 +70,7 @@ RECIPE = {
     "storm": ("1x1", "storm", "", "", True),
     "snowfall": ("1x1", "snowfall", "", "", True),
     "wind": ("1x1", "wind", "", "", True),
+    "wind2": ("1x1", "wind2", "", "", True),
 }
 # sheets painted light on black (cut by brightness)
 LIGHT = {"snowfall"}
