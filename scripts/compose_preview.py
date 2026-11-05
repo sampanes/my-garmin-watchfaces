@@ -8,7 +8,7 @@ Writes art/kit_preview.png (circular-masked, on dark surround like the sim).
 Planes, back to front (same order on the watch):
     paper -> sun/moon -> horizon -> mist_lite -> masses (library shapes, the
     host last) -> near range -> mist -> fg_left -> fg_right -> paper grain
-    -> (View) inscription + seal
+    -> (View) paper halo -> inscription + seal
 
 The relief (round 6, 2026-11-02): the window's floor is a level far horizon;
 every run of buckets standing RUN_MIN over it is a mass with its crest on
@@ -44,6 +44,7 @@ OUT = os.path.join(FACE, "art", "kit_preview.png")
 
 W = H = 416
 PAPER = (242, 238, 230, 255)
+HALO_PAD = 27      # scripts/gen_halo.py; the View's HALO_PAD
 MOON_INK_HALO = (24, 18, 14, 0x20)   # the moon on day paper (18:00 to night)
 MOON_INK_CORE = (24, 18, 14, 0x50)
 
@@ -276,6 +277,13 @@ def load(name):
     return Image.open(os.path.join(DRAW, name)).convert("RGBA")
 
 
+def paste_at(base, img, x, y):
+    """drawBitmap(x, y): source-over at 1:1, clipped to the screen"""
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    layer.paste(img, (int(x), int(y)))
+    return Image.alpha_composite(base, layer)
+
+
 def blend_ellipse(base, cx, cy, r, rgba):
     """A translucent disk source-over the paper, like fillCircle after
     setFill(createColor(a, r, g, b)). ImageDraw on an RGBA image REPLACES
@@ -307,8 +315,10 @@ class BmFont:
 
     def draw(self, img, text, cx, cy, rgb):
         adv = sum(self.glyphs[c]["xadvance"] for c in text)
-        pen = cx - adv / 2.0
-        top = cy - self.line_h / 2.0
+        return self.draw_left(img, text, cx - adv / 2.0, cy - self.line_h / 2.0, rgb)
+
+    def draw_left(self, img, text, pen, top, rgb):
+        """dc.drawText(pen, top, ..., LEFT): the line box's top-left at (pen, top)"""
         layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
         for c in text:
             g = self.glyphs[c]
@@ -736,11 +746,31 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
         hour = 12 if hour % 12 == 0 else hour % 12
     glyphs = kanji_hour(hour)
     pitch, bottom = int(0.10 * H), int(0.265 * H)
-    for i, g in enumerate(glyphs):
-        base = kanji_font.draw(base, g, int(0.22 * W), bottom - (len(glyphs) - 1 - i) * pitch, ink)
-    base = ink_font.draw(base, "%02d" % (minute_of_day % 60), int(0.22 * W), int(0.375 * H), ink)
     seal = int(W * 0.085)
     sx0, sy0 = int(0.22 * W) - seal // 2, int(0.465 * H)
+    # Where each glyph lands, in the View's integer maths: [font, glyph, pen
+    # x, line top], the ink drawn LEFT / TOP there, the minutes one glyph at
+    # a time from a pen centred on the pair.
+    cx = int(0.22 * W)
+    placed = []
+    for i, g in enumerate(glyphs):
+        placed.append((kanji_font, g, cx - kanji_font.glyphs[g]["xadvance"] // 2,
+                       bottom - (len(glyphs) - 1 - i) * pitch - kanji_font.line_h // 2))
+    mins = "%02d" % (minute_of_day % 60)
+    pen = cx - sum(ink_font.glyphs[c]["xadvance"] for c in mins) // 2
+    for c in mins:
+        placed.append((ink_font, c, pen, int(0.375 * H) - ink_font.line_h // 2))
+        pen += ink_font.glyphs[c]["xadvance"]
+    # the paper halo first (scripts/gen_halo.py): one bitmap per glyph, its
+    # ink glyph's cell grown by HALO_PAD on every side, so the painting
+    # fades back to bare paper around each glyph and the seal
+    sfx = "_night" if night else ""
+    for font, g, x, top in placed:
+        name = ("halo_k%04x" % ord(g)) if font is kanji_font else ("halo_d" + g)
+        base = paste_at(base, load(name + sfx + ".png"), x - HALO_PAD, top - HALO_PAD)
+    base = paste_at(base, load("halo_seal" + sfx + ".png"), sx0 - HALO_PAD, sy0 - HALO_PAD)
+    for font, g, x, top in placed:
+        base = font.draw_left(base, g, x, top, ink)
     seal_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ImageDraw.Draw(seal_layer).rounded_rectangle(
         [sx0, sy0, sx0 + seal, sy0 + seal], radius=seal // 7,

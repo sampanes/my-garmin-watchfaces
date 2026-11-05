@@ -14,6 +14,31 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     var mInkFont as WatchUi.FontResource;
     var mKanjiFont as WatchUi.FontResource;
     var mSealFont as WatchUi.FontResource;
+    // Line heights of those fonts (their .fnt "common lineHeight"): the ink
+    // is drawn LEFT / TOP at a line top of centre - lineHeight / 2, as
+    // compose_preview.py does, so the halo bitmaps can be placed exactly.
+    const INK_LINE_H = 54;
+    const KANJI_LINE_H = 48;
+
+    // The paper halo under the inscription (scripts/gen_halo.py): one
+    // bitmap per glyph, the glyph widened and blurred, in paper colour
+    // (black at night), drawn first so a branch behind the time fades back
+    // to bare paper. Each is its ink glyph's cell grown by HALO_PAD on every
+    // side, drawn at (pen - HALO_PAD, line top - HALO_PAD). Bitmaps, not a
+    // font: a font keeps only a few alpha levels and clips to its line box.
+    const HALO_PAD = 27;   // gen_halo.py prints it
+    // Kanji code points in the order of the halo id lists: 0-9, ten, twenty.
+    const KANJI_CODES = [0x3007, 0x4E00, 0x4E8C, 0x4E09, 0x56DB, 0x4E94, 0x516D,
+                         0x4E03, 0x516B, 0x4E5D, 0x5341, 0x5EFF];
+    var mHaloDigit as Lang.Array<Lang.ResourceId>;
+    var mHaloDigitNight as Lang.Array<Lang.ResourceId>;
+    var mHaloKanji as Lang.Array<Lang.ResourceId>;
+    var mHaloKanjiNight as Lang.Array<Lang.ResourceId>;
+    // Five slots (hour glyph 1-2, minute digit 1-2, seal): the bitmap held
+    // for each and what it shows; a slot reloads only when that changes
+    // (a load costs ~57 ms on the watch, so not every update).
+    var mHaloKeys as Lang.Array<Lang.String> = ["", "", "", "", ""];
+    var mHaloBmps as Lang.Array<Graphics.BitmapType or Null> = [null, null, null, null, null];
 
     // Sumi ink for the inscription digits (the darkest ink in the painting),
     // pale ink on the night paper; vermillion for the seal, dimmed at night.
@@ -32,6 +57,49 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         mInkFont = WatchUi.loadResource(Rez.Fonts.InkDigits) as WatchUi.FontResource;
         mKanjiFont = WatchUi.loadResource(Rez.Fonts.KanjiHours) as WatchUi.FontResource;
         mSealFont = WatchUi.loadResource(Rez.Fonts.SealDigits) as WatchUi.FontResource;
+        mHaloDigit = [Rez.Drawables.HaloD0, Rez.Drawables.HaloD1, Rez.Drawables.HaloD2,
+                      Rez.Drawables.HaloD3, Rez.Drawables.HaloD4, Rez.Drawables.HaloD5,
+                      Rez.Drawables.HaloD6, Rez.Drawables.HaloD7, Rez.Drawables.HaloD8,
+                      Rez.Drawables.HaloD9] as Lang.Array<Lang.ResourceId>;
+        mHaloDigitNight = [Rez.Drawables.HaloD0Night, Rez.Drawables.HaloD1Night,
+                           Rez.Drawables.HaloD2Night, Rez.Drawables.HaloD3Night,
+                           Rez.Drawables.HaloD4Night, Rez.Drawables.HaloD5Night,
+                           Rez.Drawables.HaloD6Night, Rez.Drawables.HaloD7Night,
+                           Rez.Drawables.HaloD8Night, Rez.Drawables.HaloD9Night] as Lang.Array<Lang.ResourceId>;
+        mHaloKanji = [Rez.Drawables.HaloK3007, Rez.Drawables.HaloK4e00, Rez.Drawables.HaloK4e8c,
+                      Rez.Drawables.HaloK4e09, Rez.Drawables.HaloK56db, Rez.Drawables.HaloK4e94,
+                      Rez.Drawables.HaloK516d, Rez.Drawables.HaloK4e03, Rez.Drawables.HaloK516b,
+                      Rez.Drawables.HaloK4e5d, Rez.Drawables.HaloK5341,
+                      Rez.Drawables.HaloK5eff] as Lang.Array<Lang.ResourceId>;
+        mHaloKanjiNight = [Rez.Drawables.HaloK3007Night, Rez.Drawables.HaloK4e00Night,
+                           Rez.Drawables.HaloK4e8cNight, Rez.Drawables.HaloK4e09Night,
+                           Rez.Drawables.HaloK56dbNight, Rez.Drawables.HaloK4e94Night,
+                           Rez.Drawables.HaloK516dNight, Rez.Drawables.HaloK4e03Night,
+                           Rez.Drawables.HaloK516bNight, Rez.Drawables.HaloK4e5dNight,
+                           Rez.Drawables.HaloK5341Night,
+                           Rez.Drawables.HaloK5effNight] as Lang.Array<Lang.ResourceId>;
+    }
+
+    // The halo bitmap for one slot, loaded only when the slot's key changes.
+    function halo(slot as Lang.Number, key as Lang.String, rez as Lang.ResourceId) as Graphics.BitmapType {
+        var bmp = mHaloBmps[slot];
+        if (bmp == null || !key.equals(mHaloKeys[slot])) {
+            mHaloBmps[slot] = null;   // drop the old one before loading the new
+            bmp = WatchUi.loadResource(rez) as Graphics.BitmapType;
+            mHaloBmps[slot] = bmp;
+            mHaloKeys[slot] = key;
+        }
+        return bmp;
+    }
+
+    function kanjiIndex(glyph as Lang.String) as Lang.Number {
+        var code = glyph.toCharArray()[0].toNumber();
+        for (var k = 0; k < KANJI_CODES.size(); k++) {
+            if (KANJI_CODES[k] == code) {
+                return k;
+            }
+        }
+        return 0;
     }
 
     function onLayout(dc as Graphics.Dc) as Void {
@@ -163,18 +231,59 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         var minY = ((height * 375) / 1000) + yOff;
 
         var night = mScene.isNight();
+        var count = hourGlyphs.size();
+        var sealSize = (width * 85) / 1000;
+        var sealX = colX - (sealSize / 2);
+        var sealY = (height * 465) / 1000;
+
+        // Where every glyph lands: the hour glyphs one per line, the minutes
+        // one glyph at a time from a pen centred on the pair, each as
+        // [glyph, pen x, line top].
+        var placed = [] as Lang.Array<Lang.Array>;
+        for (var i = 0; i < count; i++) {
+            var g = hourGlyphs[i];
+            placed.add([g, colX - (dc.getTextWidthInPixels(g, mKanjiFont) / 2),
+                        hourBottomY - (count - 1 - i) * hourPitch - (KANJI_LINE_H / 2)]);
+        }
+        var pen = colX - (dc.getTextWidthInPixels(minText, mInkFont) / 2);
+        for (var j = 0; j < minText.length(); j++) {
+            var d = minText.substring(j, j + 1) as Lang.String;
+            placed.add([d, pen, minY - (INK_LINE_H / 2)]);
+            pen += dc.getTextWidthInPixels(d, mInkFont);
+        }
+
+        if (!isAod) {
+            // the paper halo first, under everything the inscription draws
+            for (var i = 0; i < placed.size(); i++) {
+                var p = placed[i];
+                var glyph = p[0] as Lang.String;
+                var rez;
+                if (i < count) {
+                    var k = kanjiIndex(glyph);
+                    rez = night ? mHaloKanjiNight[k] : mHaloKanji[k];
+                } else {
+                    var n = glyph.toNumber() as Lang.Number;
+                    rez = night ? mHaloDigitNight[n] : mHaloDigit[n];
+                }
+                // slots 0-1 hour, 2-3 minutes; a one-glyph hour leaves slot 1
+                var slot = i < count ? i : 2 + (i - count);
+                dc.drawBitmap((p[1] as Lang.Number) - HALO_PAD, (p[2] as Lang.Number) - HALO_PAD,
+                              halo(slot, glyph + (night ? "n" : "d"), rez));
+            }
+            dc.drawBitmap(sealX - HALO_PAD, sealY - HALO_PAD,
+                          halo(4, night ? "n" : "d",
+                               night ? Rez.Drawables.HaloSealNight : Rez.Drawables.HaloSeal));
+        }
         if (isAod) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         } else {
             dc.setColor(night ? INK_NIGHT : INK, Graphics.COLOR_TRANSPARENT);
         }
-        var count = hourGlyphs.size();
-        for (var i = 0; i < count; i++) {
-            dc.drawText(colX, hourBottomY - (count - 1 - i) * hourPitch, mKanjiFont, hourGlyphs[i],
-                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        for (var i = 0; i < placed.size(); i++) {
+            var p = placed[i];
+            dc.drawText(p[1] as Lang.Number, p[2] as Lang.Number, i < count ? mKanjiFont : mInkFont,
+                        p[0] as Lang.String, Graphics.TEXT_JUSTIFY_LEFT);
         }
-        dc.drawText(colX, minY, mInkFont, minText,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         if (isAod) {
             return;
@@ -182,9 +291,6 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
 
         // Artist's seal: rounded vermillion square, live HR inside in the
         // carved seal digits (three of them fit with the 8.5% size).
-        var sealSize = (width * 85) / 1000;
-        var sealX = colX - (sealSize / 2);
-        var sealY = (height * 465) / 1000;
         if (night) {
             dc.setFill(Graphics.createColor(0xEB, SEAL_NIGHT_R, SEAL_NIGHT_G, SEAL_NIGHT_B));
         } else {

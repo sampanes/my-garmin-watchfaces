@@ -158,6 +158,30 @@ every glyph at 2×, the inscription at 1×, three HR seals. Change a digit by
 editing its skeleton, rebake, read the sheet, then run the preview. Never
 hand-edit the `.fnt`.
 
+### The paper halo (`scripts/gen_halo.py`)
+
+A full foreground painting can run a branch behind the time. A painter
+leaves bare paper where the inscription goes, so the face lays a soft patch
+of paper under each glyph and the seal, following the letter shapes: the
+painting fades back to paper there, and the time reads on any scene.
+`gen_halo.py` takes each glyph's coverage from the font atlases above,
+dilates it (`--grow`, 9 px) and blurs it (`--blur`, 7 px, `--gain` 1.6), and
+writes one bitmap per glyph in paper colour plus a black night twin:
+`halo_d0-9` (minute digits), `halo_k<code point>` (hour kanji),
+`halo_seal`, registered in the generated `drawables/halo.xml`.
+
+Each halo bitmap is its ink glyph's whole cell (advance x line height)
+grown by `HALO_PAD` (27 px) on every side. The View draws every inscription
+glyph LEFT / TOP at an explicit pen and line top (centre - lineHeight / 2,
+the minutes one glyph at a time) and the halo at (pen - 27, top - 27)
+before it. It holds five halo slots and reloads one only when its glyph
+changes. `compose_preview.py` places them the same way.
+
+Bitmaps, not a second font, because the simulator showed that a Connect IQ
+font keeps only about three alpha levels (a soft edge turns into contour
+rings) and clips each glyph to its line box and advance (a halo that
+spills past them is cut off square). A bitmap keeps its full alpha.
+
 ---
 
 ## 3. The preview compositor (`scripts/compose_preview.py`)
