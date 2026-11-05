@@ -12,8 +12,10 @@
 > it. Done for the mountains the same day (PROCEDURE.md §10, 2026-11-05):
 > the library is the 24 ChatGPT mountains, scaled 1.2x, 70% ink, each
 > stretched in width to its run (0.67x to 1.5x); non-flat `r` 0.91 against
-> 0.80 for the painted library. The far range, mist, near hills and
-> foreground are still script-made: they come next.
+> 0.80 for the painted library. The foreground followed the same afternoon
+> (ten whole-face paintings from the sheets, one a day:
+> `scripts/bake_foregrounds.py`). The far range, mist and near hills are
+> still script-made: they come next.
 
 Last updated: 2026-10-27. This is the methods document for the current
 architecture. It records *how* the assets are made and *why* each technique
@@ -111,8 +113,7 @@ paper. `mist_band_lite.png` is the same image at 62% alpha, baked because
 | far_range.png | 416×120 | 70,66,60 | ghost (ink .09, blur 7) over far (ink .19, blur 3.5) |
 | guest_mountain.png | 260×190 | 12,9,7 | second landmark, ink .36, crown .16, apex nx .42 |
 | host_mountain.png | 340×260 | 12,9,7 | strongest landmark, ink .62, crown .30, apex nx .47 |
-| fg_left.png | 300×200 | 11,8,6 | foreground, ink .90, open left edge, tree_prob .042 |
-| fg_right.png | 280×180 | 11,8,6 | foreground, ink .86, open right edge, tree_prob .034 |
+| fg_left.png, fg_right.png | retired 2026-11-05 | | the foreground is a whole-face painting from the sheets now (`scripts/bake_foregrounds.py`, `fg_*.png`) |
 | mist_band.png (+_lite) | 416×110 | 242,238,230 | organic mist, alpha .58 (lite ×.62) |
 | paper_grain.png | 240×240 | 96,84,70 | washi grain, upscaled on-device, alpha ≤ .16 |
 | `*_night.png` (all but grain) | same | 168,164,152 ink; far 120,118,110; mist 0,0,0 | night mode's pale ink on black paper; alpha × .75 fg, .80 host, .85 guest, .90 far, mist as is (`write_pair`) |
@@ -209,7 +210,7 @@ contract: layout numbers live here first and are ported to
 `JapaneseInkHeartrateScene.mc` as the same fractions, unchanged.**
 
 Plane order (both sides): paper → sun/moon → far_range → mist_lite → guest →
-host → mist → fg_left → fg_right → grain → (View) inscription + seal.
+host → mist → the day's foreground → grain → (View) inscription + seal.
 
 `compose_preview.py [out.png]` writes `art/kit_preview.png` by default.
 Flags: `--night`, `--no-trace`, `--24h`, `--time HH:MM`, and `--data hr.csv

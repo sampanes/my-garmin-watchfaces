@@ -1,0 +1,63 @@
+{
+ "face": 416,
+ "seasons": [
+  "spring",
+  "summer",
+  "autumn",
+  "winter",
+  "pass"
+ ],
+ "painters": 2,
+ "foregrounds": [
+  {
+   "name": "fg_spring_b",
+   "season": "spring",
+   "painter": "b"
+  },
+  {
+   "name": "fg_spring_a",
+   "season": "spring",
+   "painter": "a"
+  },
+  {
+   "name": "fg_summer_b",
+   "season": "summer",
+   "painter": "b"
+  },
+  {
+   "name": "fg_summer_a",
+   "season": "summer",
+   "painter": "a"
+  },
+  {
+   "name": "fg_autumn_b",
+   "season": "autumn",
+   "painter": "b"
+  },
+  {
+   "name": "fg_autumn_c",
+   "season": "autumn",
+   "painter": "c"
+  },
+  {
+   "name": "fg_winter_b",
+   "season": "winter",
+   "painter": "b"
+  },
+  {
+   "name": "fg_winter_c",
+   "season": "winter",
+   "painter": "c"
+  },
+  {
+   "name": "fg_pass_b",
+   "season": "pass",
+   "painter": "b"
+  },
+  {
+   "name": "fg_pass_c",
+   "season": "pass",
+   "painter": "c"
+  }
+ ]
+}

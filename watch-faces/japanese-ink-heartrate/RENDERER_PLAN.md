@@ -1,6 +1,6 @@
 # Japanese Ink Heartrate — Renderer Plan
 
-Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretched to the run; non-flat r 0.91)
+Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretched to the run, non-flat r 0.91; the foreground is a whole-face sheet painting, one a day)
 
 > **2026-11-05 ART DECISION -- no procedurally generated art anymore (CURRENT).**
 > Nothing drawn by the watch's code or painted by our own scripts: every
@@ -14,8 +14,10 @@ Last updated: 2026-11-05 (the library is the 24 ChatGPT mountains, width-stretch
 > it. Done for the mountains the same day (PROCEDURE.md §10, 2026-11-05):
 > the library is the 24 ChatGPT mountains, scaled 1.2x, 70% ink, each
 > stretched in width to its run (0.67x to 1.5x); non-flat `r` 0.91 against
-> 0.80 for the painted library. The far range, mist, near hills and
-> foreground are still script-made: they come next.
+> 0.80 for the painted library. The foreground followed the same afternoon
+> (ten whole-face paintings from the sheets, one a day:
+> `scripts/bake_foregrounds.py`). The far range, mist and near hills are
+> still script-made: they come next.
 
 > **2026-11-05 DECISION -- whole library mountains stay the silhouette (CURRENT).**
 > The 2026-11-03 direction stands: each run of buckets over the window's floor

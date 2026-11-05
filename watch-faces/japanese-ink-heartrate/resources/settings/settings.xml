@@ -8,4 +8,7 @@
     <setting propertyKey="@Properties.nightEnd" title="@Strings.SettingNightEnd">
         <settingConfig type="numeric" min="0" max="24" />
     </setting>
+    <setting propertyKey="@Properties.foreground" title="@Strings.SettingForeground">
+        <settingConfig type="numeric" min="0" max="5" />
+    </setting>
 </settings>

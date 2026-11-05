@@ -3,4 +3,5 @@
     <string id="SettingTrueHr">Show the true HR shape over the painting</string>
     <string id="SettingNightStart">Night mode from (hour, 0-24)</string>
     <string id="SettingNightEnd">Night mode until (hour, 0-24; same as from = off)</string>
+    <string id="SettingForeground">Foreground: 0 = by season, 1 spring, 2 summer, 3 autumn, 4 winter, 5 mountain pass</string>
 </resources>

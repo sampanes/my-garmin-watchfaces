@@ -6,4 +6,7 @@
     <!-- Night mode window (hours, 0-24): black paper, pale ink. Equal = off. -->
     <property id="nightStart" type="number">21</property>
     <property id="nightEnd" type="number">6</property>
+    <!-- The foreground painting: 0 = by season (the month), 1..5 = spring,
+         summer, autumn, winter, mountain pass (scripts/bake_foregrounds.py). -->
+    <property id="foreground" type="number">0</property>
 </properties>

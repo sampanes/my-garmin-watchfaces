@@ -4,8 +4,8 @@ using Toybox.WatchUi;
 
 // On-watch settings. A face copied over USB gets no "Customize" in Garmin
 // Connect (only store installs carry the settings form to the phone), so
-// the same three properties are edited here: long-press the face (or pick
-// it in the watch-face list) -> Customize.
+// the same properties are edited here: long-press the face (or pick it in
+// the watch-face list) -> Customize.
 class JapaneseInkHeartrateSettingsMenu extends WatchUi.Menu2 {
 
     function initialize() {
@@ -16,6 +16,8 @@ class JapaneseInkHeartrateSettingsMenu extends WatchUi.Menu2 {
             hourLabel(settingHour("nightStart", 21)), :nightStart, null));
         addItem(new WatchUi.MenuItem("Night until",
             hourLabel(settingHour("nightEnd", 6)), :nightEnd, null));
+        addItem(new WatchUi.MenuItem("Foreground",
+            sceneLabel(settingNumber("foreground", 0, FG_SEASONS)), :foreground, null));
     }
 
 }
@@ -27,7 +29,8 @@ class JapaneseInkHeartrateSettingsDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     // The toggle flips itself; an hour row steps one hour forward per press
-    // (23 wraps to 0). Night is off while "from" equals "until".
+    // (23 wraps to 0). Night is off while "from" equals "until". The
+    // foreground row steps through by-season and the five scenes.
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :overlay) {
@@ -38,6 +41,10 @@ class JapaneseInkHeartrateSettingsDelegate extends WatchUi.Menu2InputDelegate {
             var hour = (settingHour(key, (id == :nightStart) ? 21 : 6) + 1) % 24;
             Application.Properties.setValue(key, hour);
             item.setSubLabel(hourLabel(hour));
+        } else if (id == :foreground) {
+            var scene = (settingNumber("foreground", 0, FG_SEASONS) + 1) % (FG_SEASONS + 1);
+            Application.Properties.setValue("foreground", scene);
+            item.setSubLabel(sceneLabel(scene));
         }
         getApp().onSettingsChanged();
     }
@@ -54,6 +61,26 @@ function settingHour(key as Lang.String, fallback as Lang.Number) as Lang.Number
     var value = Application.Properties.getValue(key);
     if (value instanceof Lang.Number) { return (value as Lang.Number) % 24; }
     return fallback;
+}
+
+function settingNumber(key as Lang.String, fallback as Lang.Number, max as Lang.Number) as Lang.Number {
+    var value = Application.Properties.getValue(key);
+    if (value instanceof Lang.Number) {
+        var n = value as Lang.Number;
+        if (n >= 0 && n <= max) { return n; }
+    }
+    return fallback;
+}
+
+// The foreground setting's label: by season, or one of the baked scenes
+// (scripts/bake_foregrounds.py SEASONS order).
+function sceneLabel(scene as Lang.Number) as Lang.String {
+    if (scene == 1) { return "Spring"; }
+    if (scene == 2) { return "Summer"; }
+    if (scene == 3) { return "Autumn"; }
+    if (scene == 4) { return "Winter"; }
+    if (scene == 5) { return "Mountain pass"; }
+    return "By season";
 }
 
 // 12-hour labels, as the watch is set: 0 -> "12 AM", 21 -> "9 PM".

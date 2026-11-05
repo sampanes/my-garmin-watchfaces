@@ -3,14 +3,12 @@
     <!-- Fixed planes, day set: ink on paper. Only one set is loaded at a time. -->
     <bitmap id="MistBandTuned" filename="mist_band.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="MistBandLiteTuned" filename="mist_band_lite.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="FgLeftTuned" filename="fg_left.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="FgRightTuned" filename="fg_right.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PaperGrainTuned" filename="paper_grain.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <!-- Fixed planes, night set: pale ink for black paper (no grain). -->
     <bitmap id="MistBandNight" filename="mist_band_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="MistBandLiteNight" filename="mist_band_lite_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="FgLeftNight" filename="fg_left_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="FgRightNight" filename="fg_right_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <!-- The foreground is one of the whole-face paintings in foregrounds.xml
+         (scripts/bake_foregrounds.py), loaded per render. -->
     <!-- The relief: the level horizon and the near hills as paper cutouts baked by
          scripts/bake_cutouts.py. The masses are the shape library (shapes.xml, from
          scripts/gen_shape_library.py). Loaded per render and dropped, never held. -->

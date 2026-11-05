@@ -7,7 +7,7 @@ Writes art/kit_preview.png (circular-masked, on dark surround like the sim).
 
 Planes, back to front (same order on the watch):
     paper -> sun/moon -> horizon -> mist_lite -> masses (library shapes, the
-    host last) -> near range -> mist -> fg_left -> fg_right -> paper grain
+    host last) -> near range -> mist -> foreground -> paper grain
     -> (View) paper halo -> inscription + seal
 
 The relief (round 6, 2026-11-02): the window's floor is a level far horizon;
@@ -25,6 +25,11 @@ crest sits on the run's peak. The library's profile table
 (scripts/shape_table.json) is the same numbers the Scene compiles
 (JapaneseInkHeartrateShapes.mc).
 
+The foreground (2026-11-05): one whole-face painting from the art sheets,
+baked by scripts/bake_foregrounds.py and chosen by the month, the day and
+the watch's "foreground" setting (foreground_index), in place of the two
+script-painted foreground masses.
+
 The inscription uses the baked BMFont pairs in resources/fonts (read from the
 .fnt exactly as the resource compiler reads them), so the preview's digits
 are the device's digits. --night composes the moonlit negative set (what the
@@ -33,6 +38,7 @@ night-mode hours show); the true-HR overlay is on unless --no-trace.
 
 import csv
 import datetime
+import json
 import os
 import sys
 
@@ -505,6 +511,38 @@ def shape_image(name, night):
     return _SHAPES[key]
 
 
+def foreground_table():
+    """scripts/foreground_table.json, as bake_foregrounds.py wrote it."""
+    if "fg" not in _SHAPES:
+        with open(os.path.join(HERE, "foreground_table.json")) as f:
+            _SHAPES["fg"] = json.load(f)
+    return _SHAPES["fg"]
+
+
+def foreground_index(month=None, day=None, scene=0):
+    """Which baked foreground shows: the season from the month (Dec-Feb
+    winter, Mar-May spring, Jun-Aug summer, Sep-Nov autumn) unless scene
+    names one (1..5: spring, summer, autumn, winter, pass), and the painter
+    alternating with the day of the month (even: ChatGPT, odd: Gemini). The
+    Scene's foregroundIndex is the same arithmetic. Today's month and day
+    by default."""
+    today = datetime.date.today()
+    month = today.month if month is None else month
+    day = today.day if day is None else day
+    t = foreground_table()
+    season = scene - 1 if 1 <= scene <= len(t["seasons"]) else ((month % 12) // 3 + 3) % 4
+    return season * t["painters"] + day % t["painters"]
+
+
+def foreground_image(i, night):
+    """The baked foreground i (resources/drawables/fg_*.png)."""
+    key = ("fg", i, night)
+    if key not in _SHAPES:
+        name = foreground_table()["foregrounds"][i]["name"]
+        _SHAPES[key] = load(name + ("_night" if night else "") + ".png")
+    return _SHAPES[key]
+
+
 def tree_table():
     """The ridge trees' size table (scripts/bake_trees.py)."""
     if "trees" not in _SHAPES:
@@ -741,28 +779,22 @@ def mid_plane_layout(history, trace=None):
 
 
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
-            hour24=False, overlay=True, foreground=None):
+            hour24=False, overlay=True, foreground=None, month=None, day=None, scene=0):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
     Scene fits its stored trace), or None. overlay: draw the true-HR overlay
     over the painting (the watch's "True HR line" setting). foreground: an
-    RGBA painting composed for the whole face (art/cuts/fg-*), laid 1:1 in
-    place of the stock fg_left / fg_right masses."""
+    RGBA painting composed for the whole face (a cut from art/cuts/fg-*) to
+    lay instead of the baked one; month, day (today's by default) and scene
+    (the watch's "foreground" setting, 0 = by season) choose the baked one
+    (foreground_index)."""
     sfx = "_night" if night else ""
-    fg_l = load("fg_left%s.png" % sfx)
-    fg_r = load("fg_right%s.png" % sfx)
     mist = load("mist_band%s.png" % sfx)
     mist_lite = load("mist_band_lite%s.png" % sfx)
     grain_p = os.path.join(DRAW, "paper_grain.png")
     grain = Image.open(grain_p).convert("RGBA") if os.path.exists(grain_p) and not night else None
 
     layout = mid_plane_layout(history, trace)
-    # Foreground masses carry the two ends of the window: the oldest and the
-    # newest bucket WITH DATA (a window missing its first hours after a
-    # reboot keeps those buckets at zero, and zero is not a heart rate).
-    h_start = edge_hr(history, -1)
-    h_end = edge_hr(history, 1)
-
     base = Image.new("RGBA", (W, H), (0, 0, 0, 255) if night else PAPER)
 
     # sun / moon on the day arc (sun 06:00-18:00 west to east)
@@ -807,16 +839,11 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     #    masses show their upper bodies and the depth order reads
     base = paste_scaled(base, mist, -0.03 * W, 0.66 * H, 1.06 * W, 0.22 * H)
 
-    # 6. foreground masses: left = oldest hour, right = newest
-    if foreground is not None:
-        base = paste_scaled(base, foreground, 0, 0, W, H)
-    else:
-        l_h = 0.58 * H * (0.65 + 0.45 * h_start)
-        l_w = 0.74 * W
-        base = paste_scaled(base, fg_l, -0.04 * W, H - l_h + 0.03 * H, l_w, l_h)
-        r_h = 0.52 * H * (0.65 + 0.45 * h_end)
-        r_w = 0.68 * W
-        base = paste_scaled(base, fg_r, W - r_w + 0.04 * W, H - r_h + 0.03 * H, r_w, r_h)
+    # 6. the foreground: one whole-face painting for the season and the day
+    #    (foreground_index), over everything but the grain
+    if foreground is None:
+        foreground = foreground_image(foreground_index(month, day, scene), night)
+    base = paste_scaled(base, foreground, 0, 0, W, H)
 
     # 7. paper grain over everything (day only: black paper stays black)
     if grain is not None:
@@ -985,14 +1012,17 @@ def compose_probe():
 
 def main(argv):
     """compose_preview.py [out.png] [--night] [--no-trace] [--24h] [--time HH:MM]
+                          [--month M] [--day D] [--scene N]
                           [--data hr.csv [--end YYYY-MM-DDTHH:MM]] [--probe]
 
-    Defaults: 14:42 by day, 22:15 by night, 12-hour clock, the mock window.
+    Defaults: 14:42 by day, 22:15 by night, 12-hour clock, the mock window,
+    today's foreground (--month, --day and --scene pick another; see
+    foreground_index).
     --data composes a real window (see load_data); its clock is the window's
     end in Arizona time unless --time is given, and --end (Arizona local)
     picks which four hours of the file to show. --probe writes the expected
     RENDERER_PLAN §13 probe card instead of the painting."""
-    valued = ("--time", "--data", "--end")
+    valued = ("--time", "--data", "--end", "--month", "--day", "--scene")
     args, opts = [], {}
     it = iter(argv[1:])
     for a in it:
@@ -1028,7 +1058,10 @@ def main(argv):
         hh, mm = opts["--time"].split(":")
         minute = int(hh) * 60 + int(mm)
     compose(history, minute_of_day=minute, hr_now=hr_now, night=night, trace=trace,
-            hour24="--24h" in argv, overlay="--no-trace" not in argv).save(out)
+            hour24="--24h" in argv, overlay="--no-trace" not in argv,
+            month=int(opts["--month"]) if "--month" in opts else None,
+            day=int(opts["--day"]) if "--day" in opts else None,
+            scene=int(opts.get("--scene", 0))).save(out)
     print("preview ->", os.path.abspath(out))
 
 

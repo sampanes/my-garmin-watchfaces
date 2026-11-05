@@ -459,3 +459,7 @@ names and flags recorded in its RECIPE table; `--only fg-` limits it to the
 foregrounds. The second renders the ten picks on the preview face (time,
 seal, halo, mock HR day), day over night, one column each; pass cut folders
 to render others. Both need Pillow, numpy and scipy.
+
+`scripts/bake_foregrounds.py` bakes the same ten onto the face
+(`resources/drawables/fg_*.png`, day and night), one a day by season and
+painter (PROCEDURE.md section 10, 2026-11-05).

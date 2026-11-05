@@ -1,8 +1,8 @@
 """Render whole-face foreground paintings on the real preview face.
 
 Each foreground (a cut from scripts/cut_art_kit.py, art/cuts/fg-*/01_fg.png)
-is laid 1:1 over compose_preview's painting in place of the stock fg_left /
-fg_right masses, under the paper halo, the time and the HR seal: one column
+is laid 1:1 over compose_preview's painting in place of the baked foreground
+(scripts/bake_foregrounds.py), under the paper halo, the time and the HR seal: one column
 per foreground, day on top (14:42) and night below (22:15), on the mock HR
 day.
 
@@ -14,14 +14,15 @@ import sys
 
 from PIL import Image
 
+import bake_foregrounds
 import compose_preview as cp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CUTS = os.path.join(HERE, "..", "watch-faces", "japanese-ink-heartrate", "art", "cuts")
 
-# the foregrounds judged usable (art/sheets/PROMPTS.md, round 6 and 7)
-PICKS = ["fg-spring-b", "fg-summer-b", "fg-autumn-b", "fg-winter-b", "fg-pass-b",
-         "fg-spring-a", "fg-summer-a", "fg-autumn-c", "fg-winter-c", "fg-pass-c"]
+# the foregrounds judged usable (art/sheets/PROMPTS.md, round 6 and 7): the
+# ten bake_foregrounds.py bakes, ChatGPT's five then Gemini's five
+PICKS = ["fg-%s-%s" % p for p in sorted(bake_foregrounds.PICKS, key=lambda p: p[1] != "b")]
 
 
 def render(fg_dir, night):

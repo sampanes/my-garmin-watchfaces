@@ -69,6 +69,12 @@ using Toybox.WatchUi;
 // floating point; the mock's is double precision, so a near tie between two
 // shapes may break differently here.
 //
+// 2026-11-05: the foreground is one whole-face painting from the art sheets
+// (scripts/bake_foregrounds.py: ten, five scenes by two painters), chosen by
+// the month and the day (foregroundIndex) or the "foreground" setting, drawn
+// over everything but the grain. The two script-painted foreground masses
+// (fg_left / fg_right, sized by the window's ends) are gone.
+//
 // Layout numbers are ported 1:1 from scripts/compose_preview.py, which mocks
 // this exact recipe at 416x416. Iterate there first; it is far faster.
 //
@@ -90,8 +96,6 @@ class JapaneseInkHeartrateScene {
     // (loadHorizon, loadShape, loadNear), drawn and dropped.
     var mMist as Graphics.BitmapType?;
     var mMistLite as Graphics.BitmapType?;
-    var mFgLeft as Graphics.BitmapType?;
-    var mFgRight as Graphics.BitmapType?;
     var mPaperGrain as Graphics.BitmapType?;
     // Which plane set is in the graphics pool: -1 none, 0 day, 1 night.
     var mLoadedSet as Lang.Number = -1;
@@ -169,6 +173,7 @@ class JapaneseInkHeartrateScene {
 
     // Settings (resources/settings), re-read on every buffered render.
     var mShowTrace as Lang.Boolean = true;
+    var mForeground as Lang.Number = 0;   // the "foreground" setting: 0 by season, 1..FG_SEASONS a scene
     var mNightStart as Lang.Number = 21;
     var mNightEnd as Lang.Number = 6;
     var mNight as Lang.Boolean = false;
@@ -327,10 +332,34 @@ class JapaneseInkHeartrateScene {
         return fallback;
     }
 
+    function propNumber(key as Lang.String, fallback as Lang.Number, max as Lang.Number) as Lang.Number {
+        var value = propValue(key);
+        if (value instanceof Lang.Number || value instanceof Lang.Float) {
+            var n = (value as Lang.Numeric).toNumber();
+            if (n >= 0 && n <= max) { return n; }
+        }
+        return fallback;
+    }
+
     function readSettings() as Void {
         mShowTrace = propBool("trueHrOverlay", true);
         mNightStart = propHour("nightStart", 21);
         mNightEnd = propHour("nightEnd", 6);
+        mForeground = propNumber("foreground", 0, FG_SEASONS);
+    }
+
+    // Which foreground shows (compose_preview.foreground_index): the season
+    // from the month (Dec-Feb winter, Mar-May spring, Jun-Aug summer,
+    // Sep-Nov autumn) unless the setting names a scene (1..FG_SEASONS), and
+    // the painter alternating with the day of the month.
+    function foregroundIndex() as Lang.Number {
+        var info = Time.Gregorian.info(Time.now(), Time.FORMAT_SHORT);
+        var m = info.month;
+        var month = (m instanceof Lang.Number) ? (m as Lang.Number) : 1;
+        var day = info.day;
+        var season = (mForeground >= 1 && mForeground <= FG_SEASONS) ? mForeground - 1
+                     : ((month % 12) / 3 + 3) % 4;
+        return season * FG_PAINTERS + day % FG_PAINTERS;
     }
 
     // Night mode is a clock window from the settings; equal hours = off.
@@ -368,23 +397,28 @@ class JapaneseInkHeartrateScene {
         if (set == mLoadedSet) { return; }
         mMist = null;
         mMistLite = null;
-        mFgLeft = null;
-        mFgRight = null;
         mPaperGrain = null;
         if (set == 1) {
             mMist = WatchUi.loadResource(Rez.Drawables.MistBandNight) as Graphics.BitmapType;
             mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteNight) as Graphics.BitmapType;
-            mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftNight) as Graphics.BitmapType;
-            mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightNight) as Graphics.BitmapType;
             // No grain on the night paper: black stays black.
         } else {
             mMist = WatchUi.loadResource(Rez.Drawables.MistBandTuned) as Graphics.BitmapType;
             mMistLite = WatchUi.loadResource(Rez.Drawables.MistBandLiteTuned) as Graphics.BitmapType;
-            mFgLeft = WatchUi.loadResource(Rez.Drawables.FgLeftTuned) as Graphics.BitmapType;
-            mFgRight = WatchUi.loadResource(Rez.Drawables.FgRightTuned) as Graphics.BitmapType;
             mPaperGrain = WatchUi.loadResource(Rez.Drawables.PaperGrainTuned) as Graphics.BitmapType;
         }
         mLoadedSet = set;
+    }
+
+    // The day's foreground painting, loaded for one render (null when refused).
+    function loadForeground(i as Lang.Number, night as Lang.Boolean) as Graphics.BitmapType? {
+        var bmp = null;
+        try {
+            bmp = loadForegroundBitmap(i, night);
+        } catch (ex) {
+            bmp = null;
+        }
+        return bmp;
     }
 
     // A near-hill cutout, loaded for one render. Null when the pool refuses
@@ -1328,11 +1362,6 @@ class JapaneseInkHeartrateScene {
         var w = width.toFloat();
         var h = height.toFloat();
 
-        // The foreground masses carry the two ends of the window: the oldest
-        // hour on the left, the newest (now) on the right.
-        var hStart = edgeHr(mHistory, -1);
-        var hEnd = edgeHr(mHistory, 1);
-
         drawPaper(dc);
         drawCelestial(dc, width, height);
 
@@ -1395,18 +1424,11 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(-(w * 0.03), h * 0.66, w * 1.06, h * 0.22, mist);
         }
 
-        // 6. foreground masses: left = oldest hour, right = newest
-        var fgLeft = mFgLeft;
-        if (fgLeft != null) {
-            var lH = h * 0.58 * (0.65 + 0.45 * hStart);
-            var lW = w * 0.74;
-            dc.drawScaledBitmap(-(w * 0.04), h - lH + h * 0.03, lW, lH, fgLeft);
-        }
-        var fgRight = mFgRight;
-        if (fgRight != null) {
-            var rH = h * 0.52 * (0.65 + 0.45 * hEnd);
-            var rW = w * 0.68;
-            dc.drawScaledBitmap(w - rW + w * 0.04, h - rH + h * 0.03, rW, rH, fgRight);
+        // 6. the foreground: one whole-face painting for the season and the
+        //    day (foregroundIndex), over everything but the grain
+        var fg = loadForeground(foregroundIndex(), mNight);
+        if (fg != null) {
+            dc.drawScaledBitmap(0, 0, width, height, fg);
         }
 
         // 7. paper grain over everything: converts "screen" to "paper"

@@ -15,8 +15,6 @@ Outputs (RGBA, straight alpha, one ink color per file):
     far_range.png        416x120  ghost + far ridges, heavily blurred
     guest_mountain.png   260x190  paler mid-plane peak (second HR landmark)
     host_mountain.png    340x260  the hero mid-plane peak (strongest landmark)
-    fg_left.png          300x200  dark foreground mass, anchored bottom-left
-    fg_right.png         280x180  dark foreground mass, anchored bottom-right
     mist_band.png        416x110  paper-colored organic mist (band+puffs+wisps)
     mist_band_lite.png   same at 62% alpha (no runtime alpha knob on device)
     paper_grain.png      240x240  washi grain, upscaled on-device
@@ -647,23 +645,9 @@ def main():
                         tree_size=(5.0, 13.0), crown=0.30)
     write_pair(host, ink_rgb, "host_mountain", NIGHT_INK, 0.80)
 
-    # Foreground anchors: dark, textured, tree-lined. Left mass stays low so
-    # the inscription keeps its upper-left void; right mass may rise higher.
-    fg_left = render_plane(300, 200, [(0.02, 0.70, 0.17), (0.24, 0.64, 0.16),
-                                      (0.45, 0.50, 0.12), (0.64, 0.34, 0.10)],
-                           amp_frac=0.92, rough=0.30, ink=0.90, fade=0.03, seed=505,
-                           blur_1x=0.5, cun_count=170, tree_prob=0.042, bleed=0.24,
-                           edge_left=0.0, edge_right=0.22, base_fade=(0.90, 1.05),
-                           tree_size=(6.0, 15.0), crown=0.25)
-    write_pair(fg_left, (11, 8, 6), "fg_left", NIGHT_INK, 0.75)
-
-    fg_right = render_plane(280, 180, [(0.98, 0.66, 0.14), (0.78, 0.82, 0.13),
-                                       (0.56, 0.58, 0.12), (0.36, 0.36, 0.10)],
-                            amp_frac=0.92, rough=0.28, ink=0.86, fade=0.02, seed=606,
-                            blur_1x=0.5, cun_count=150, tree_prob=0.034, bleed=0.21,
-                            edge_left=0.22, edge_right=0.0, base_fade=(0.90, 1.05),
-                            tree_size=(6.0, 15.0), crown=0.25)
-    write_pair(fg_right, (11, 8, 6), "fg_right", NIGHT_INK, 0.75)
+    # (The two script-painted foreground masses, fg_left and fg_right, were
+    # retired 2026-11-05 for the whole-face paintings from the art sheets:
+    # scripts/bake_foregrounds.py.)
 
     # Mist, paper-colored so it only ever erases ink: black at night.
     mist = organic_mist(416, 110, seed=1001, alpha=0.58)
