@@ -38,6 +38,8 @@ STRIPS = "far_pale,far_hills,mist_dense,mist_wisps,near_ridge,near_pines"
 WATER = "lake,shore_reeds,reflections,ground_fog,foreshore,treeline"
 CORNERS = "grass_l,grass_r,boulder_l,boulder_r,pine_l,pine_r,maple_l,maple_r"
 ARCS = "arc_grass,arc_reeds,arc_snow,arc_maple"
+TREES = ("pine_narrow,pine_wide,pine_lean_l,pine_lean_r,pines2,pines3,fir,broadleaf,"
+         "row5,row5_uneven,bare,snow_pine,umbrella,umbrellas2,cypress,cypresses2")
 
 # sheet stem (after the date) -> grid, names, solid, backed, full
 RECIPE = {
@@ -50,6 +52,7 @@ RECIPE = {
     "corners": ("2x4", CORNERS, "", "", False),
     "arcs": ("1x4", ARCS, "", "", False),
     "arcs2": ("1x4", ARCS, "", "", False),
+    "trees": ("4x4", TREES, "", "", False),
 }
 for season in ("spring", "summer", "autumn", "winter", "pass"):
     RECIPE["fg-" + season] = ("1x1", "fg", "", "", True)

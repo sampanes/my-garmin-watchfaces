@@ -410,6 +410,36 @@ fg-pass-c.
   face since c73b9f1) makes the time read cleanly over them, so no further
   redo is needed.
 
+## Round 8 (2026-11-05): trees-b, tiny ridge trees
+
+Small trees to stand on a fitted mountain's ridge, where the heart rate rose
+a little above the shape (a mock test: up to 3 trees, each at most 16-22 px
+tall, raised r from 0.883 to 0.890 and made short efforts read as trees on
+the crest). The props sheets' pines are close-up bonsai with needles and
+roots and turn to blobs at that size, so this sheet asks for silhouettes.
+ChatGPT only so far (the PNG's C2PA metadata says OpenAI); cut with
+`--grid 4x4` (recipe `trees` in `scripts/cut_art_kit.py`).
+
+```
+Same rules as the last sheets: PNG, pure flat white background, no text, ink only, one subject per cell, nothing crossing cells, bold and readable at thumbnail size.
+
+2048x2048, a grid of 4 columns by 4 rows, 16 cells. Each cell holds tiny distant trees as seen standing on a far mountain ridge in a classic shanshui painting. Draw them large enough to fill the cell, but simple enough to still read when shrunk to 15 pixels tall: solid dark ink silhouettes, no fine needles, at most one stroke of trunk, no ground, no rocks, no grass. The bottom of every tree ends in a flat horizontal cut where it would stand on the ridge.
+
+Row 1: (1) one upright pine, narrow; (2) one upright pine, wider crown; (3) one pine leaning left; (4) one pine leaning right.
+Row 2: (5) two pines side by side, different heights; (6) three pines in a tight cluster; (7) one tall slender fir; (8) one round broadleaf tree.
+Row 3: (9) a row of five small pines; (10) a row of five small pines of uneven heights; (11) one bare winter tree; (12) one pine heavy with snow, the snow left as white paper with ink edges.
+Row 4: (13) one flat-topped umbrella pine; (14) two umbrella pines; (15) one tall narrow cypress; (16) two cypresses of different heights.
+```
+
+- **Every subject cut cleanly and every one has the flat foot asked for.**
+  The sheet came back at 1254 px, not 2048; at ridge size that costs nothing.
+- **They read at ridge size.** Rendered at 12, 16 and 22 px tall, day and
+  night, all sixteen are trees at 16 px and up. Two are weak: `bare` goes
+  hairline at 12 px, and `snow_pine`'s white snow vanishes at night (the
+  white-bodied-subject problem from round 1).
+- The umbrella pines (13, 14) read as savanna acacias more than Japanese
+  pines; fine on a far ridge, odd up close.
+
 ## The picks, and rebuilding the cuts
 
 Ten usable whole-face foregrounds: ChatGPT's five (fg-spring-b, fg-summer-b,
