@@ -533,10 +533,12 @@ and missing-span checks are still open.
 
 ### Deliverable
 A renderer revision in which:
-- the lightly smoothed sixteen-bucket real HR profile defines the primary
-  mid-plane ridge on the true oldest-to-newest time axis
-- baked mountain art supplies ink texture, depth, and sparse crest accents,
-  but its fixed outline no longer replaces the data shape
+- whole painted mountains chosen from the shape library follow the lightly
+  smoothed sixteen-bucket real HR profile on the true oldest-to-newest time
+  axis; the profile is the reference the fit is scored against, not a curve
+  drawn as the ridge (decided 2026-11-05)
+- no fixed outline stands in for the whole window: each run over the floor
+  gets its own fitted mountain
 - two to four prominent HR episodes may guide accent placement, never replace
   the full ridge profile
 - any valid partial real history stays partial and unknown spans stay unknown;

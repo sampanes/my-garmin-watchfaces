@@ -1,6 +1,20 @@
 # Japanese Ink Heartrate — Renderer Plan
 
-Last updated: 2026-11-05 (fidelity numbers brought up to the 2026-11-03 shape library)
+Last updated: 2026-11-05 (whole library mountains stay the silhouette; fidelity numbers at the 2026-11-03 shape library)
+
+> **2026-11-05 DECISION -- whole library mountains stay the silhouette (CURRENT).**
+> The 2026-11-03 direction stands: each run of buckets over the window's floor
+> is one whole painted mountain chosen from the shape library to fit the HR.
+> The sixteen-bucket profile is the reference that fit is scored against, not a
+> polygon drawn as the ridge. Where the 2026-11-01 note below says the data
+> ridge owns the silhouette with the art beneath it, read it as history.
+> Why: the library already meets the gap, timing and flat-rest targets; a
+> drawn ridge's crest would be a hard `fillPolygon` edge (Connect IQ cannot
+> mask a painted bitmap to a polygon), and the crest is what the eye reads
+> first; the wrist verdicts (zigzag horizon, primitives assembled into a shape
+> look worse than whole shapes) count against it. The open number is `r`
+> (0.72, target 0.80), to be raised through the fit and the library, not by
+> drawing the curve.
 
 > **2026-11-01 PIVOT -- measured HR-shape fidelity (CURRENT MILESTONE).** The committed
 > four-hour fidelity harness proved that the host/guest landmark system throws
@@ -125,6 +139,10 @@ history's chronology.
 
 ## 4. Strategy
 
+(2026-11-05: "primary ridge" in this section and section 5 is the fit
+reference; the drawn silhouette is whole library mountains. See the decision
+at the top.)
+
 **Use the complete coarse HR profile for large-scale geometry and authored PNGs
 for the ink material. Fidelity determines the landform; art determines how the
 landform is painted.**
@@ -158,7 +176,8 @@ Reduction:
    dips, and distinct efforts survive.
 4. Map bucket time directly to the shared oldest-to-newest x axis and map HR on
    a stable absolute scale. Do not normalize a flat window into a huge range.
-5. Keep the full smoothed profile as the primary ridge geometry.
+5. Keep the full smoothed profile as the reference the mountain fit is scored
+   against; it is not drawn as the ridge.
 6. Separately extract **2-4 prominent episodes** for optional `{nx, h, s}`
    texture/accent placement. Their deterministic roughness may change brush
    character, never peak time or height.
@@ -174,7 +193,8 @@ they must not move its time or HR coordinates.
 
 Fallbacks in order:
 
-1. Full four-hour history -> complete data ridge plus sparse accents.
+1. Full four-hour history -> a fitted library mountain per run plus sparse
+   accents.
 2. Partial history with any valid samples -> draw only the evidence-supported
    segment(s); keep unknown time visually unknown.
 3. Current HR only -> a small recent form at "now", not a fabricated four-hour
@@ -213,9 +233,8 @@ All draws go into the five-minute-keyed `BufferedBitmap`. `View.onUpdate` blits 
 The recipe below is retained as a historical small-stamp proposal, not as the
 current baked-plane composition. The current watch-side order is documented in
 [ART_PIPELINE section 4](ART_PIPELINE.md#4-the-watch-side). For Phase 4b, the
-data-shaped ridge replaces the fitted library masses as the primary silhouette;
-the current assets move beneath it as texture and sparse accents. Section 12 below is
-the future Phase 4b implementation order.
+fitted library masses stay the primary silhouette (decision, 2026-11-05).
+Section 12 below is the Phase 4b implementation order.
 
 ```
 1.  paper fill (flat warm #F2EFE9)
@@ -327,11 +346,13 @@ prototype, then change them only with a checked-in report and visible evidence.
 1. Preserve the newest committed fidelity report (2026-11-03, the shape
    library) as the baseline.
 2. Implement one shared `ridgeProfile` contract in `compose_preview.py`: sixteen
-   time buckets, short-gap policy, light smoothing, stable HR scale.
+   time buckets, short-gap policy, light smoothing, stable HR scale. It is the
+   reference the mountain fit and the harness score against, not a drawn ridge.
 3. Extend the contact sheet to show baseline and candidate together; tune the
-   candidate until it passes section 11 without losing the shanshui read.
-4. Port the exact accepted profile math to `JapaneseInkHeartrateScene.mc` and
-   keep the baked planes below the dynamic skyline as material/accents.
+   fit and the library (not a drawn curve) until the candidate passes section
+   11 without losing the shanshui read.
+4. Port any accepted fit change to `JapaneseInkHeartrateScene.mc` in step with
+   the mock; the two change together.
 5. Add sparse/partial/outlier and rolling-window stability cases, then rerun the
    deterministic suite.
 6. Compile for `fr265`, compare simulator raster with the preview, and record a
