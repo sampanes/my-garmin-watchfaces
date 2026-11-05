@@ -1,5 +1,19 @@
 # Art Pipeline — Baked Benchmark Planes
 
+> **2026-11-05 ART DECISION -- no procedurally generated art anymore (CURRENT).**
+> Nothing drawn by the watch's code or painted by our own scripts: every
+> piece of art on the face is to come from the ChatGPT and Gemini sheets in
+> `art/sheets/` (prompts and lessons in `art/sheets/PROMPTS.md`), cut by
+> `scripts/cut_sprite_sheet.py`. More sheets from those image generators are
+> wanted, as many as prove useful. Do not extend `gen_shape_library.py` or
+> `gen_ink_layers.py` with new script-made art: the shape library is to be cut
+> from the mountain sheets and measured into the same profile table, and the
+> generated planes (horizon, mist, foreground) replaced by sheet pieces after
+> it. A mock-only test (2026-11-05) with the 48 cut sheet mountains, each
+> stretched in width to its run (0.67x to 1.5x), scored non-flat `r` 0.89
+> against 0.78 for today's library; its first-pass scale painted the cliffs
+> too big and too dark.
+
 Last updated: 2026-10-27. This is the methods document for the current
 architecture. It records *how* the assets are made and *why* each technique
 exists, so the pipeline can be extended without re-deriving it.
