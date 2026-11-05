@@ -20,7 +20,9 @@ the View colors it (ink, pale ink at night, paper on the seal).
 After a bake, run scripts/gen_halo.py: the paper halos are made from these
 atlases.
 
-    py -3.11 scripts/bake_glyphs.py [--digits b] [--kanji b] [--seal b] [--out DIR]
+    py -3.11 scripts/bake_glyphs.py [--digits b] [--kanji a] [--seal b] [--out DIR]
+
+The defaults are John's picks (11-05): ChatGPT's digits and seal digits, Gemini's kanji.
 """
 import argparse
 import os
@@ -111,7 +113,7 @@ def build(name, sheet, cuts, chars, cap, top, bearing, layout, out):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--digits", default="b", help="painter of the minute digits: a (Gemini) or b (ChatGPT)")
-    ap.add_argument("--kanji", default="b", help="painter of the hour kanji")
+    ap.add_argument("--kanji", default="a", help="painter of the hour kanji")
     ap.add_argument("--seal", default="b", help="painter of the seal digits")
     ap.add_argument("--out", default=FONT_DIR)
     args = ap.parse_args()

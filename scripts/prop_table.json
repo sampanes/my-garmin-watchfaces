@@ -62,10 +62,10 @@
    "h": 32
   },
   {
-   "name": "seal_square",
+   "name": "seal_rect",
    "cut": "props2-b/13_seal_square",
-   "w": 35,
-   "h": 35
+   "w": 52,
+   "h": 34
   }
  ]
 }

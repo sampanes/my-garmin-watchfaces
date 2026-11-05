@@ -324,17 +324,17 @@ HIKER_SINK = 12            # px the hiker sinks under the summit: he stands just
 LANTERN_X = 0.64           # the low-battery lantern's middle (W) ...
 LANTERN_FOOT = 0.885       # ... its foot (H), on the foreground's ground
 BATTERY_LOW = 30.0         # percent under which the lantern shows
-SEAL_WORK = 30.0           # bpm over the resting baseline that turns the seal square ...
+SEAL_WORK = 30.0           # bpm over the resting baseline that turns the seal rectangular ...
 SEAL_HYST = 8.0            # ... and back to the oval this far under that (the watch only)
 
 
 def seal_shape(hr_now, baseline):
-    """The seal under the time: "seal_square" once the HR stands SEAL_WORK
+    """The seal under the time: "seal_rect" once the HR stands SEAL_WORK
     over the baseline (working), else "seal_oval" (resting). baseline is the
     profile's resting HR, or the window's floor without one. The Scene's
-    sealWork, which also holds the square until SEAL_HYST under the line."""
+    sealWork, which also holds the rectangle until SEAL_HYST under the line."""
     if hr_now is not None and baseline and hr_now >= baseline + SEAL_WORK:
-        return "seal_square"
+        return "seal_rect"
     return "seal_oval"
 
 
@@ -972,7 +972,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     for font, g, x, top in placed:
         base = font.draw_left(base, g, x, top, ink)
     # the seal from the sheet, centered where the drawn square was: the oval
-    # at rest, the square at work (seal_shape)
+    # at rest, the rectangle at work (seal_shape)
     shape = seal_shape(hr_now, resting if resting else layout["floor"])
     sw, sh = {p["name"]: (p["w"], p["h"]) for p in prop_table()["props"]}[shape]
     base = paste_at(base, prop_image(shape, night), cx - sw // 2, sy0 + seal // 2 - sh // 2)

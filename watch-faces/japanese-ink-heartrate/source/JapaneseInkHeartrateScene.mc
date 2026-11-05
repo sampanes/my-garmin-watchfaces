@@ -289,7 +289,7 @@ class JapaneseInkHeartrateScene {
     const LANTERN_X = 0.64;           // the low-battery lantern's middle (W) ...
     const LANTERN_FOOT = 0.885;       // ... its foot (H)
     const BATTERY_LOW = 30.0;         // percent under which the lantern shows
-    const SEAL_WORK = 30.0;           // bpm over the resting baseline that turns the seal square ...
+    const SEAL_WORK = 30.0;           // bpm over the resting baseline that turns the seal rectangular ...
     const SEAL_HYST = 8.0;            // ... and back to the oval this far under that
 
     // ------------------------------------------------------- the §13 probe
@@ -441,7 +441,7 @@ class JapaneseInkHeartrateScene {
         }
     }
 
-    // The seal under the time works (the square) once the latest HR stands
+    // The seal under the time works (the rectangle) once the latest HR stands
     // SEAL_WORK over the baseline, and rests (the oval) once it falls
     // SEAL_HYST under that again, so it does not flicker on the line
     // (compose_preview.seal_shape). Called by the View on every update.

@@ -40,7 +40,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
     var mHaloKeys as Lang.Array<Lang.String> = ["", "", "", "", ""];
     var mHaloBmps as Lang.Array<Graphics.BitmapType or Null> = [null, null, null, null, null];
     // The seal from the sheet (bake_props.py: PROP_SEAL_OVAL at rest,
-    // PROP_SEAL_SQUARE at work), held like a halo slot: reloaded only when
+    // PROP_SEAL_RECT at work), held like a halo slot: reloaded only when
     // the shape or day/night changes.
     var mSealKey as Lang.String = "";
     var mSealBmp as Graphics.BitmapType or Null = null;
@@ -292,8 +292,8 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
 
         // Artist's seal from the sheet, centered where the drawn square was,
         // live HR inside in the carved seal digits: the oval while the HR
-        // rests near the baseline, the square once it works (Scene sealWork).
-        var shape = mScene.sealWork() ? PROP_SEAL_SQUARE : PROP_SEAL_OVAL;
+        // rests near the baseline, the rectangle once it works (Scene sealWork).
+        var shape = mScene.sealWork() ? PROP_SEAL_RECT : PROP_SEAL_OVAL;
         var key = shape.toString() + (night ? "n" : "d");
         if (mSealBmp == null || !key.equals(mSealKey)) {
             mSealBmp = null;

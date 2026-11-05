@@ -15,10 +15,11 @@ shown by one rule, so a prop always means something (John, 11-05).
                    over the floor): on the host's summit
     lantern        the battery is under 30%: on the foreground's ground
     seal_oval /    the artist's seal under the time, carrying the live HR:
-    seal_square    the oval while the HR is near the resting baseline, the
-                   square once it is SEAL_WORK bpm over it (John, 11-05).
+    seal_rect      the oval while the HR is near the resting baseline, the
+                   rectangle once it is SEAL_WORK bpm over it (John, 11-05).
                    The View draws it, not the Scene. The oval is turned on
-                   its side so three digits fit.
+                   its side and the square seal widened to a rectangle, so
+                   three digits fit inside either.
 
 The rules live in compose_preview (prop_rules) and the Scene; this script
 only bakes the art. The cuts (scripts/cut_art_kit.py, art/cuts/props-b and
@@ -71,7 +72,7 @@ PROPS = [
     ("hiker", "props-b/15_hiker", ("h", 34), 1.0, 1.0, False, False),
     ("lantern", "props2-b/02_lantern", ("h", 50), 1.0, 1.0, False, False),
     ("seal_oval", "props2-b/14_seal_oval", ("h", 32), 0.92, 1.0, False, True),
-    ("seal_square", "props2-b/13_seal_square", ("h", 35), 0.92, 1.0, False, True),
+    ("seal_rect", "props2-b/13_seal_square", ("wh", (52, 34)), 0.92, 1.0, False, True),
 ]
 # Turned before sizing (degrees counter-clockwise): the sheet's oval stands
 # upright, too narrow for three digits.
@@ -131,7 +132,9 @@ def bake_one(name, cut, size, tone, night_share, mirror, own):
     if mirror:
         im = im.transpose(Image.FLIP_LEFT_RIGHT)
     axis, px = size
-    if axis == "h":
+    if axis == "wh":
+        w, h = px
+    elif axis == "h":
         w, h = max(1, int(round(im.width * px / float(im.height)))), px
     else:
         w, h = px, max(1, int(round(im.height * px / float(im.width))))
