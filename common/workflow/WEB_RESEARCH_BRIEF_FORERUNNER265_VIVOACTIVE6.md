@@ -4,7 +4,7 @@
 
 Goal: lock down the most reliable public facts before writing code for **Forerunner 265** and **vívoactive 6**.
 
-Last refreshed: 2026-03-16.
+Last refreshed: 2026-03-16. Device facts and memory limits rechecked 2026-11-06.
 
 ---
 
@@ -13,10 +13,10 @@ Source: Garmin Connect IQ **Compatible Devices** page.
 
 - **Forerunner 265**: `416 x 416`, round, AMOLED, **API Level 5.2**.
 - **Forerunner 265s**: `360 x 360`, round, AMOLED, **API Level 5.2**.
-- **vívoactive 6**: `390 x 390`, round, AMOLED, **API Level 5.2**.
+- **vívoactive 6**: `390 x 390`, round, AMOLED, **API Level 6.0** (was 5.2 on 2026-03-16; rechecked 2026-11-06).
 
 Why this matters:
-- You can standardize around **CIQ API 5.2** features for both target devices.
+- You can standardize around **CIQ API 5.2** features for both target devices (as of 2026-11-06 the VA6 is at 6.0, so 5.2 is the common floor).
 - You still need per-device layout tuning because the resolutions are different.
 
 Reference:
@@ -100,6 +100,7 @@ References:
 
 ## 6) Open items to keep re-verifying
 - Exact per-device heap and memory budget values for FR265 and vívoactive 6 are not exposed in the compatible devices table; verify via active SDK device definitions and simulator diagnostics.
+  - Update 2026-11-06: Garmin's Device Reference pages publish them (https://developer.garmin.com/connect-iq/device-reference/fr265/, https://developer.garmin.com/connect-iq/device-reference/vivoactive6/). Both watches: watch face 131072 B, watch app / widget 786432 B, data field 262144 B, glance 65536 B, background 65536 B, audio content provider 524288 B, matching the SDK device files in `common/language/COMPILER_FACTS.md` section 3.
 - UX/App Store policy interpretation can change; re-check app review and UX guidance before publishing.
 
 ---

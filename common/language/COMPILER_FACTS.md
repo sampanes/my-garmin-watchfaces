@@ -182,7 +182,7 @@ and the built-in `FONT_*` values.
 | `Sensor.setEnabledSensors(sensors as Array<Sensor.SensorType>) as Array<Sensor.SensorType>` | 1.0.0 |
 | `Sensor.registerSensorDataListener(listener as Method(data as Sensor.SensorData) as Void, options as {:period as Number, :accelerometer, :gyroscope, :magnetometer as {...}, :heartBeatIntervals as {:enabled as Boolean}, :synchronous as Boolean}) as Void` | (not stated) |
 | `Sensor.unregisterSensorDataListener() as Void` | 2.3.0 |
-| `Activity.getActivityInfo() as Activity.Info or Null` | 1.0.0 |
+| `Activity.getActivityInfo() as Activity.Info` (the 9.1-era docs said `or Null`; the 9.2.0 and 9.3.0 docs drop it, checked 2026-11-06: https://developer.garmin.com/connect-iq/api-docs/Toybox/Activity.html) | 1.0.0 |
 | `Position.enableLocationEvents(options as {...} or Position.LocationAcquisitionType, listener as Null or Method(loc as Position.Info) as Void) as Void` | (not stated) |
 | `Position.getInfo() as Position.Info` | (not stated) |
 | `UserProfile.getProfile() as UserProfile.Profile` | 1.0.0 |

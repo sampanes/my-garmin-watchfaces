@@ -4,6 +4,12 @@
 
 As of **March 2026**, the Garmin ecosystem has shifted significantly with the release of **System 9 (API Level 6.x / SDK 9.1.0)**. This document tracks the "bleeding edge" features you should be researching for your FR265 and VA6.
 
+> **Checked 2026-11-06 against Garmin's published docs:**
+> - The latest SDK is **9.3.0** ("Last Updated: October 30, 2026", https://developer.garmin.com/connect-iq/sdk/). SDK 9.2.0 came out June 9, 2026 (https://forums.garmin.com/developer/connect-iq/b/news-announcements/posts/connect-iq-sdk-9-2-now-available).
+> - Garmin now lists the **vivoactive 6 at API 6.0**; the FR265 stays at 5.2 (https://developer.garmin.com/connect-iq/compatible-devices/).
+> - The current API docs have **no `WatchUi.WatchFace.setAodUpdate()`** (the WatchFace page lists only `initialize`, `onEnterSleep`, `onExitSleep`, `onPartialUpdate`: https://developer.garmin.com/connect-iq/api-docs/Toybox/WatchUi/WatchFace.html) and **no `System.getAppPowerConsumption()`** (https://developer.garmin.com/connect-iq/api-docs/Toybox/System.html). Treat the AOD 2.0 and Battery Manager items in section 1 as unconfirmed.
+> - A `Toybox.Audio` module exists now, but its `AudioInput` / `AudioOutput` permissions (API 6.0.3) are not allowed for watch faces (https://developer.garmin.com/connect-iq/core-topics/manifest-and-permissions/), which bears on idea 3B.
+
 ---
 
 ## 1. The System 9 "Big Bang" (March 2026)

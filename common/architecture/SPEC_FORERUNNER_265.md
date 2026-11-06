@@ -18,12 +18,13 @@ The Forerunner 265 is a high-performance, multi-sport AMOLED wearable. For devel
 ---
 
 ## 2. Memory Tiers (Heap Limits)
-*These values are estimates based on firmware v18.xx and Connect IQ 5.x.*
-- **Watch Faces**: **128 KB** (Generous for complex animations).
-- **Data Fields**: **128 KB** (Simple) / **256 KB** (Full Screen/Complex).
-- **Device Apps / Widgets**: **1024 KB (1 MB)**.
-- **Background Processes**: **32 KB** (The universal constraint).
-- **Audio Content**: **1024 KB (1 MB)**.
+*Updated 2026-11-06 from Garmin's published device reference (https://developer.garmin.com/connect-iq/device-reference/fr265/); the earlier values were estimates.*
+- **Watch Faces**: **128 KB** (131072 B) (Generous for complex animations).
+- **Data Fields**: **256 KB** (262144 B). Was "128 KB simple / 256 KB complex"; Garmin lists one limit.
+- **Device Apps / Widgets**: **768 KB** (786432 B). Was 1024 KB.
+- **Glances**: **64 KB** (65536 B).
+- **Background Processes**: **64 KB** (65536 B). Was 32 KB.
+- **Audio Content**: **512 KB** (524288 B). Was 1024 KB.
 
 ---
 
@@ -53,7 +54,7 @@ The 265 includes the **Barometric Altimeter**, which is a critical differentiato
 ---
 
 ## 5. Software Context
-- **CIQ System**: **System 7** (API Level 5.0.0+).
+- **CIQ System**: **System 7** (API Level **5.2**; was "5.0.0+". Garmin Compatible Devices page, checked 2026-11-06: https://developer.garmin.com/connect-iq/compatible-devices/).
 - **Min. SDK**: Connect IQ SDK 6.2.x.
 - **On-Device Music**: 8 GB Storage.
 - **Key APIs**: 

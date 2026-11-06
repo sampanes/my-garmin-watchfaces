@@ -18,12 +18,13 @@ The Vivoactive 6 is a "Lifestyle" AMOLED smartwatch. While it shares the screen 
 ---
 
 ## 2. Memory Tiers (Heap Limits)
-*Note: The VA6 is slightly more constrained than the FR265 series.*
-- **Watch Faces**: **~124 KB**.
-- **Data Fields**: **~32 KB** (Strict!).
-- **Device Apps / Widgets**: **256 KB - 512 KB** (Varies by firmware).
-- **Glances**: **64 KB**.
-- **Background Processes**: **32 KB**.
+*Updated 2026-11-06 from Garmin's published device reference (https://developer.garmin.com/connect-iq/device-reference/vivoactive6/): the VA6 limits are the same as the FR265's, not tighter.*
+- **Watch Faces**: **128 KB** (131072 B). Was "~124 KB".
+- **Data Fields**: **256 KB** (262144 B). Was "~32 KB".
+- **Device Apps / Widgets**: **768 KB** (786432 B). Was "256 KB - 512 KB".
+- **Glances**: **64 KB** (65536 B).
+- **Background Processes**: **64 KB** (65536 B). Was 32 KB.
+- **Audio Content**: **512 KB** (524288 B).
 
 ---
 
@@ -52,7 +53,7 @@ The Vivoactive 6 is a "Lifestyle" AMOLED smartwatch. While it shares the screen 
 ---
 
 ## 5. Software Context
-- **CIQ System**: **System 8** (API Level 5.2.0+).
+- **CIQ System**: **System 8** (API Level **6.0**; was "5.2.0+". Garmin Compatible Devices page, checked 2026-11-06: https://developer.garmin.com/connect-iq/compatible-devices/. The System label was not rechecked.)
 - **Min. SDK**: **Connect IQ SDK 8.1.1**.
 - **On-Device Music**: 8 GB Storage.
 - **Key APIs**:
@@ -63,7 +64,7 @@ The Vivoactive 6 is a "Lifestyle" AMOLED smartwatch. While it shares the screen 
 ---
 
 ## 6. Engineering Quirks
-1. **The 32KB Data Field Wall**: With only 32KB for data fields, you must avoid Dictionaries entirely. Use Tuples or Parallel Arrays.
+1. **The 32KB Data Field Wall** (superseded 2026-11-06: Garmin's device reference lists 256 KB for VA6 data fields, see section 2): With only 32KB for data fields, you must avoid Dictionaries entirely. Use Tuples or Parallel Arrays.
 2. **Elevation `null`**: Any call to `Sensor.Info.ambientPressure` will return `null`. Apps relying on floor-climb counts will fail.
 3. **Brightness (Burn-in)**: The 1,500-nit peak is significantly higher than the FR265. Aggressive checkerboarding or luminance-dimming in AOD is **mandatory** to prevent ghosting.
 4. **Notch Interaction**: Traditional "Swipe Up" for menus is replaced by the notch interaction. If you don't implement `onActionView()`, your app may feel "broken" to VA6 users.

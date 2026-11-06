@@ -14,12 +14,16 @@ This document breaks down the technical hierarchy between your two target device
 | **Altitude** | Barometric | GPS-Derived | **FR265** (Baro is 10x more accurate) |
 | **Input** | 5 Buttons + Touch | 2 Buttons + Touch | **FR265** (Better for sweaty hands) |
 | **Brightness** | ~1000 nits | **~1500 nits** | **VA6** (Better in direct sun) |
-| **CIQ System** | System 7 | **System 8** | **VA6** (Supports newer UI APIs) |
+| **CIQ System** | System 7 (API 5.2) | **System 8** (API 6.0) | **VA6** (Supports newer UI APIs) |
 
 > **Heap note (verified 2026-06-20 from the installed SDK `compiler.json`, 9.1.0):** watch-face
 > heap is **128 KB on both** devices — the earlier "124 KB VA6 / FR265 edge" was wrong. And for
 > *device apps* (not watch faces) both are **768 KB** (background 64 KB, glance 64 KB), so there
 > is no FR265 memory advantage for app-type targets either. See `garmin-pet/open-questions.md §B2`.
+
+> **API level note (2026-11-06, https://developer.garmin.com/connect-iq/compatible-devices/):** Garmin lists the FR265 at
+> **API 5.2** and the VA6 at **API 6.0** (the VA6 was listed at 5.2 on 2026-03-16). Garmin's device
+> reference pages (https://developer.garmin.com/connect-iq/device-reference/fr265/, https://developer.garmin.com/connect-iq/device-reference/vivoactive6/) match the heap note above.
 
 ---
 
