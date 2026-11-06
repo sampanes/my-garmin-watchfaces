@@ -66,6 +66,9 @@ import sys
 import numpy as np
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hand_masks
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 FACE = os.path.join(HERE, "..", "watch-faces", "japanese-ink-heartrate")
 DRAW = os.path.join(FACE, "resources", "drawables")
@@ -119,6 +122,9 @@ TRIM_FEATHER = 6
 OPAQUE = {"lantern"}
 OPAQUE_CLOSE = 5
 PAPER_RGB = (242, 238, 230)
+# A hand mask (art/edits/<name>_mask.png, scripts/hand_masks.py) is laid
+# over the baked prop: solid where John painted solid, nothing where he
+# painted see-through. The mirrored twins share none; a mask is per name.
 # A hand-edited cut wins over the sheet's: art/edits/<name>.png, a full
 # RGBA cut erased by hand (John, 11-05: more ground off the hiker).
 # `bake_props.py --export-edit <name>` writes the current one to start from.
@@ -183,7 +189,18 @@ def solid_inside(alpha):
     return np.asarray(soft, float) / 255.0
 
 
-def bake_one(name, cut, size, tone, night_share, mirror, own):
+def bake_one(name, cut, size, tone, night_share, mirror, own, masked=True):
+    day, night = bake_plain(name, cut, size, tone, night_share, mirror, own)
+    mask = hand_masks.load(name, day.size) if masked else None
+    if mask is None:
+        return day, night
+    # John's hand mask (hand_masks, over the cut cropped to its ink):
+    # solid is the painting on its paper by day, black paper at night
+    return (hand_masks.apply(day, hand_masks.on_paper(day), mask),
+            hand_masks.apply(night, hand_masks.on_black(night), mask))
+
+
+def bake_plain(name, cut, size, tone, night_share, mirror, own):
     im = source(name, cut)
     if name in ROTATE:
         im = im.rotate(ROTATE[name], expand=True, resample=Image.BICUBIC)

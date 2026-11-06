@@ -52,6 +52,8 @@ import sys
 import numpy as np
 from PIL import Image
 
+import hand_masks
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 FACE = os.path.join(HERE, "..", "watch-faces", "japanese-ink-heartrate")
@@ -75,6 +77,8 @@ NIGHT_RED = 0.60              # the red's brightness at night
 PALETTE = 256
 
 
+# John's hand masks (scripts/hand_masks.py, painted in mask_painter.py)
+# win over the cutter wherever he painted: art/edits/fg_<season>_<letter>_mask.png.
 SNOW_GROUND = {"winter"}
 SNOW_NIGHT = 0.60      # the moonlit snow's brightness, a share of day paper
 SNOW_INK = 0.15        # alpha over which a pixel is ink for the snow mask
@@ -104,8 +108,10 @@ def ensure_cuts():
     subprocess.check_call([sys.executable, os.path.join(HERE, "cut_art_kit.py"), "--only", "fg-"])
 
 
-def bake_one(season, letter):
-    """(day, night) RGBA images at the face's size."""
+def bake_one(season, letter, masked=True):
+    """(day, night) RGBA images at the face's size, with John's hand mask
+    (hand_masks: solid trunks, rocks and snow, see-through gaps) unless
+    masked is False (the mask painter's starting point)."""
     im = Image.open(os.path.join(cut_dir(season, letter), "01_fg.png")).convert("RGBA")
     im = im.resize((FACE_PX, FACE_PX), Image.LANCZOS)
     px = np.asarray(im, dtype=float) / 255.0
@@ -116,9 +122,16 @@ def bake_one(season, letter):
     night[red] = rgb[red] * NIGHT_RED
     night = np.dstack([night, a]) * 255.0
     night = Image.fromarray(np.round(np.clip(night, 0, 255)).astype(np.uint8), "RGBA")
-    if season in SNOW_GROUND:
-        return snow_ground(im, night)
-    return im, night
+    day, night_out = snow_ground(im, night) if season in SNOW_GROUND else (im, night)
+    mask = hand_masks.load(name_of(season, letter), (FACE_PX, FACE_PX)) if masked else None
+    if mask is not None:
+        # solid is the painting on its paper by day; at night a snow
+        # scene's moonlit snow, else black paper with its pale ink
+        solid_day = hand_masks.on_paper(im)
+        solid_night = solid_day * SNOW_NIGHT if season in SNOW_GROUND else hand_masks.on_black(night)
+        day = hand_masks.apply(day, solid_day, mask)
+        night_out = hand_masks.apply(night_out, solid_night, mask)
+    return day, night_out
 
 
 def snow_mask(a):
