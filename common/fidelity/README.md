@@ -30,6 +30,19 @@ py -3.11 scripts\fidelity_test.py                  synthetic cases -> common\fid
 py -3.11 scripts\fidelity_test.py --real hr.csv    adds real windows -> bin\fidelity\ (ignored)
 ```
 
+Real windows from your own Garmin Connect history (two-minute samples):
+
+```
+.\scripts\watch-tools.ps1 hr                        last 14 days, picks 8 varied windows -> bin\hr\
+.\scripts\watch-tools.ps1 hr --window 2026-11-01T08:00   a window you remember (local start time; repeatable)
+.\scripts\watch-tools.ps1 hr --from-watch           the same from the watch's own Monitor files (newest backup-garmin-device.ps1 backup; no Connect sync needed)
+py -3.11 scripts\fidelity_test.py --real bin\hr\picked-hr.csv
+```
+
+The pick takes the busiest four hours, windows spread from calm to busy, and
+one with a hole (watch off or rebooting) if there is one; `bin\hr\picked-key.txt`
+maps real-N to its day and hour.
+
 `--real` takes any CSV with an `epoch` column and `hr_avg` or `hr` (Friend's
 `live.csv`, a Connect export). It is cut into consecutive four-hour windows
 labeled `real-1`, `real-2`, ... with no timestamps. Real runs write to the

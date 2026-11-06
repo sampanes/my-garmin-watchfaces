@@ -11,10 +11,11 @@
 #   .\scripts\watch-tools.ps1 recover --wiped 2026-10-26 settings inside activities before/after a wipe
 #   .\scripts\watch-tools.ps1 apply [file]               diff bin\watch-setup.toml vs Garmin Connect
 #   .\scripts\watch-tools.ps1 apply --yes                ...and write the differences
+#   .\scripts\watch-tools.ps1 hr [--days 14 --pick 8]     real 4-hour HR windows for the ink face's fidelity test
 #   .\scripts\watch-tools.ps1 test                       host tests
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("settings", "check", "find", "show", "push", "snapshot", "recover", "apply", "test")]
+    [ValidateSet("settings", "check", "find", "show", "push", "snapshot", "recover", "apply", "hr", "test")]
     [string]$Command = "check",
     [Parameter(Position = 1, ValueFromRemainingArguments = $true)]
     [string[]]$Rest = @()
@@ -50,6 +51,7 @@ if (-not (Test-Path -LiteralPath $python) -or $installed -ne $wanted) {
 switch ($Command) {
     "settings" { & $python -I (Join-Path $tools "settings_inventory.py") @Rest }
     { $_ -in @("snapshot", "recover", "apply") } { & $python -I (Join-Path $tools "connect_setup.py") $Command @Rest }
+    "hr" { & $python -I (Join-Path $tools "pull_hr.py") @Rest }
     "test" { & $python -I (Join-Path $tools "test_watch_tools.py") @Rest }
     default { & $python -I (Join-Path $tools "workouts.py") $Command @Rest }
 }

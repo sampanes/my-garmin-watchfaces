@@ -23,7 +23,8 @@ can run it and compare a recipe change before anything is built.
 
 --real takes any CSV with an `epoch` column and `hr_avg` or `hr` (Friend's
 live.csv, a Connect export): it is sliced into consecutive four-hour
-windows, labeled real-1, real-2 ... with no timestamps. Real runs default to
+windows, labeled real-1, real-2 ... with no timestamps. A `window_start`
+column (scripts/watch/pull_hr.py writes one) names the windows instead. Real runs default to
 the ignored bin/fidelity/ so nothing personal is committed by accident;
 pass --out to choose.
 """
@@ -109,8 +110,9 @@ def synthetic_rows(fn, seed):
 # ---- real windows ------------------------------------------------------------
 
 def real_windows(path, minimum_rows=60):
-    """Consecutive non-overlapping four-hour windows from a CSV, newest last."""
-    rows = []
+    """Four-hour windows from a CSV, oldest first: the ones its `window_start`
+    column names, else consecutive non-overlapping ones ending at the last row."""
+    rows, named = [], {}
     with open(path, newline="") as fh:
         for d in csv.DictReader(fh):
             raw = d.get("hr_avg") or d.get("hr") or ""
@@ -120,7 +122,14 @@ def real_windows(path, minimum_rows=60):
             except (KeyError, ValueError):
                 continue
             if hr > 0:
-                rows.append((epoch, hr, float(d.get("hr_max") or hr)))
+                row = (epoch, hr, float(d.get("hr_max") or hr))
+                if d.get("window_start"):
+                    named.setdefault(int(float(d["window_start"])), []).append(row)
+                else:
+                    rows.append(row)
+    if named:
+        return [[(t - s + EPOCH0, a, m) for t, a, m in sorted(w)]
+                for s, w in sorted(named.items()) if len(w) >= minimum_rows // 2]
     rows.sort()
     out = []
     if not rows:
