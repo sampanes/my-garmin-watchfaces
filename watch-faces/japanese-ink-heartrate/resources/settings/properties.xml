@@ -3,6 +3,15 @@
          landscape's own axis and crest scale, with a dot on each painted
          crest: the data against the painting. -->
     <property id="trueHrOverlay" type="boolean">true</property>
+    <!-- Each piece that appears for a reason can be turned off: the
+         lantern (low battery), the geese (step goal), the hiker (a
+         workout's summit), the village or hut (calm hours); and the
+         hour in kanji (false = the brush digits of the minutes). -->
+    <property id="lantern" type="boolean">true</property>
+    <property id="geese" type="boolean">true</property>
+    <property id="hiker" type="boolean">true</property>
+    <property id="village" type="boolean">true</property>
+    <property id="hourKanji" type="boolean">true</property>
     <!-- The red seal under the time carries the live HR; false = the date,
          month over day. -->
     <property id="sealHr" type="boolean">true</property>

@@ -12,6 +12,16 @@ class JapaneseInkHeartrateSettingsMenu extends WatchUi.Menu2 {
         Menu2.initialize({:title => "Ink face"});
         addItem(new WatchUi.ToggleMenuItem("True HR line", null, :overlay,
             settingBool("trueHrOverlay", true), null));
+        addItem(new WatchUi.ToggleMenuItem("Lantern = Low Batt", "Under 30%", :lantern,
+            settingBool("lantern", true), null));
+        addItem(new WatchUi.ToggleMenuItem("Geese = Step Goal", "Goal met today", :geese,
+            settingBool("geese", true), null));
+        addItem(new WatchUi.ToggleMenuItem("Hiker = Workout", "On its summit", :hiker,
+            settingBool("hiker", true), null));
+        addItem(new WatchUi.ToggleMenuItem("Village = Calm", "No peaks, 4 h", :village,
+            settingBool("village", true), null));
+        addItem(new WatchUi.ToggleMenuItem("Hour in kanji", "Off: brush digits", :hourKanji,
+            settingBool("hourKanji", true), null));
         addItem(new WatchUi.ToggleMenuItem("Red seal = HR", "Off: the date", :sealHr,
             settingBool("sealHr", true), null));
         addItem(new WatchUi.ToggleMenuItem("Weather", "Rain, snow, wind", :weather,
@@ -40,6 +50,11 @@ class JapaneseInkHeartrateSettingsDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :overlay) {
             Application.Properties.setValue("trueHrOverlay",
                 (item as WatchUi.ToggleMenuItem).isEnabled());
+        } else if (id == :lantern || id == :geese || id == :hiker || id == :village
+                   || id == :hourKanji) {
+            // a piece's own toggle (toggleKey: the property behind it)
+            Application.Properties.setValue(toggleKey(id),
+                (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :sealHr) {
             Application.Properties.setValue("sealHr",
                 (item as WatchUi.ToggleMenuItem).isEnabled());
@@ -59,6 +74,15 @@ class JapaneseInkHeartrateSettingsDelegate extends WatchUi.Menu2InputDelegate {
         getApp().onSettingsChanged();
     }
 
+}
+
+// The property behind a piece's toggle (the menu ids above).
+function toggleKey(id as Lang.Object or Null) as Lang.String {
+    if (id == :lantern) { return "lantern"; }
+    if (id == :geese) { return "geese"; }
+    if (id == :hiker) { return "hiker"; }
+    if (id == :village) { return "village"; }
+    return "hourKanji";
 }
 
 function settingBool(key as Lang.String, fallback as Lang.Boolean) as Lang.Boolean {

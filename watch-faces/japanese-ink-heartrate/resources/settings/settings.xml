@@ -2,6 +2,21 @@
     <setting propertyKey="@Properties.trueHrOverlay" title="@Strings.SettingTrueHr">
         <settingConfig type="boolean" />
     </setting>
+    <setting propertyKey="@Properties.lantern" title="@Strings.SettingLantern">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.geese" title="@Strings.SettingGeese">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.hiker" title="@Strings.SettingHiker">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.village" title="@Strings.SettingVillage">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.hourKanji" title="@Strings.SettingHourKanji">
+        <settingConfig type="boolean" />
+    </setting>
     <setting propertyKey="@Properties.sealHr" title="@Strings.SettingSealHr">
         <settingConfig type="boolean" />
     </setting>

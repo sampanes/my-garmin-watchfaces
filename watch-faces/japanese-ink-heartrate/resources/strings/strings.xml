@@ -1,6 +1,11 @@
 <resources>
     <string id="AppName">Japanese Ink Heartrate</string>
     <string id="SettingTrueHr">Show the true HR shape over the painting</string>
+    <string id="SettingLantern">Lantern = low battery (a lantern on the ground under 30%)</string>
+    <string id="SettingGeese">Geese = step goal (geese cross the sky once today's goal is met)</string>
+    <string id="SettingHiker">Hiker = workout summit (a hiker on the peak a workout raised)</string>
+    <string id="SettingVillage">Village = calm hours (a village or hut when the last four hours raised no mountain)</string>
+    <string id="SettingHourKanji">Hour in kanji numerals (off: the hour in the same brush digits as the minutes)</string>
     <string id="SettingSealHr">Red seal shows the heart rate (off: the date, month over day)</string>
     <string id="SettingWeather">Paint the weather over the scene (rain, snow, storm, wind)</string>
     <string id="SettingNightStart">Night mode from (hour, 0-24)</string>

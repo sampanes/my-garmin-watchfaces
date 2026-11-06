@@ -191,6 +191,13 @@ class JapaneseInkHeartrateScene {
     var mShowTrace as Lang.Boolean = true;
     // The seal carries the live HR (true) or the date ("Red seal = HR" off).
     var mSealHr as Lang.Boolean = true;
+    // Each piece's own toggle (lantern, geese, hiker, village or hut),
+    // and the hour in kanji (false = brush digits; the View asks).
+    var mShowLantern as Lang.Boolean = true;
+    var mShowGeese as Lang.Boolean = true;
+    var mShowHiker as Lang.Boolean = true;
+    var mShowVillage as Lang.Boolean = true;
+    var mHourKanji as Lang.Boolean = true;
     // The weather painting behind the grasses (WX_*, WX_NONE for none),
     // read once per scene job; the "Weather" setting.
     var mWeather as Lang.Number = -1;
@@ -402,6 +409,11 @@ class JapaneseInkHeartrateScene {
     function readSettings() as Void {
         mShowTrace = propBool("trueHrOverlay", true);
         mSealHr = propBool("sealHr", true);
+        mShowLantern = propBool("lantern", true);
+        mShowGeese = propBool("geese", true);
+        mShowHiker = propBool("hiker", true);
+        mShowVillage = propBool("village", true);
+        mHourKanji = propBool("hourKanji", true);
         mShowWeather = propBool("weather", true);
         mNightStart = propHour("nightStart", 21);
         mNightEnd = propHour("nightEnd", 6);
@@ -516,6 +528,12 @@ class JapaneseInkHeartrateScene {
         return mSealHr;
     }
 
+    // The hour in kanji numerals (true) or the brush digits ("Hour in
+    // kanji" off). Called by the View on every update.
+    function hourInKanji() as Lang.Boolean {
+        return mHourKanji;
+    }
+
     function sealWork() as Lang.Boolean {
         var hr = mLatestHr;
         var base = (mRestingHr > 0) ? mRestingHr.toFloat() : mFloor;
@@ -573,6 +591,7 @@ class JapaneseInkHeartrateScene {
     // no mountain, in the valley under the far range.
     function drawValleyProp(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float) as Void {
         var masses = mMasses;
+        if (!mShowVillage) { return; }
         if (mHorizonY < 0.0 || (masses != null && masses.size() > 0)) { return; }
         var i = (mDayOfMonth % 2 == 0) ? PROP_VILLAGE : PROP_HUT;
         drawProp(dc, i, (VILLAGE_X * w - mPropW[i] / 2.0).toNumber(),
@@ -584,7 +603,7 @@ class JapaneseInkHeartrateScene {
     // step goal, on the side away from the sun or moon.
     function drawAirProps(dc as Graphics.Dc, width as Lang.Number, w as Lang.Float, h as Lang.Float) as Void {
         var masses = mMasses;
-        if (masses != null) {
+        if (masses != null && mShowHiker) {
             var bw = mPropW[PROP_HIKER];
             var bh = mPropH[PROP_HIKER];
             var best = -1;
@@ -606,7 +625,7 @@ class JapaneseInkHeartrateScene {
                          (m[M_CY] - bh + HIKER_SINK).toNumber());
             }
         }
-        if (mStepsMet) {
+        if (mStepsMet && mShowGeese) {
             var gx = (celestialX(width) < width / 2) ? GEESE_X_SUN_LEFT : GEESE_X_SUN_RIGHT;
             drawProp(dc, PROP_GEESE, (gx * w - mPropW[PROP_GEESE] / 2.0).toNumber(),
                      (GEESE_Y * h - mPropH[PROP_GEESE] / 2.0).toNumber());
@@ -1706,7 +1725,7 @@ class JapaneseInkHeartrateScene {
         }
 
         // 6b. the low-battery lantern on the foreground's ground
-        if (mBatteryLow) {
+        if (mBatteryLow && mShowLantern) {
             drawProp(dc, PROP_LANTERN, (LANTERN_X * w - mPropW[PROP_LANTERN] / 2.0).toNumber(),
                      (LANTERN_FOOT * h - mPropH[PROP_LANTERN]).toNumber());
         }

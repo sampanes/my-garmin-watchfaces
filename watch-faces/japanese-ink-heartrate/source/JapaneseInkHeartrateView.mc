@@ -233,7 +233,18 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
                 hour = hour - 12;
             }
         }
-        var hourGlyphs = kanjiHour(hour);
+        // "Hour in kanji" off: the hour in the minutes' brush digits, one
+        // line at the kanji column's bottom line (compose_preview kanji=)
+        var kanji = mScene.hourInKanji();
+        var hourText = hour.format("%d");
+        var hourGlyphs = [] as Lang.Array<Lang.String>;
+        if (kanji) {
+            hourGlyphs = kanjiHour(hour);
+        } else {
+            for (var j = 0; j < hourText.length(); j++) {
+                hourGlyphs.add(hourText.substring(j, j + 1) as Lang.String);
+            }
+        }
         var minText = clockTime.min.format("%02d");
 
         var colX = ((width * 22) / 100) + xOff;
@@ -258,10 +269,19 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         // one glyph at a time from a pen centred on the pair, each as
         // [glyph, pen x, line top].
         var placed = [] as Lang.Array<Lang.Array>;
-        for (var i = 0; i < count; i++) {
-            var g = hourGlyphs[i];
-            placed.add([g, colX - (dc.getTextWidthInPixels(g, mKanjiFont) / 2),
-                        hourBottomY - (count - 1 - i) * hourPitch - (KANJI_LINE_H / 2)]);
+        if (kanji) {
+            for (var i = 0; i < count; i++) {
+                var g = hourGlyphs[i];
+                placed.add([g, colX - (dc.getTextWidthInPixels(g, mKanjiFont) / 2),
+                            hourBottomY - (count - 1 - i) * hourPitch - (KANJI_LINE_H / 2)]);
+            }
+        } else {
+            var hpen = colX - (dc.getTextWidthInPixels(hourText, mInkFont) / 2);
+            for (var i = 0; i < count; i++) {
+                var g = hourGlyphs[i];
+                placed.add([g, hpen, hourBottomY - (INK_LINE_H / 2)]);
+                hpen += dc.getTextWidthInPixels(g, mInkFont);
+            }
         }
         var pen = colX - (dc.getTextWidthInPixels(minText, mInkFont) / 2);
         for (var j = 0; j < minText.length(); j++) {
@@ -276,7 +296,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
                 var p = placed[i];
                 var glyph = p[0] as Lang.String;
                 var rez;
-                if (i < count) {
+                if (i < count && kanji) {
                     var k = kanjiIndex(glyph);
                     rez = night ? mHaloKanjiNight[k] : mHaloKanji[k];
                 } else {
@@ -301,7 +321,7 @@ class JapaneseInkHeartrateView extends WatchUi.WatchFace {
         }
         for (var i = 0; i < placed.size(); i++) {
             var p = placed[i];
-            dc.drawText(p[1] as Lang.Number, p[2] as Lang.Number, i < count ? mKanjiFont : mInkFont,
+            dc.drawText(p[1] as Lang.Number, p[2] as Lang.Number, (i < count && kanji) ? mKanjiFont : mInkFont,
                         p[0] as Lang.String, Graphics.TEXT_JUSTIFY_LEFT);
         }
 

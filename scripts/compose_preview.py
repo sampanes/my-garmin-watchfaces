@@ -401,12 +401,14 @@ def prop_image(name, night):
     return load("prop_%s%s.png" % (name, "_night" if night else ""))
 
 
-def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery):
+def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=()):
     """Which props show, and where: {layer: [(name, x, y)]} with (x, y) the
     bitmap's top-left on the 416 face. Layers: "sky" with the sun or moon,
     "valley" after the far range, "summit" and "air" after the masses (the
     hiker on the highest workout summit clear of INSCRIPTION_BOX),
-    "ground" after the foreground. The Scene's placeProps is the same."""
+    "ground" after the foreground. hide: the pieces turned off on the
+    watch ("lantern", "geese", "hiker", "village" for the village or the
+    hut). The Scene's placeProps is the same."""
     import math
     out = {"sky": [], "valley": [], "summit": [], "air": [], "ground": []}
     size = {p["name"]: (p["w"], p["h"]) for p in prop_table()["props"]}
@@ -418,18 +420,18 @@ def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery):
     if cel is not None:
         w, h = size[cel]
         out["sky"].append((cel, sx - w // 2, sy - h // 2))
-    if steps_met:
+    if steps_met and "geese" not in hide:
         w, h = size["geese"]
         gx = GEESE_X[0] if sx < W / 2 else GEESE_X[1]
         out["air"].append(("geese", int(gx * W - w / 2), int(GEESE_Y * H - h / 2)))
-    if layout["horizon_y"] is not None and not layout["masses"]:
+    if layout["horizon_y"] is not None and not layout["masses"] and "village" not in hide:
         name = "village" if day % 2 == 0 else "hut"
         w, h = size[name]
         out["valley"].append((name, int(VILLAGE_X * W - w / 2),
                               int(layout["horizon_y"] + VILLAGE_DROP * H - h)))
     # the hiker: on the highest workout summit clear of the time column
     w, h = size["hiker"]
-    for m in sorted(layout["masses"], key=lambda m: m["crest"][1]):
+    for m in ([] if "hiker" in hide else sorted(layout["masses"], key=lambda m: m["crest"][1])):
         if m["elev"] < HIKER_ELEV:
             continue
         cx, cy = m["crest"]
@@ -438,7 +440,7 @@ def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery):
             continue
         out["summit"].append(("hiker", x, y))
         break
-    if battery < BATTERY_LOW:
+    if battery < BATTERY_LOW and "lantern" not in hide:
         w, h = size["lantern"]
         out["ground"].append(("lantern", int(LANTERN_X * W - w / 2), int(LANTERN_FOOT * H - h)))
     return out
@@ -901,7 +903,7 @@ def mid_plane_layout(history, trace=None):
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
             hour24=False, overlay=True, foreground=None, month=None, day=None, scene=0,
             epoch=None, steps_met=False, battery=100.0, resting=None, seal_hr=True,
-            weather=None):
+            weather=None, hide=(), kanji=True):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
     Scene fits its stored trace), or None. overlay: draw the true-HR overlay
@@ -912,7 +914,9 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     (foreground_index). epoch (now by default) sets the moon's phase,
     steps_met (today's step goal met) the geese, battery (percent) the
     lantern (prop_rules), resting (the profile's resting HR; the window's
-    floor without it) the seal's shape (seal_shape)."""
+    floor without it) the seal's shape (seal_shape). hide: the pieces
+    turned off (prop_rules); kanji False: the hour in the brush digits
+    ("Hour in kanji" off)."""
     import time
     epoch = time.time() if epoch is None else epoch
     day_of_month = datetime.date.today().day if day is None else day
@@ -929,7 +933,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # east: props from the sheet (prop_rules). The day cut on day paper
     # (the moon after 18:00 until the night window), the night cut in night
     # mode.
-    props = prop_rules(layout, minute_of_day, epoch, day_of_month, steps_met, battery)
+    props = prop_rules(layout, minute_of_day, epoch, day_of_month, steps_met, battery, hide)
     if weather in WX_PRECIP:
         props["sky"] = []     # the rain or snow replaces the sun or moon
     base = paint_props(base, props["sky"], night)
@@ -1003,9 +1007,17 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # a time from a pen centred on the pair.
     cx = int(0.22 * W)
     placed = []
-    for i, g in enumerate(glyphs):
-        placed.append((kanji_font, g, cx - kanji_font.glyphs[g]["xadvance"] // 2,
-                       bottom - (len(glyphs) - 1 - i) * pitch - kanji_font.line_h // 2))
+    if kanji:
+        for i, g in enumerate(glyphs):
+            placed.append((kanji_font, g, cx - kanji_font.glyphs[g]["xadvance"] // 2,
+                           bottom - (len(glyphs) - 1 - i) * pitch - kanji_font.line_h // 2))
+    else:
+        # the hour in the brush digits, one line at the column's bottom line
+        hrs = "%d" % hour
+        hpen = cx - sum(ink_font.glyphs[c]["xadvance"] for c in hrs) // 2
+        for c in hrs:
+            placed.append((ink_font, c, hpen, bottom - ink_font.line_h // 2))
+            hpen += ink_font.glyphs[c]["xadvance"]
     mins = "%02d" % (minute_of_day % 60)
     pen = cx - sum(ink_font.glyphs[c]["xadvance"] for c in mins) // 2
     for c in mins:
