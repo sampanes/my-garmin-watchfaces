@@ -300,8 +300,8 @@ class JapaneseInkHeartrateScene {
     const HIKER_SINK = 12;            // px it sinks under the summit (stands just below it)
     const INSCRIPTION_BOX_X = 0.36;   // the time column and seal with their halos:
     const INSCRIPTION_BOX_Y = 0.60;   // x and y under these (W, H) take no prop
-    const LANTERN_X = 0.64;           // the low-battery lantern's middle (W) ...
-    const LANTERN_FOOT = 0.93;        // ... its foot (H), low on the ground
+    // the low-battery lantern stands where John placed it on each
+    // foreground (SPOT_LANTERN_X / _FOOT, scripts/bake_spots.py)
     const BATTERY_LOW = 30.0;         // percent under which the lantern shows
     const SEAL_WORK = 30.0;           // bpm over the resting baseline that turns the seal rectangular ...
     const SEAL_HYST = 8.0;            // ... and back to the oval this far under that
@@ -1717,17 +1717,22 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(-(w * 0.03), h * 0.66, w * 1.06, h * 0.22, mist);
         }
 
-        // 6. the foreground: one whole-face painting for the season and the
-        //    day (foregroundIndex), over everything but the grain
-        var fg = loadForeground(foregroundIndex(), mNight);
-        if (fg != null) {
-            dc.drawScaledBitmap(0, 0, width, height, fg);
+        // 5b. the low-battery lantern where John placed it on this
+        //     foreground, just behind it, so the painting's grass stands
+        //     in front and blends it in
+        var fgi = foregroundIndex();
+        if (mBatteryLow && mShowLantern) {
+            var lx = (SPOT_LANTERN_X[fgi] as Lang.Number) * w / SPOT_FACE;
+            var ly = (SPOT_LANTERN_FOOT[fgi] as Lang.Number) * h / SPOT_FACE;
+            drawProp(dc, PROP_LANTERN, (lx - mPropW[PROP_LANTERN] / 2.0).toNumber(),
+                     (ly - mPropH[PROP_LANTERN]).toNumber());
         }
 
-        // 6b. the low-battery lantern on the foreground's ground
-        if (mBatteryLow && mShowLantern) {
-            drawProp(dc, PROP_LANTERN, (LANTERN_X * w - mPropW[PROP_LANTERN] / 2.0).toNumber(),
-                     (LANTERN_FOOT * h - mPropH[PROP_LANTERN]).toNumber());
+        // 6. the foreground: one whole-face painting for the season and the
+        //    day (foregroundIndex), over everything but the grain
+        var fg = loadForeground(fgi, mNight);
+        if (fg != null) {
+            dc.drawScaledBitmap(0, 0, width, height, fg);
         }
 
         // 7. paper grain over everything: converts "screen" to "paper"

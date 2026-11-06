@@ -321,8 +321,8 @@ HIKER_ELEV = 30.0          # bpm a mass stands over the floor for the hiker (a w
 INSCRIPTION_BOX = (0.36, 0.60)   # the time column and seal with their halos: x and y
                                  # under these (W, H); no prop lands there
 HIKER_SINK = 12            # px the hiker sinks under the summit: he stands just below it, his ground hidden
-LANTERN_X = 0.64           # the low-battery lantern's middle (W) ...
-LANTERN_FOOT = 0.93        # ... its foot (H), low on the foreground's ground
+# the low-battery lantern stands where John placed it on each foreground
+# (spot_table.json, scripts/bake_spots.py), just behind the foreground
 BATTERY_LOW = 30.0         # percent under which the lantern shows
 SEAL_WORK = 30.0           # bpm over the resting baseline that turns the seal rectangular ...
 # The seal digits' nudge per position (x, y px), on top of their baked
@@ -401,7 +401,15 @@ def prop_image(name, night):
     return load("prop_%s%s.png" % (name, "_night" if night else ""))
 
 
-def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=()):
+def spot_table():
+    """scripts/spot_table.json (bake_spots.py): each piece's spot per foreground."""
+    if "spots" not in _SHAPES:
+        with open(os.path.join(HERE, "spot_table.json")) as f:
+            _SHAPES["spots"] = json.load(f)
+    return _SHAPES["spots"]
+
+
+def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=(), fg=0):
     """Which props show, and where: {layer: [(name, x, y)]} with (x, y) the
     bitmap's top-left on the 416 face. Layers: "sky" with the sun or moon,
     "valley" after the far range, "summit" and "air" after the masses (the
@@ -442,7 +450,8 @@ def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=()):
         break
     if battery < BATTERY_LOW and "lantern" not in hide:
         w, h = size["lantern"]
-        out["ground"].append(("lantern", int(LANTERN_X * W - w / 2), int(LANTERN_FOOT * H - h)))
+        x, foot = spot_table()["spots"][fg]["lantern"]
+        out["ground"].append(("lantern", int(x - w / 2.0), int(foot - h)))
     return out
 
 
@@ -933,7 +942,8 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # east: props from the sheet (prop_rules). The day cut on day paper
     # (the moon after 18:00 until the night window), the night cut in night
     # mode.
-    props = prop_rules(layout, minute_of_day, epoch, day_of_month, steps_met, battery, hide)
+    props = prop_rules(layout, minute_of_day, epoch, day_of_month, steps_met, battery, hide,
+                       foreground_index(month, day, scene))
     if weather in WX_PRECIP:
         props["sky"] = []     # the rain or snow replaces the sun or moon
     base = paint_props(base, props["sky"], night)
@@ -969,14 +979,15 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     #    masses show their upper bodies and the depth order reads
     base = paste_scaled(base, mist, -0.03 * W, 0.66 * H, 1.06 * W, 0.22 * H)
 
+    # 5b. the low-battery lantern where John placed it on this foreground,
+    #     just behind it, so the painting's grass blends it in
+    base = paint_props(base, props["ground"], night)
+
     # 6. the foreground: one whole-face painting for the season and the day
     #    (foreground_index), over everything but the grain
     if foreground is None:
         foreground = foreground_image(foreground_index(month, day, scene), night)
     base = paste_scaled(base, foreground, 0, 0, W, H)
-
-    # 6b. the low-battery lantern on the foreground's ground
-    base = paint_props(base, props["ground"], night)
 
     # 7. paper grain over everything (day only: black paper stays black)
     if grain is not None:
