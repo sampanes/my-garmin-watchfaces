@@ -17,6 +17,10 @@ and scripts/tree_table.json, the same table for the mock.
     py -3.11 scripts/bake_trees.py           cut (if needed), bake, write tables
     py -3.11 scripts/bake_trees.py --check   exit 1 if a table is stale (no scipy)
 
+TONE (11-06): the share of the sheet's ink kept, day and night. At full
+ink the trees stood darker than the mountain they grow on (John: a bit too
+dark relative to the mountains); toned, they read as part of its ridge.
+
 A tree's foot is where its trunk meets the ground: the middle of the opaque
 pixels (alpha >= 128) in the lowest row that has any."""
 import json
@@ -43,6 +47,9 @@ TREES = [(1, "pine_narrow"), (2, "pine_wide"), (3, "pine_lean_l"), (4, "pine_lea
          (5, "pines2"), (6, "pines3"), (7, "fir"), (15, "cypress")]
 SIZES = (12, 16, 22)
 INK_FLOOR = 0.05 * 255
+
+
+TONE = 0.60   # share of the sheet's ink kept (the mountains are toned too)
 
 
 def camel(name):
@@ -80,6 +87,9 @@ def bake_all():
             w = max(1, int(round((box[2] - box[0]) * h / float(box[3] - box[1]))))
             for im, is_night in ((day, False), (night, True)):
                 out = im.crop(box).resize((w, h), Image.LANCZOS)
+                px = np.asarray(out, dtype=float).copy()
+                px[..., 3] *= TONE
+                out = Image.fromarray(np.round(px).astype(np.uint8), "RGBA")
                 out.save(os.path.join(DRAW, bitmap_name(name, h, is_night) + ".png"), optimize=True)
         print("baked", name, box[2] - box[0], "x", box[3] - box[1], "->", SIZES, flush=True)
 
