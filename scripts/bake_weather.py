@@ -17,7 +17,9 @@ white on black and cut by brightness. John's picks (11-05):
                 rain is shooting back up", and enlarged); a mirror only
                 across the rain's own slant would keep its direction
     storm       ChatGPT's storm, lightning and all, faded to TONE: storms
-    snow        Gemini's snow; by day over a grey WASH, the ink painter's
+    snow        Gemini's fuller snow (snowfall2-a, flakes over the whole
+                face; the first left the middle bare); by day over a grey
+                WASH, the ink painter's
                 way of letting white flakes show on white paper
     wind        ChatGPT's second wind (wind2-b): a few maple leaves riding
                 long wind streaks, quieter than Gemini's busier leaves
@@ -63,7 +65,7 @@ WEATHER = [
     ("rain_light", [("rain2-b", 0.8, "")], 0.0),
     ("rain", [("rain2-b", 0.75, ""), ("rain2-b", 0.6, "shift")], 0.0),
     ("storm", [("storm-b", 0.55, "")], 0.0),
-    ("snow", [("snowfall-a", 1.0, "")], 0.22),
+    ("snow", [("snowfall2-a", 1.0, "")], 0.22),
     ("wind", [("wind2-b", 1.0, "")], 0.0),
 ]
 NEAR_SCALE = 1.6

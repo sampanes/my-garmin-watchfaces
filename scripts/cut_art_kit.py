@@ -71,9 +71,10 @@ RECIPE = {
     "snowfall": ("1x1", "snowfall", "", "", True),
     "wind": ("1x1", "wind", "", "", True),
     "wind2": ("1x1", "wind2", "", "", True),
+    "snowfall2": ("1x1", "snowfall2", "", "", True),
 }
 # sheets painted light on black (cut by brightness)
-LIGHT = {"snowfall"}
+LIGHT = {"snowfall", "snowfall2"}
 for season in ("spring", "summer", "autumn", "winter", "pass"):
     RECIPE["fg-" + season] = ("1x1", "fg", "", "", True)
 
