@@ -12,8 +12,10 @@ shown by one rule, so a prop always means something (John, 11-05).
                    low, in the ground layer just behind the foreground, ink
                    0.9 (John, 11-06: the small pale one under the far range
                    "looked like trash" and read as huge for that distance).
-                   The hut is out (its outlines read as cartoon, not ink and
-                   wash); a bespoke one may come back
+                   The hut is out for now: it did not fit beside Gemini's
+                   foregrounds, whose hard outlines read as cartoon (the
+                   hut itself has none); village, hut and any new piece
+                   are still open (John, 11-06)
     hiker          a recorded workout overlaps the window (11-06; the heart
                    rate alone said workout on a lazy day): on the highest summit
     swallow        unread notifications: at its spot (bake_spots.py), 24 px
