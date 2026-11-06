@@ -37,7 +37,7 @@ REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "bin" / "hr"
 WINDOW = 4 * 3600
 STEP = 1800                  # candidate windows start every half hour
-SAMPLE = 120                 # Connect's all-day spacing, seconds
+SAMPLE = 120                 # coverage counts two-minute slots (Connect's spacing; the watch's own is one minute)
 FULL = 0.8                   # a window this covered counts as whole
 HOLEY = 0.4                  # ... this covered, but not FULL, is the one with a hole
 
@@ -119,9 +119,10 @@ def windows(rows: list[tuple[int, int]]) -> list[dict]:
             hi += 1
         hrs = sorted(b for _, b in rows[lo:hi])
         if hrs:
+            slots = {(t - start) // SAMPLE for t, _ in rows[lo:hi]}
             out.append({
                 "start": start,
-                "cover": len(hrs) * SAMPLE / WINDOW,
+                "cover": min(len(slots) * SAMPLE / WINDOW, 1.0),
                 "spread": hrs[int(0.95 * (len(hrs) - 1))] - hrs[int(0.10 * (len(hrs) - 1))],
             })
         start += STEP
@@ -199,8 +200,11 @@ def main(argv: list[str] | None = None) -> int:
         chosen = []
         for w in a.window:
             s = int(datetime.datetime.fromisoformat(w).timestamp())
-            match = [c for c in windows([r for r in rows if s <= r[0] <= s + WINDOW]) if c["start"] == s]
-            chosen.append(match[0] if match else {"start": s, "cover": 0.0, "spread": 0})
+            inside = [r for r in rows if s < r[0] <= s + WINDOW]
+            hrs = sorted(b for _, b in inside) or [0]
+            chosen.append({"start": s,
+                           "cover": min(len({(t - s) // SAMPLE for t, _ in inside}) * SAMPLE / WINDOW, 1.0),
+                           "spread": hrs[int(0.95 * (len(hrs) - 1))] - hrs[int(0.10 * (len(hrs) - 1))]})
     else:
         chosen = pick(cands, a.pick)
 
