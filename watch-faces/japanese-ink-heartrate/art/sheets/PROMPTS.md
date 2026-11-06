@@ -799,6 +799,39 @@ I need ONE image that I will lay over that whole landscape as weather. Rules:
 The weather: a spring wind. About 16 small cherry blossom petals and two or three small whole blossoms blown along one gusting path from the top right to the bottom left of the image, tumbling at different angles, about half of them soft blossom pink (#E3A9A8), the rest pale grey ink with a darker grey edge so they never vanish on white. Each petal SMALL: no wider than one twenty-fifth of the image width. A few faint dry-brush wind streaks along the same path are welcome. No branches, no tree.
 ```
 
+## Round 11 results (2026-11-06): wind for winter and spring
+
+John's four (`windwinter-a/b`, `windspring-a/b`, recipes in `cut_art_kit.py`):
+ChatGPT's winter is sparse grey leaves along long streaks; Gemini's winter is
+denser, darker curled leaves with pine needles. ChatGPT's spring has two big
+blossoms and scattered petals; Gemini's spring has more petals, three
+blossoms. On the face beside today's maple wind, day and night:
+`~/Downloads/ink-face-wind-pick.png` (scratch wind_look.py). Pick pending.
+
+## Round 12 (2026-11-06, to send): the storm again
+
+John on round 10's storm (ChatGPT's, at 55%): "too cartoonish". It is the
+two things a comic draws for a storm: hard parallel slashes all the same
+length, and a zigzag bolt. Rain he likes (`rain2-b`, doubled for heavy rain)
+reads random and organic, so this asks for that rain made violent, and
+lightning the way an ink painter would leave it.
+
+### 12.1 Storm (whole face)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, dry-brush grasses in the foreground, a red artist's seal. The look is restrained, quiet and traditional. Not anime, not cartoon, not colorful watercolor.
+
+I need ONE image that I will lay over that whole landscape as weather. Rules:
+- One square PNG, 2048x2048. Not a grid, not a sprite sheet: a single image whose subject is spread evenly over the entire square, right up to every edge, as if it continues past them.
+- Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no shading.
+- No landscape, ground, horizon, mountains, clouds, sky color, frame, border, text, seal or watermark: only the weather itself.
+- Keep the upper-left area (the left third, top half) noticeably sparser than the rest: the clock sits there.
+- Ink only: black and greys with real brush character. No color.
+- It must read at thumbnail size without becoming busy.
+
+The weather: a violent thunderstorm, painted the way a sumi-e master or a classical Japanese woodblock print shows a sudden downpour. Rain driven by wind in uneven sheets: long fine dry-brush streaks of different lengths and darkness, crowded together in some places and thin in others, a few broad pale grey washes where the rain is heaviest, all slanting the same way from top right to bottom left but never perfectly parallel or evenly spaced. The lightning is NOT a zigzag: one thin, branching, irregular hairline stroke, like a crack in ice or a river seen from far above, in a mid grey, starting near the top right and fading out before the middle. Nothing outlined, nothing cartoon or comic, no clouds, no ground.
+```
+
 ## Extra sheet (2026-11-06): shishi-odoshi
 
 `2026-11-06_shishiodoshi-b.png`: John's own ChatGPT sheet, four studies of a bamboo deer-scarer fountain (shishi-odoshi) with rocks and grass, on white, 2x2. Not prompted from here and not yet cut or used: kept for a later prop.

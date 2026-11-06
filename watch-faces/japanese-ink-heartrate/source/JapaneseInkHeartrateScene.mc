@@ -306,7 +306,7 @@ class JapaneseInkHeartrateScene {
     const GEESE_X_SUN_RIGHT = 0.45;   // ... here when it is on the right
     const VILLAGE_X = 0.56;           // a quiet window's village or hut, its middle (W) ...
     const VILLAGE_DROP = 0.075;       // ... its foot this far (H) under the far range's crest
-    const HIKER_SINK = 12;            // px it sinks under the summit (stands just below it)
+    const HIKER_SINK = 10;            // px it sinks under the summit (stands just below it)
     const INSCRIPTION_BOX_X = 0.36;   // the time column and seal with their halos:
     const INSCRIPTION_BOX_Y = 0.60;   // x and y under these (W, H) take no prop
     // the low-battery lantern stands where John placed it on each

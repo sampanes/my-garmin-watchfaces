@@ -33,11 +33,11 @@ const PROP_MOON_WANING_VEIL = 21;
 const PROP_MOON_WANING_HIDDEN = 22;
 
 function propW() as Lang.Array<Lang.Number> {
-    return [34, 34, 29, 29, 78, 96, 84, 21, 45, 46, 52, 42, 24, 200, 130, 160, 170, 73, 68, 56, 65, 56, 65] as Lang.Array<Lang.Number>;
+    return [34, 34, 29, 29, 78, 96, 84, 18, 45, 46, 52, 42, 24, 200, 130, 160, 170, 73, 68, 56, 65, 56, 65] as Lang.Array<Lang.Number>;
 }
 
 function propH() as Lang.Array<Lang.Number> {
-    return [34, 34, 34, 34, 46, 74, 76, 34, 50, 32, 34, 42, 22, 113, 22, 48, 57, 54, 54, 54, 54, 54, 54] as Lang.Array<Lang.Number>;
+    return [34, 34, 34, 34, 46, 74, 76, 28, 50, 32, 34, 42, 22, 113, 22, 48, 57, 54, 54, 54, 54, 54, 54] as Lang.Array<Lang.Number>;
 }
 
 // Prop i, day or night; the caller catches a refusal.

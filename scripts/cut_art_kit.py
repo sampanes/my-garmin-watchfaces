@@ -72,6 +72,9 @@ RECIPE = {
     "wind": ("1x1", "wind", "", "", True),
     "wind2": ("1x1", "wind2", "", "", True),
     "snowfall2": ("1x1", "snowfall2", "", "", True),
+    # 11-06: wind for winter (dry leaves, pine needles) and spring (cherry petals)
+    "windwinter": ("1x1", "windwinter", "", "", True),
+    "windspring": ("1x1", "windspring", "", "", True),
     # round 11: cloud levels, one painting each; the moon behind cloud, on black
     "cloudbands": ("2x2", "cloud_wisp,cloud_band,cloud_bands2,cloud_bank", "", "", False),
     "moonmist": ("2x2", "moon_full_veil,moon_full_hidden,moon_crescent_veil,moon_crescent_hidden", "", "", False),
