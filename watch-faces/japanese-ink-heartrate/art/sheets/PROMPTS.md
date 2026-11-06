@@ -798,3 +798,7 @@ I need ONE image that I will lay over that whole landscape as weather. Rules:
 
 The weather: a spring wind. About 16 small cherry blossom petals and two or three small whole blossoms blown along one gusting path from the top right to the bottom left of the image, tumbling at different angles, about half of them soft blossom pink (#E3A9A8), the rest pale grey ink with a darker grey edge so they never vanish on white. Each petal SMALL: no wider than one twenty-fifth of the image width. A few faint dry-brush wind streaks along the same path are welcome. No branches, no tree.
 ```
+
+## Extra sheet (2026-11-06): shishi-odoshi
+
+`2026-11-06_shishiodoshi-b.png`: John's own ChatGPT sheet, four studies of a bamboo deer-scarer fountain (shishi-odoshi) with rocks and grass, on white, 2x2. Not prompted from here and not yet cut or used: kept for a later prop.
