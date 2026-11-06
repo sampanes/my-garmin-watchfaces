@@ -22,7 +22,7 @@ const PROP_SEAL_RECT = 10;
 const PROP_SEAL_SQUARE = 11;
 
 function propW() as Lang.Array<Lang.Number> {
-    return [34, 34, 29, 29, 78, 96, 84, 25, 45, 46, 52, 42] as Lang.Array<Lang.Number>;
+    return [34, 34, 29, 29, 78, 96, 84, 21, 45, 46, 52, 42] as Lang.Array<Lang.Number>;
 }
 
 function propH() as Lang.Array<Lang.Number> {
