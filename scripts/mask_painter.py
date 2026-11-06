@@ -8,7 +8,7 @@ settings: three brushes over the real face.
     See-through   nothing: the face behind shows
     Auto          back to the cutter's own result
 
-Every foreground and the lantern are in it, each over what stands behind it
+Every foreground, the lantern and the village are in it, each over what stands behind it
 on the face (the mountains for a foreground, plain grey for the lantern).
 Save writes <name>_mask.png into the browser's downloads; --pickup moves
 those into art/edits, where the bakes find them.
@@ -36,7 +36,7 @@ import hand_masks  # noqa: E402
 DOWNLOADS = os.path.join(os.path.expanduser("~"), "Downloads")
 OUT = os.path.join(DOWNLOADS, "ink-mask-painter.html")
 EDIT_PX = 832          # a foreground is painted at twice the face
-PROP_EDIT_H = {"lantern": 240}
+PROP_EDIT_H = {"lantern": 240, "village": 354}   # twice the face size
 PAINTERS = {"b": "ChatGPT", "a": "Gemini", "c": "Gemini"}
 
 

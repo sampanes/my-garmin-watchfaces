@@ -16,7 +16,12 @@ white on black and cut by brightness. John's picks (11-05):
                 and wrapped (John's pick over turned, which "looks like
                 rain is shooting back up", and enlarged); a mirror only
                 across the rain's own slant would keep its direction
-    storm       ChatGPT's storm, lightning and all, faded to TONE: storms
+    storm       round 12's ChatGPT storm with its top left filled in
+                (storm3-b, John's favorite, 11-06) at 85%: rain in uneven
+                wind-driven sheets, the lightning a thin branching vein.
+                Round 10's (storm-b: hard slashes, a zigzag bolt) was "too
+                cartoonish". Its night is brightened (NIGHT_LIFT: John,
+                "brighten the night"): fine grey streaks vanish on black
     snow        Gemini's fuller snow (snowfall2-a, flakes over the whole
                 face; the first left the middle bare); by day over a grey
                 WASH, the ink painter's
@@ -71,13 +76,16 @@ W = 416
 WEATHER = [
     ("rain_light", [("rain2-b", 0.8, "")], 0.0),
     ("rain", [("rain2-b", 0.75, ""), ("rain2-b", 0.6, "shift")], 0.0),
-    ("storm", [("storm-b", 0.55, "")], 0.0),
+    ("storm", [("storm3-b", 0.85, "")], 0.0),
     ("snow", [("snowfall2-a", 1.0, "")], 0.22),
     ("wind", [("wind2-b", 1.0, "")], 0.0),
     ("wind_winter", [("windwinter-b", 1.0, "")], 0.0),
     ("wind_spring", [("windspring-b", 1.0, "")], 0.0),
 ]
 NEAR_SCALE = 1.6
+# name -> (alpha gain, ink rgb) for the night painting: the night cut's pale
+# ink at the day's alpha all but vanishes on black where the strokes are fine
+NIGHT_LIFT = {"storm": (2.6, (222, 217, 205))}
 SHIFT = (0.37, 0.21)
 WASH = (90, 86, 80)    # the snow day's grey sky, a warm ink grey
 PALETTE = 256
@@ -107,7 +115,14 @@ def layer(cut, night, tone, how):
     return Image.fromarray(np.round(p).astype(np.uint8), "RGBA")
 
 
-def bake_one(layers, wash):
+def lift(im, gain, rgb):
+    p = np.asarray(im, dtype=float).copy()
+    p[..., 3] = np.clip(p[..., 3] * gain, 0, 255)
+    p[..., :3] = np.where(p[..., 3:] > 0, rgb, p[..., :3])
+    return Image.fromarray(np.round(p).astype(np.uint8), "RGBA")
+
+
+def bake_one(layers, wash, name=None):
     out = []
     for night in (False, True):
         im = Image.new("RGBA", (W, W), (0, 0, 0, 0))
@@ -115,6 +130,8 @@ def bake_one(layers, wash):
             im = Image.new("RGBA", (W, W), WASH + (int(round(255 * wash)),))
         for cut, tone, how in layers:
             im = Image.alpha_composite(im, layer(cut, night, tone, how))
+        if night and name in NIGHT_LIFT:
+            im = lift(im, *NIGHT_LIFT[name])
         out.append(im)
     return out
 
@@ -131,7 +148,7 @@ def camel(s):
 
 def bake_all():
     for name, layers, wash in WEATHER:
-        day, night = bake_one(layers, wash)
+        day, night = bake_one(layers, wash, name)
         for im, sfx in ((day, ""), (night, "_night")):
             pack(im).save(os.path.join(DRAW, "wx_%s%s.png" % (name, sfx)), optimize=True)
         print("baked wx_%s from %s" % (name, " + ".join(l[0] + (" " + l[2] if l[2] else "") for l in layers)))

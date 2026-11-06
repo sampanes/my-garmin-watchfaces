@@ -34,20 +34,14 @@
   {
    "name": "village",
    "cut": "props2-b/08_village",
-   "w": 96,
-   "h": 74
-  },
-  {
-   "name": "hut",
-   "cut": "props2-b/03_hut",
-   "w": 84,
-   "h": 76
+   "w": 230,
+   "h": 177
   },
   {
    "name": "hiker",
    "cut": "props-b/15_hiker",
-   "w": 15,
-   "h": 24
+   "w": 11,
+   "h": 18
   },
   {
    "name": "lantern",

@@ -8,9 +8,12 @@ shown by one rule, so a prop always means something (John, 11-05).
                    phase: full, a waxing or waning crescent, none at new moon
     geese          today's step goal is met: across the sky, on the side
                    away from the sun or moon
-    village / hut  a quiet window (a horizon and no mountain): in the valley
-                   under the far range, the village on even days, the hut on
-                   odd ones
+    village        a quiet window (a horizon and no mountain): large and
+                   low, in the ground layer just behind the foreground, ink
+                   0.9 (John, 11-06: the small pale one under the far range
+                   "looked like trash" and read as huge for that distance).
+                   The hut is out (its outlines read as cartoon, not ink and
+                   wash); a bespoke one may come back
     hiker          a recorded workout overlaps the window (11-06; the heart
                    rate alone said workout on a lazy day): on the highest summit
     swallow        unread notifications: at its spot (bake_spots.py), 24 px
@@ -86,9 +89,8 @@ PROPS = [
     ("moon_waxing", "props-b/04_moon_crescent", ("h", 34), 1.0, 1.0, False, True),
     ("moon_waning", "props-b/04_moon_crescent", ("h", 34), 1.0, 1.0, True, True),
     ("geese", "props-b/06_geese", ("w", 78), 0.80, 0.85, False, False),
-    ("village", "props2-b/08_village", ("w", 96), 0.55, 0.75, False, False),
-    ("hut", "props2-b/03_hut", ("w", 84), 0.55, 0.75, False, False),
-    ("hiker", "props-b/15_hiker", ("h", 24), 1.0, 1.0, False, False),   # 34, then 28, then 24 (John, 11-06)
+    ("village", "props2-b/08_village", ("w", 230), 0.9, 0.75, False, False),
+    ("hiker", "props-b/15_hiker", ("h", 18), 1.0, 1.0, False, False),   # 34, 28, 24, then 18 (John, 11-06: smaller keeps looking better)
     ("lantern", "props2-b/02_lantern", ("h", 50), 1.0, 1.0, False, False),
     ("seal_oval", "props2-b/14_seal_oval", ("h", 32), 0.92, 1.0, False, True),
     ("seal_rect", "props2-b/13_seal_square", ("wh", (52, 34)), 0.92, 1.0, False, True),

@@ -33,7 +33,7 @@ script-painted foreground masses.
 The props (2026-11-05, evening): small pieces of the ChatGPT prop sheets
 (scripts/bake_props.py), each shown by one rule (prop_rules) so a prop
 always means something: the sun and the moon by its phase on the arc, geese
-for the step goal, a village or hut in an empty window, a hiker on a
+for the step goal, a village in an empty window, a hiker on a
 workout's summit, a lantern for a low battery.
 
 The fixed planes (2026-11-05, later): the far range (horizon.png), the two
@@ -315,8 +315,9 @@ MOON_NEW = 1.85            # days either side of new moon with no moon drawn ...
 MOON_FULL = 1.85           # ... and either side of full with the full moon
 GEESE_Y = 0.21             # the geese's middle (H), on the side away from the sun/moon:
 GEESE_X = (0.68, 0.45)     # here (W) when the sun/moon is on the left half, else here
-VILLAGE_X = 0.56           # a quiet window's village or hut, its middle (W) ...
-VILLAGE_DROP = 0.075       # ... its foot this far (H) under the far range's crest
+VILLAGE_X = 0.50           # a quiet window's village, its middle (W; John, 11-06:
+                           # 230 px wide, a click and a half left of 0.56) ...
+VILLAGE_FOOT = 0.92        # ... its foot here (H), in the ground layer
 CLOUDS_XY = (0.64, 0.145)  # a cloudy sky's cloud bank, its middle (W, H), clear of the time column
 # the cloud over the sun by level (1-3): its painting and its middle's
 # offset (W, H) from the sun's middle (round 11, 11-06)
@@ -327,7 +328,7 @@ CLOUD_SPILL = 0.40         # a cloud over the sun may fade this share of its wid
 MOON_MIST_DROP = 0.015     # the moon behind cloud: its painting's middle this far (H) under the arc
 INSCRIPTION_BOX = (0.36, 0.60)   # the time column and seal with their halos: x and y
                                  # under these (W, H); no prop lands there
-HIKER_SINK = 9             # px the hiker sinks under the summit: he stands just below it, his ground hidden
+HIKER_SINK = 7             # px the hiker sinks under the summit: he stands just below it, his ground hidden
 # the low-battery lantern stands where John placed it on each foreground
 # (spot_table.json, scripts/bake_spots.py), just behind the foreground
 BATTERY_LOW = 30.0         # percent under which the lantern shows
@@ -463,8 +464,7 @@ def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=(), f
     "valley" after the far range, "summit" and "air" after the masses (the
     hiker on the highest workout summit clear of INSCRIPTION_BOX),
     "ground" after the foreground. hide: the pieces turned off on the
-    watch ("lantern", "geese", "hiker", "village" for the village or the
-    hut). sunrise, sunset (minutes) set the arcs; cloud: the sky's cloud
+    watch ("lantern", "geese", "hiker", "village"). sunrise, sunset (minutes) set the arcs; cloud: the sky's cloud
     level (cloud_level): by day the sun under one painting per level 1-3,
     the bank alone at 4; by night the moon veiled (1-2) or hidden (3) in
     its own painting, the bank alone at 4 (one painting per level, never
@@ -500,10 +500,8 @@ def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=(), f
         gx = GEESE_X[0] if sx < W / 2 else GEESE_X[1]
         out["air"].append(("geese", int(gx * W - w / 2), int(GEESE_Y * H - h / 2)))
     if layout["horizon_y"] is not None and not layout["masses"] and "village" not in hide:
-        name = "village" if day % 2 == 0 else "hut"
-        w, h = size[name]
-        out["valley"].append((name, int(VILLAGE_X * W - w / 2),
-                              int(layout["horizon_y"] + VILLAGE_DROP * H - h)))
+        w, h = size["village"]
+        out["ground"].append(("village", int(VILLAGE_X * W - w / 2), int(VILLAGE_FOOT * H - h)))
     if notified and "swallow" not in hide:
         w, h = size["swallow"]
         x, foot = spot_table()["swallow"]
@@ -1035,7 +1033,8 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     #    (round 4, 11-02). Drawn first; every mass is a cutout over it.
     base = paint_horizon(base, layout, night)
 
-    # 1b. a quiet window's village or hut, in the valley under the far range
+    # 1b. the valley pieces under the far range (none drawn yet; the
+    #     village moved to the ground layer, 11-06)
     base = paint_props(base, props["valley"], night)
 
     # 2. light mist between far and mid planes
@@ -1063,8 +1062,9 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     #    masses show their upper bodies and the depth order reads
     base = paste_scaled(base, mist, -0.03 * W, 0.66 * H, 1.06 * W, 0.22 * H)
 
-    # 5b. the low-battery lantern where John placed it on this foreground,
-    #     just behind it, so the painting's grass blends it in
+    # 5b. a quiet window's village, then the low-battery lantern where John
+    #     placed it on this foreground, just behind it, so the painting's
+    #     grass blends them in
     base = paint_props(base, props["ground"], night)
 
     # 6. the foreground: one whole-face painting for the season and the day

@@ -88,7 +88,7 @@ using Toybox.WatchUi;
 // 2026-11-05, evening: the props (scripts/bake_props.py), each by one rule
 // so a prop always means something (compose_preview.prop_rules): the sun,
 // and the moon by its phase, on the arc in place of the drawn discs; geese
-// when today's step goal is met; a village or hut in a window with no
+// when today's step goal is met; a village in a window with no
 // mountain; a hiker on the highest workout summit clear of the time
 // column; a lantern under 30% battery. Read once per scene job (five
 // minutes), drawn 1:1.
@@ -193,7 +193,7 @@ class JapaneseInkHeartrateScene {
     var mShowTrace as Lang.Boolean = true;
     // The seal carries the live HR (true) or the date ("Red seal = HR" off).
     var mSealHr as Lang.Boolean = true;
-    // Each piece's own toggle (lantern, geese, hiker, village or hut),
+    // Each piece's own toggle (lantern, geese, hiker, village),
     // and the hour in kanji (false = brush digits; the View asks).
     var mShowLantern as Lang.Boolean = true;
     var mShowGeese as Lang.Boolean = true;
@@ -304,9 +304,9 @@ class JapaneseInkHeartrateScene {
     const GEESE_Y = 0.21;             // the geese's middle (H) ...
     const GEESE_X_SUN_LEFT = 0.68;    // ... here (W) when the sun/moon is on the left half
     const GEESE_X_SUN_RIGHT = 0.45;   // ... here when it is on the right
-    const VILLAGE_X = 0.56;           // a quiet window's village or hut, its middle (W) ...
-    const VILLAGE_DROP = 0.075;       // ... its foot this far (H) under the far range's crest
-    const HIKER_SINK = 9;             // px it sinks under the summit (stands just below it)
+    const VILLAGE_X = 0.50;           // a quiet window's village, its middle (W) ...
+    const VILLAGE_FOOT = 0.92;        // ... its foot here (H), in the ground layer (John, 11-06)
+    const HIKER_SINK = 7;             // px it sinks under the summit (stands just below it)
     const INSCRIPTION_BOX_X = 0.36;   // the time column and seal with their halos:
     const INSCRIPTION_BOX_Y = 0.60;   // x and y under these (W, H) take no prop
     // the low-battery lantern stands where John placed it on each
@@ -457,7 +457,7 @@ class JapaneseInkHeartrateScene {
     }
 
     // The props' inputs, once per scene job: today's step goal, the
-    // battery, the day of the month (village or hut).
+    // battery, the day of the month.
     function readPropInputs() as Void {
         mStepsMet = false;
         if (Toybox has :ActivityMonitor) {
@@ -713,15 +713,14 @@ class JapaneseInkHeartrateScene {
         return into.toFloat() / (1440 - (mSunset - mSunrise)).toFloat();
     }
 
-    // The village (even days) or hut (odd) in a window with a horizon and
-    // no mountain, in the valley under the far range.
-    function drawValleyProp(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float) as Void {
+    // The village in a window with a horizon and no mountain: large and
+    // low, just behind the foreground (John, 11-06; the hut is out).
+    function drawVillage(dc as Graphics.Dc, w as Lang.Float, h as Lang.Float) as Void {
         var masses = mMasses;
         if (!mShowVillage) { return; }
         if (mHorizonY < 0.0 || (masses != null && masses.size() > 0)) { return; }
-        var i = (mDayOfMonth % 2 == 0) ? PROP_VILLAGE : PROP_HUT;
-        drawProp(dc, i, (VILLAGE_X * w - mPropW[i] / 2.0).toNumber(),
-                 (mHorizonY + VILLAGE_DROP * h - mPropH[i]).toNumber());
+        drawProp(dc, PROP_VILLAGE, (VILLAGE_X * w - mPropW[PROP_VILLAGE] / 2.0).toNumber(),
+                 (VILLAGE_FOOT * h - mPropH[PROP_VILLAGE]).toNumber());
     }
 
     // The hiker, while a recorded workout overlaps the window, on the
@@ -1776,9 +1775,6 @@ class JapaneseInkHeartrateScene {
             }
         }
 
-        // 1b. a quiet window's village or hut, under the far range
-        drawValleyProp(dc, w, h);
-
         // 2. light mist between the far and mid planes
         var mistLite = mMistLite;
         if (mistLite != null) {
@@ -1845,9 +1841,10 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(-(w * 0.03), h * 0.66, w * 1.06, h * 0.22, mist);
         }
 
-        // 5b. the low-battery lantern where John placed it on this
-        //     foreground, just behind it, so the painting's grass stands
-        //     in front and blends it in
+        // 5b. a quiet window's village, then the low-battery lantern where
+        //     John placed it on this foreground, just behind it, so the
+        //     painting's grass stands in front and blends them in
+        drawVillage(dc, w, h);
         var fgi = foregroundIndex();
         if (mBatteryLow && mShowLantern) {
             var lx = (SPOT_LANTERN_X[fgi] as Lang.Number) * w / SPOT_FACE;
