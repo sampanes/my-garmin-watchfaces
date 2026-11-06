@@ -1,3 +1,4 @@
+using Toybox.Activity;
 using Toybox.ActivityMonitor;
 using Toybox.Application;
 using Toybox.Graphics;
@@ -23,7 +24,8 @@ using Toybox.WatchUi;
 // 2026-10-28: one time axis for both landmarks (x = 0.36..0.80 of the width,
 // four hours ago to now, clear of the inscription); an optional true-HR
 // overlay so the gap between the data and the painting is visible at a
-// glance; and a night mode (settings: nightStart/nightEnd hours) that swaps
+// glance; and a night mode (then settings: nightStart/nightEnd hours; since
+// 2026-11-06 sunset to sunrise, no setting) that swaps
 // in the moonlit negative plane set (pale ink on black paper) so the face
 // stops lighting the bedroom.
 //
@@ -198,15 +200,21 @@ class JapaneseInkHeartrateScene {
     var mShowHiker as Lang.Boolean = true;
     var mShowVillage as Lang.Boolean = true;
     var mHourKanji as Lang.Boolean = true;
+    var mShowSwallow as Lang.Boolean = true;
     // The weather painting behind the grasses (WX_*, WX_NONE for none),
     // read once per scene job; the "Weather" setting.
     var mWeather as Lang.Number = -1;
     var mShowWeather as Lang.Boolean = true;
+    // The clouds in the sky (PROP_CLOUDS, PROP_CLOUD_WISP, -1 for none),
+    // from the same conditions (cloudForCondition).
+    var mCloud as Lang.Number = -1;
     var mForeground as Lang.Number = 0;   // the "foreground" setting: 0 by season, 1..FG_SEASONS a scene
     // The props' inputs, read once per scene job (readPropInputs).
     var mStepsMet as Lang.Boolean = false;
     var mBatteryLow as Lang.Boolean = false;
     var mDayOfMonth as Lang.Number = 1;
+    var mWorkout as Lang.Boolean = false;    // a recorded activity in the window (the hiker)
+    var mNotified as Lang.Boolean = false;   // unread notifications (the swallow)
     // The seal's baseline: the profile's resting HR (0 = none), else the
     // window's floor; and whether the seal shows working (sealWork).
     var mRestingHr as Lang.Number = 0;
@@ -214,8 +222,10 @@ class JapaneseInkHeartrateScene {
     var mSealWork as Lang.Boolean = false;
     var mPropW as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
     var mPropH as Lang.Array<Lang.Number> = [] as Lang.Array<Lang.Number>;
-    var mNightStart as Lang.Number = 21;
-    var mNightEnd as Lang.Number = 6;
+    // Today's sunrise and sunset, minutes after local midnight
+    // (readSunTimes); 06:00 and 18:00 until the watch knows where it is.
+    var mSunrise as Lang.Number = 360;
+    var mSunset as Lang.Number = 1080;
     var mNight as Lang.Boolean = false;
     // Palette of the frame currently on screen. Once a completed frame
     // exists, a pending day/night scene does not recolor its inscription.
@@ -296,7 +306,6 @@ class JapaneseInkHeartrateScene {
     const GEESE_X_SUN_RIGHT = 0.45;   // ... here when it is on the right
     const VILLAGE_X = 0.56;           // a quiet window's village or hut, its middle (W) ...
     const VILLAGE_DROP = 0.075;       // ... its foot this far (H) under the far range's crest
-    const HIKER_ELEV = 30.0;          // bpm a mass stands over the floor for the hiker
     const HIKER_SINK = 12;            // px it sinks under the summit (stands just below it)
     const INSCRIPTION_BOX_X = 0.36;   // the time column and seal with their halos:
     const INSCRIPTION_BOX_Y = 0.60;   // x and y under these (W, H) take no prop
@@ -307,6 +316,9 @@ class JapaneseInkHeartrateScene {
     const SEAL_HYST = 8.0;            // ... and back to the oval this far under that
     const WIND_LEAVES = 8.0;          // m/s over which the leaves blow without a "windy" forecast
     const WX_STALE = 10800;           // s: an observation older than this shows no weather
+    const CLOUDS_X = 0.64;            // a cloudy sky's cloud bank, its middle (W) ...
+    const CLOUDS_Y = 0.13;            // ... and (H), clear of the time column
+    const WISP_DROP = 0.035;          // a few clouds' wisp: this far (H) under the sun or moon's middle
 
     // ------------------------------------------------------- the §13 probe
     // RENDERER_PLAN §13: what can the FR265 blend? Set PROBE to true, build,
@@ -388,15 +400,6 @@ class JapaneseInkHeartrateScene {
         return fallback;
     }
 
-    function propHour(key as Lang.String, fallback as Lang.Number) as Lang.Number {
-        var value = propValue(key);
-        if (value instanceof Lang.Number || value instanceof Lang.Float) {
-            var hour = (value as Lang.Numeric).toNumber();
-            if (hour >= 0 && hour <= 24) { return hour; }
-        }
-        return fallback;
-    }
-
     function propNumber(key as Lang.String, fallback as Lang.Number, max as Lang.Number) as Lang.Number {
         var value = propValue(key);
         if (value instanceof Lang.Number || value instanceof Lang.Float) {
@@ -415,8 +418,7 @@ class JapaneseInkHeartrateScene {
         mShowVillage = propBool("village", true);
         mHourKanji = propBool("hourKanji", true);
         mShowWeather = propBool("weather", true);
-        mNightStart = propHour("nightStart", 21);
-        mNightEnd = propHour("nightEnd", 6);
+        mShowSwallow = propBool("swallow", true);
         mForeground = propNumber("foreground", 0, FG_SEASONS);
     }
 
@@ -453,6 +455,10 @@ class JapaneseInkHeartrateScene {
         var day = Time.Gregorian.info(Time.now(), Time.FORMAT_SHORT).day;
         mDayOfMonth = (day instanceof Lang.Number) ? (day as Lang.Number) : 1;
         mWeather = readWeather();
+        readSunTimes();
+        mWorkout = workoutInWindow();
+        var notes = System.getDeviceSettings().notificationCount;
+        mNotified = (notes != null && notes > 0);
         mRestingHr = 0;
         if (Toybox has :UserProfile) {
             var profile = UserProfile.getProfile();
@@ -473,6 +479,7 @@ class JapaneseInkHeartrateScene {
     // current conditions' painting, else the leaves when the wind is over
     // WIND_LEAVES; none when the observation is stale or missing.
     function readWeather() as Lang.Number {
+        mCloud = -1;
         if (!(Toybox has :Weather)) { return WX_NONE; }
         var cc = Weather.getCurrentConditions();
         if (cc == null) { return WX_NONE; }
@@ -480,7 +487,10 @@ class JapaneseInkHeartrateScene {
         if (obs != null && Time.now().value() - obs.value() > WX_STALE) { return WX_NONE; }
         var veil = WX_NONE;
         var c = cc.condition;
-        if (c != null) { veil = weatherForCondition(c); }
+        if (c != null) {
+            veil = weatherForCondition(c);
+            mCloud = cloudForCondition(c);
+        }
         if (veil == WX_NONE) {
             var wind = cc.windSpeed;
             if (wind != null && wind >= WIND_LEAVES) { veil = WX_WIND; }
@@ -517,6 +527,81 @@ class JapaneseInkHeartrateScene {
             return WX_WIND;
         }
         return WX_NONE;
+    }
+
+    // The clouds in the sky (compose_preview.cloud_for): the cloud bank in
+    // place of the sun or moon for a cloudy sky or a chance of rain or
+    // snow; a wisp across it for a few clouds, mist, haze or smoke; -1.
+    function cloudForCondition(c as Lang.Number) as Lang.Number {
+        if (c == Weather.CONDITION_MOSTLY_CLOUDY || c == Weather.CONDITION_CLOUDY
+            || c == Weather.CONDITION_CHANCE_OF_SHOWERS || c == Weather.CONDITION_CHANCE_OF_THUNDERSTORMS
+            || c == Weather.CONDITION_CHANCE_OF_SNOW || c == Weather.CONDITION_CHANCE_OF_RAIN_SNOW
+            || c == Weather.CONDITION_CLOUDY_CHANCE_OF_RAIN || c == Weather.CONDITION_CLOUDY_CHANCE_OF_SNOW
+            || c == Weather.CONDITION_CLOUDY_CHANCE_OF_RAIN_SNOW) {
+            return PROP_CLOUDS;
+        }
+        if (c == Weather.CONDITION_PARTLY_CLOUDY || c == Weather.CONDITION_PARTLY_CLEAR
+            || c == Weather.CONDITION_THIN_CLOUDS || c == Weather.CONDITION_FOG
+            || c == Weather.CONDITION_HAZY || c == Weather.CONDITION_MIST
+            || c == Weather.CONDITION_HAZE || c == Weather.CONDITION_SMOKE
+            || c == Weather.CONDITION_DUST || c == Weather.CONDITION_SAND
+            || c == Weather.CONDITION_SANDSTORM || c == Weather.CONDITION_VOLCANIC_ASH) {
+            return PROP_CLOUD_WISP;
+        }
+        return -1;
+    }
+
+    // Today's sunrise and sunset where the weather was observed, else where
+    // the watch last was (both need the Positioning permission). Kept from
+    // the last good read when neither is known.
+    function readSunTimes() as Void {
+        if (!(Toybox has :Weather) || !(Weather has :getSunrise)) { return; }
+        var loc = null;
+        var cc = Weather.getCurrentConditions();
+        if (cc != null) { loc = cc.observationLocationPosition; }
+        if (loc == null) {
+            var info = Activity.getActivityInfo();
+            if (info != null) { loc = info.currentLocation; }
+        }
+        if (loc == null) { return; }
+        var now = Time.now();
+        var rise = Weather.getSunrise(loc, now);
+        var fall = Weather.getSunset(loc, now);
+        if (rise == null || fall == null) { return; }
+        var r = minuteOf(rise);
+        var f = minuteOf(fall);
+        if (r < f) {
+            mSunrise = r;
+            mSunset = f;
+        }
+    }
+
+    // A moment as minutes after local midnight.
+    function minuteOf(m as Time.Moment) as Lang.Number {
+        var info = Time.Gregorian.info(m, Time.FORMAT_SHORT);
+        return (info.hour as Lang.Number) * 60 + (info.min as Lang.Number);
+    }
+
+    // A recorded activity (a workout saved on the watch) that overlaps the
+    // four hours on the face: the hiker's rule. The heart rate alone said
+    // "workout" on a lazy day (John, 11-06).
+    function workoutInWindow() as Lang.Boolean {
+        if (!(Toybox has :UserProfile) || !(UserProfile has :getUserActivityHistory)) { return false; }
+        var since = Time.now().value() - HISTORY_SECONDS;
+        var it = UserProfile.getUserActivityHistory();
+        if (it == null) { return false; }
+        var a = it.next();
+        while (a != null) {
+            var start = a.startTime;
+            if (start != null) {
+                var end = start.value();
+                var dur = a.duration;
+                if (dur != null) { end += dur.value(); }
+                if (end >= since) { return true; }
+            }
+            a = it.next();
+        }
+        return false;
     }
 
     // The weather painting showing, or WX_NONE (the setting off, or none).
@@ -575,16 +660,35 @@ class JapaneseInkHeartrateScene {
 
     // The sun or moon's x on the arc (drawCelestial), for the geese's side.
     function celestialX(width as Lang.Number) as Lang.Number {
-        var clockTime = System.getClockTime();
-        var minuteOfDay = (clockTime.hour * 60) + clockTime.min;
-        var t;
-        if (minuteOfDay < 360 || minuteOfDay >= 1080) {
-            var nightMin = (minuteOfDay >= 1080) ? minuteOfDay - 1080 : minuteOfDay + 360;
-            t = nightMin.toFloat() / 720.0;
-        } else {
-            t = (minuteOfDay - 360).toFloat() / 720.0;
-        }
+        var t = arcT(minuteNow());
         return (width * 20) / 100 + ((width * 60) / 100 * t).toNumber();
+    }
+
+    // ... and its y.
+    function celestialY(height as Lang.Number) as Lang.Number {
+        var t = arcT(minuteNow());
+        return (height * 14) / 100 - (Math.sin(t * 3.14159) * (height * 6) / 100).toNumber();
+    }
+
+    function minuteNow() as Lang.Number {
+        var clockTime = System.getClockTime();
+        return (clockTime.hour * 60) + clockTime.min;
+    }
+
+    // Night from sunset to sunrise (readSunTimes).
+    function nightAt(minute as Lang.Number) as Lang.Boolean {
+        return minute < mSunrise || minute >= mSunset;
+    }
+
+    // Where the sun or moon is on its arc, 0..1 west to east: the sun from
+    // sunrise to sunset, the moon from sunset to the next sunrise
+    // (compose_preview.arc_t).
+    function arcT(minute as Lang.Number) as Lang.Float {
+        if (!nightAt(minute)) {
+            return (minute - mSunrise).toFloat() / (mSunset - mSunrise).toFloat();
+        }
+        var into = (minute >= mSunset) ? minute - mSunset : minute + 1440 - mSunset;
+        return into.toFloat() / (1440 - (mSunset - mSunrise)).toFloat();
     }
 
     // The village (even days) or hut (odd) in a window with a horizon and
@@ -598,19 +702,19 @@ class JapaneseInkHeartrateScene {
                  (mHorizonY + VILLAGE_DROP * h - mPropH[i]).toNumber());
     }
 
-    // The hiker on the highest summit standing HIKER_ELEV over the floor
-    // whose hiker would be clear of the time column; the geese for the
-    // step goal, on the side away from the sun or moon.
+    // The hiker, while a recorded workout overlaps the window, on the
+    // highest summit whose hiker would be clear of the time column; the
+    // geese for the step goal, on the side away from the sun or moon; the
+    // swallow for unread notifications, at its spot (bake_spots.py).
     function drawAirProps(dc as Graphics.Dc, width as Lang.Number, w as Lang.Float, h as Lang.Float) as Void {
         var masses = mMasses;
-        if (masses != null && mShowHiker) {
+        if (masses != null && mShowHiker && mWorkout) {
             var bw = mPropW[PROP_HIKER];
             var bh = mPropH[PROP_HIKER];
             var best = -1;
             var bestY = 0.0;
             for (var i = 0; i < masses.size(); i++) {
                 var m = masses[i];
-                if (m[M_ELEV] < HIKER_ELEV) { continue; }
                 var x = m[M_CX] - bw / 2.0;
                 var y = m[M_CY] - bh + HIKER_SINK;
                 if (x < INSCRIPTION_BOX_X * w && y < INSCRIPTION_BOX_Y * h) { continue; }
@@ -630,16 +734,18 @@ class JapaneseInkHeartrateScene {
             drawProp(dc, PROP_GEESE, (gx * w - mPropW[PROP_GEESE] / 2.0).toNumber(),
                      (GEESE_Y * h - mPropH[PROP_GEESE] / 2.0).toNumber());
         }
+        if (mNotified && mShowSwallow) {
+            var sx = SPOT_SWALLOW_X * w / SPOT_FACE;
+            var sy = SPOT_SWALLOW_FOOT * h / SPOT_FACE;
+            drawProp(dc, PROP_SWALLOW, (sx - mPropW[PROP_SWALLOW] / 2.0).toNumber(),
+                     (sy - mPropH[PROP_SWALLOW]).toNumber());
+        }
     }
 
-    // Night mode is a clock window from the settings; equal hours = off.
+    // Night mode (black paper, pale ink) from sunset to sunrise; no setting
+    // (John, 11-06).
     function computeNight() as Lang.Boolean {
-        if (mNightStart == mNightEnd) { return false; }
-        var hour = System.getClockTime().hour;
-        if (mNightStart < mNightEnd) {
-            return hour >= mNightStart && hour < mNightEnd;
-        }
-        return hour >= mNightStart || hour < mNightEnd;
+        return nightAt(minuteNow());
     }
 
     function isNight() as Lang.Boolean {
@@ -1632,10 +1738,21 @@ class JapaneseInkHeartrateScene {
         var h = height.toFloat();
 
         drawPaper(dc);
-        // rain, a storm or snow replaces the sun or moon; the wind does not
+        // rain, a storm or snow replaces the sun or moon, and so does a
+        // cloudy sky's cloud bank; the wind and a wisp of cloud do not
         var wx = weatherShown();
+        var cloud = mShowWeather ? mCloud : -1;
         if (wx == WX_NONE || wx == WX_WIND) {
-            drawCelestial(dc, width, height);
+            if (cloud != PROP_CLOUDS) {
+                drawCelestial(dc, width, height);
+            }
+            if (cloud == PROP_CLOUDS) {
+                drawProp(dc, cloud, (CLOUDS_X * w - mPropW[cloud] / 2.0).toNumber(),
+                         (CLOUDS_Y * h - mPropH[cloud] / 2.0).toNumber());
+            } else if (cloud == PROP_CLOUD_WISP) {
+                drawProp(dc, cloud, celestialX(width) - mPropW[cloud] / 2,
+                         (celestialY(height) + WISP_DROP * h - mPropH[cloud] / 2.0).toNumber());
+            }
         }
 
         // 1. the far range as a level line at the window's floor, its crest
@@ -2041,25 +2158,14 @@ class JapaneseInkHeartrateScene {
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    // Sun arcs 06:00-18:00, moon 18:00-06:00, west-to-east sin parabola.
+    // The sun arcs from sunrise to sunset, the moon from sunset to sunrise,
+    // west to east on a sin parabola (arcT).
     function drawCelestial(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number) as Void {
-        var clockTime = System.getClockTime();
-        var minuteOfDay = (clockTime.hour * 60) + clockTime.min;
-        var isNight = minuteOfDay < 360 || minuteOfDay >= 1080;
-
-        var t;
-        if (isNight) {
-            var nightMin = (minuteOfDay >= 1080) ? minuteOfDay - 1080 : minuteOfDay + 360;
-            t = nightMin.toFloat() / 720.0;
-        } else {
-            t = (minuteOfDay - 360).toFloat() / 720.0;
-        }
-
-        var x = (width * 20) / 100 + ((width * 60) / 100 * t).toNumber();
-        var y = (height * 14) / 100 - (Math.sin(t * 3.14159) * (height * 6) / 100).toNumber();
+        var isNight = nightAt(minuteNow());
+        var x = celestialX(width);
+        var y = celestialY(height);
         // The sun, or the moon by its phase (none near new moon): props from
-        // the sheet, centered on the arc; the day cut on day paper (the moon
-        // after 18:00 until the night window), the night cut in night mode.
+        // the sheet, centered on the arc; the night cut in night mode.
         var prop = isNight ? moonProp() : PROP_SUN;
         if (prop >= 0) {
             drawProp(dc, prop, x - mPropW[prop] / 2, y - mPropH[prop] / 2);

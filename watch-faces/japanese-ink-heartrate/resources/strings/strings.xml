@@ -8,7 +8,6 @@
     <string id="SettingHourKanji">Hour in kanji numerals (off: the hour in the same brush digits as the minutes)</string>
     <string id="SettingSealHr">Red seal shows the heart rate (off: the date, month over day)</string>
     <string id="SettingWeather">Paint the weather over the scene (rain, snow, storm, wind)</string>
-    <string id="SettingNightStart">Night mode from (hour, 0-24)</string>
-    <string id="SettingNightEnd">Night mode until (hour, 0-24; same as from = off)</string>
+    <string id="SettingSwallow">Swallow = unread notifications</string>
     <string id="SettingForeground">Foreground: 0 = by season, 1 spring, 2 summer, 3 autumn, 4 winter, 5 mountain pass</string>
 </resources>

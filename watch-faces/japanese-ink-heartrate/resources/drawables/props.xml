@@ -24,4 +24,10 @@
     <bitmap id="PropSealRectNight" filename="prop_seal_rect_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropSealSquare" filename="prop_seal_square.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropSealSquareNight" filename="prop_seal_square_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropSwallow" filename="prop_swallow.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropSwallowNight" filename="prop_swallow_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropClouds" filename="prop_clouds.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudsNight" filename="prop_clouds_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudWisp" filename="prop_cloud_wisp.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudWispNight" filename="prop_cloud_wisp_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

@@ -255,10 +255,10 @@ empty or holds one episode, which is what real days look like.
   height formula) and often moved along the axis. The 2026-10-28 cut was a
   hairline plotted against the top of the host's bitmap rectangle, which put
   it in the sky 100 px above the paint.
-- **Night mode** (settings `nightStart`/`nightEnd`, hours, default 21–6,
-  equal = off): black paper, the `*_night.png` plane set (pale ink, no
+- **Night mode** (sunset to sunrise since 2026-11-06; before that the
+  settings `nightStart`/`nightEnd`, hours, default 21–6): black paper, the `*_night.png` plane set (pale ink, no
   grain), pale inscription ink, dimmed seal. `loadPlanes()` keeps only one
-  set in the graphics pool; the hour boundary is always a 5-minute key, and
+  set in the graphics pool; it turns at the next 5-minute key after sunset or sunrise, and
   a settings change calls `invalidate()` through the App.
 - `JapaneseInkHeartrateView.mc` draws the inscription as a rakkan column at
   x 22%: the hour as one or two kanji numerals in `Rez.Fonts.KanjiHours`

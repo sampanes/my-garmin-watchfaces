@@ -72,6 +72,24 @@
    "cut": "props2-b/13_seal_square",
    "w": 42,
    "h": 42
+  },
+  {
+   "name": "swallow",
+   "cut": "props-b/07_swallow",
+   "w": 24,
+   "h": 22
+  },
+  {
+   "name": "clouds",
+   "cut": "clouds-b/01_clouds_gathering",
+   "w": 150,
+   "h": 69
+  },
+  {
+   "name": "cloud_wisp",
+   "cut": "weather-b/06_overcast",
+   "w": 76,
+   "h": 17
   }
  ]
 }

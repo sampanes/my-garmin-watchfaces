@@ -2,17 +2,22 @@
 """The props (2026-11-05): small pieces from the ChatGPT prop sheets, each
 shown by one rule, so a prop always means something (John, 11-05).
 
-    sun            daytime (06:00-18:00), on the day arc: replaces the disc
+    sun            daytime (sunrise to sunset), on the day arc: replaces the disc
                    the code used to draw
-    moon_*         evening and night, on the night arc, by the real moon
+    moon_*         sunset to sunrise, on the night arc, by the real moon
                    phase: full, a waxing or waning crescent, none at new moon
     geese          today's step goal is met: across the sky, on the side
                    away from the sun or moon
     village / hut  a quiet window (a horizon and no mountain): in the valley
                    under the far range, the village on even days, the hut on
                    odd ones
-    hiker          a workout in the window (the host stands HIKER_ELEV bpm
-                   over the floor): on the host's summit
+    hiker          a recorded workout overlaps the window (11-06; the heart
+                   rate alone said workout on a lazy day): on the highest summit
+    swallow        unread notifications: at its spot (bake_spots.py), 24 px
+    clouds         a cloudy sky (or a chance of rain or snow): the cloud bank
+                   in place of the sun or moon, upper right (11-06)
+    cloud_wisp     a few clouds, mist, haze or smoke: a wisp across the sun
+                   or moon
     lantern        the battery is under 30%: on the foreground's ground
     seal_oval /    the artist's seal under the time, carrying the live HR:
     seal_rect      the oval while the HR is near the resting baseline, the
@@ -77,6 +82,9 @@ PROPS = [
     ("seal_oval", "props2-b/14_seal_oval", ("h", 32), 0.92, 1.0, False, True),
     ("seal_rect", "props2-b/13_seal_square", ("wh", (52, 34)), 0.92, 1.0, False, True),
     ("seal_square", "props2-b/13_seal_square", ("wh", (42, 42)), 0.92, 1.0, False, True),
+    ("swallow", "props-b/07_swallow", ("w", 24), 1.0, 1.0, False, False),
+    ("clouds", "clouds-b/01_clouds_gathering", ("w", 150), 0.70, 0.85, False, False),
+    ("cloud_wisp", "weather-b/06_overcast", ("w", 76), 0.90, 0.90, False, False),
 ]
 # Turned before sizing (degrees counter-clockwise): the sheet's oval stands
 # upright, too narrow for three digits.

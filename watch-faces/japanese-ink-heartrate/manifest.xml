@@ -13,6 +13,7 @@
         <iq:permissions>
             <iq:uses-permission id="SensorHistory"/>
             <iq:uses-permission id="UserProfile"/>
+            <iq:uses-permission id="Positioning"/>
         </iq:permissions>
         <iq:languages>
             <iq:language>eng</iq:language>

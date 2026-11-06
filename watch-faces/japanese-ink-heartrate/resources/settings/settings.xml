@@ -23,11 +23,8 @@
     <setting propertyKey="@Properties.weather" title="@Strings.SettingWeather">
         <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.nightStart" title="@Strings.SettingNightStart">
-        <settingConfig type="numeric" min="0" max="24" />
-    </setting>
-    <setting propertyKey="@Properties.nightEnd" title="@Strings.SettingNightEnd">
-        <settingConfig type="numeric" min="0" max="24" />
+    <setting propertyKey="@Properties.swallow" title="@Strings.SettingSwallow">
+        <settingConfig type="boolean" />
     </setting>
     <setting propertyKey="@Properties.foreground" title="@Strings.SettingForeground">
         <settingConfig type="numeric" min="0" max="5" />

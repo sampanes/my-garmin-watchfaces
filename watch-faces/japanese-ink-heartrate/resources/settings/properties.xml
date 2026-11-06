@@ -15,12 +15,12 @@
     <!-- The red seal under the time carries the live HR; false = the date,
          month over day. -->
     <property id="sealHr" type="boolean">true</property>
-    <!-- Rain, snow, a storm or wind painted over the scene, from the
-         phone's current conditions. -->
+    <!-- Clouds, rain, snow, a storm or wind painted over the scene, from
+         the phone's current conditions. Night mode follows sunset and
+         sunrise (no setting). -->
     <property id="weather" type="boolean">true</property>
-    <!-- Night mode window (hours, 0-24): black paper, pale ink. Equal = off. -->
-    <property id="nightStart" type="number">21</property>
-    <property id="nightEnd" type="number">6</property>
+    <!-- The swallow for unread phone notifications. -->
+    <property id="swallow" type="boolean">true</property>
     <!-- The foreground painting: 0 = by season (the month), 1..5 = spring,
          summer, autumn, winter, mountain pass (scripts/bake_foregrounds.py). -->
     <property id="foreground" type="number">0</property>

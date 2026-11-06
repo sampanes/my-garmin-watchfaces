@@ -7,7 +7,7 @@ using Toybox.WatchUi;
 // rule (the Scene's props; compose_preview.prop_rules). Baked at the size
 // they are drawn on a 416 px face, drawn 1:1.
 
-const PROP_COUNT = 12;
+const PROP_COUNT = 15;
 const PROP_SUN = 0;
 const PROP_MOON_FULL = 1;
 const PROP_MOON_WAXING = 2;
@@ -20,13 +20,16 @@ const PROP_LANTERN = 8;
 const PROP_SEAL_OVAL = 9;
 const PROP_SEAL_RECT = 10;
 const PROP_SEAL_SQUARE = 11;
+const PROP_SWALLOW = 12;
+const PROP_CLOUDS = 13;
+const PROP_CLOUD_WISP = 14;
 
 function propW() as Lang.Array<Lang.Number> {
-    return [34, 34, 29, 29, 78, 96, 84, 21, 45, 46, 52, 42] as Lang.Array<Lang.Number>;
+    return [34, 34, 29, 29, 78, 96, 84, 21, 45, 46, 52, 42, 24, 150, 76] as Lang.Array<Lang.Number>;
 }
 
 function propH() as Lang.Array<Lang.Number> {
-    return [34, 34, 34, 34, 46, 74, 76, 34, 50, 32, 34, 42] as Lang.Array<Lang.Number>;
+    return [34, 34, 34, 34, 46, 74, 76, 34, 50, 32, 34, 42, 22, 69, 17] as Lang.Array<Lang.Number>;
 }
 
 // Prop i, day or night; the caller catches a refusal.
@@ -43,5 +46,8 @@ function loadPropBitmap(i as Lang.Number, night as Lang.Boolean) as Graphics.Bit
     if (i == 9) { return WatchUi.loadResource(night ? Rez.Drawables.PropSealOvalNight : Rez.Drawables.PropSealOval) as Graphics.BitmapType; }
     if (i == 10) { return WatchUi.loadResource(night ? Rez.Drawables.PropSealRectNight : Rez.Drawables.PropSealRect) as Graphics.BitmapType; }
     if (i == 11) { return WatchUi.loadResource(night ? Rez.Drawables.PropSealSquareNight : Rez.Drawables.PropSealSquare) as Graphics.BitmapType; }
+    if (i == 12) { return WatchUi.loadResource(night ? Rez.Drawables.PropSwallowNight : Rez.Drawables.PropSwallow) as Graphics.BitmapType; }
+    if (i == 13) { return WatchUi.loadResource(night ? Rez.Drawables.PropCloudsNight : Rez.Drawables.PropClouds) as Graphics.BitmapType; }
+    if (i == 14) { return WatchUi.loadResource(night ? Rez.Drawables.PropCloudWispNight : Rez.Drawables.PropCloudWisp) as Graphics.BitmapType; }
     return null;
 }

@@ -317,7 +317,8 @@ GEESE_Y = 0.21             # the geese's middle (H), on the side away from the s
 GEESE_X = (0.68, 0.45)     # here (W) when the sun/moon is on the left half, else here
 VILLAGE_X = 0.56           # a quiet window's village or hut, its middle (W) ...
 VILLAGE_DROP = 0.075       # ... its foot this far (H) under the far range's crest
-HIKER_ELEV = 30.0          # bpm a mass stands over the floor for the hiker (a workout)
+CLOUDS_XY = (0.64, 0.13)   # a cloudy sky's cloud bank, its middle (W, H), clear of the time column
+WISP_DROP = 0.035          # a few clouds' wisp: this far (H) under the sun or moon's middle
 INSCRIPTION_BOX = (0.36, 0.60)   # the time column and seal with their halos: x and y
                                  # under these (W, H); no prop lands there
 HIKER_SINK = 12            # px the hiker sinks under the summit: he stands just below it, his ground hidden
@@ -343,6 +344,31 @@ WX_CONDITIONS = {
     "rain_light": (11, 13, 14, 24, 25, 31),           # scattered showers, unknown precip, light rain, light showers, showers, drizzle
     "wind": (5, 36),                                  # windy, squall
 }
+
+
+# the clouds in the sky, by the Scene's cloudForCondition sets: the bank in
+# place of the sun or moon, the wisp across it
+CLOUD_CONDITIONS = {
+    "clouds": (2, 20, 27, 28, 43, 44, 45, 46, 47),   # mostly cloudy, cloudy, chance of / cloudy chance of
+    "cloud_wisp": (1, 22, 52, 8, 9, 29, 39, 33, 30, 35, 37, 38),   # partly cloudy/clear, thin clouds, fog, hazy, mist, haze, smoke, dust, sand, sandstorm, ash
+}
+
+
+def cloud_for(condition):
+    """The cloud prop for a Toybox.Weather condition, or None."""
+    for name in ("clouds", "cloud_wisp"):
+        if condition in CLOUD_CONDITIONS[name]:
+            return name
+    return None
+
+
+def arc_t(minute, sunrise=360, sunset=1080):
+    """(night, t): whether it is night (sunset to sunrise) and where the
+    sun or moon is on its arc, 0..1 west to east (the Scene's arcT)."""
+    if sunrise <= minute < sunset:
+        return False, (minute - sunrise) / float(sunset - sunrise)
+    into = minute - sunset if minute >= sunset else minute + 1440 - sunset
+    return True, into / float(1440 - (sunset - sunrise))
 
 
 def weather_veil(condition, wind_ms=None):
@@ -409,25 +435,34 @@ def spot_table():
     return _SHAPES["spots"]
 
 
-def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=(), fg=0):
+def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=(), fg=0,
+               sunrise=360, sunset=1080, cloud=None, workout=True, notified=False):
     """Which props show, and where: {layer: [(name, x, y)]} with (x, y) the
     bitmap's top-left on the 416 face. Layers: "sky" with the sun or moon,
     "valley" after the far range, "summit" and "air" after the masses (the
     hiker on the highest workout summit clear of INSCRIPTION_BOX),
     "ground" after the foreground. hide: the pieces turned off on the
     watch ("lantern", "geese", "hiker", "village" for the village or the
-    hut). The Scene's placeProps is the same."""
+    hut). sunrise, sunset (minutes) set the arcs; cloud: "clouds" (the bank
+    replaces the sun or moon) or "cloud_wisp" (across it); workout: a
+    recorded workout overlaps the window (the hiker); notified: unread
+    notifications (the swallow). The Scene's placeProps is the same."""
     import math
     out = {"sky": [], "valley": [], "summit": [], "air": [], "ground": []}
     size = {p["name"]: (p["w"], p["h"]) for p in prop_table()["props"]}
-    moon = minute_of_day < 360 or minute_of_day >= 1080
-    t = ((minute_of_day - 1080) % 1440) / 720.0 if moon else (minute_of_day - 360) / 720.0
+    moon, t = arc_t(minute_of_day, sunrise, sunset)
     sx = int(W * 0.20 + W * 0.60 * t)
     sy = int(H * 0.14 - math.sin(t * math.pi) * H * 0.06)
     cel = moon_prop(epoch) if moon else "sun"
-    if cel is not None:
+    if cel is not None and cloud != "clouds":
         w, h = size[cel]
         out["sky"].append((cel, sx - w // 2, sy - h // 2))
+    if cloud == "clouds":
+        w, h = size["clouds"]
+        out["sky"].append(("clouds", int(CLOUDS_XY[0] * W - w / 2.0), int(CLOUDS_XY[1] * H - h / 2.0)))
+    elif cloud == "cloud_wisp":
+        w, h = size["cloud_wisp"]
+        out["sky"].append(("cloud_wisp", sx - w // 2, int(sy + WISP_DROP * H - h / 2.0)))
     if steps_met and "geese" not in hide:
         w, h = size["geese"]
         gx = GEESE_X[0] if sx < W / 2 else GEESE_X[1]
@@ -437,11 +472,14 @@ def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=(), f
         w, h = size[name]
         out["valley"].append((name, int(VILLAGE_X * W - w / 2),
                               int(layout["horizon_y"] + VILLAGE_DROP * H - h)))
-    # the hiker: on the highest workout summit clear of the time column
+    if notified and "swallow" not in hide:
+        w, h = size["swallow"]
+        x, foot = spot_table()["swallow"]
+        out["air"].append(("swallow", int(x - w / 2.0), int(foot - h)))
+    # the hiker: while a recorded workout overlaps the window, on the
+    # highest summit clear of the time column
     w, h = size["hiker"]
-    for m in ([] if "hiker" in hide else sorted(layout["masses"], key=lambda m: m["crest"][1])):
-        if m["elev"] < HIKER_ELEV:
-            continue
+    for m in ([] if "hiker" in hide or not workout else sorted(layout["masses"], key=lambda m: m["crest"][1])):
         cx, cy = m["crest"]
         x, y = int(cx - w / 2), int(cy - h + HIKER_SINK)
         if x < INSCRIPTION_BOX[0] * W and y < INSCRIPTION_BOX[1] * H:
@@ -912,7 +950,8 @@ def mid_plane_layout(history, trace=None):
 def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace=None,
             hour24=False, overlay=True, foreground=None, month=None, day=None, scene=0,
             epoch=None, steps_met=False, battery=100.0, resting=None, seal_hr=True,
-            weather=None, hide=(), kanji=True):
+            weather=None, hide=(), kanji=True, cloud=None, sunrise=360, sunset=1080,
+            workout=True, notified=False):
     """night: the moonlit negative set (pale ink on black paper, no grain).
     trace: [(nx, norm_hr)] raw samples (the relief is fitted to them, as the
     Scene fits its stored trace), or None. overlay: draw the true-HR overlay
@@ -925,7 +964,9 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     lantern (prop_rules), resting (the profile's resting HR; the window's
     floor without it) the seal's shape (seal_shape). hide: the pieces
     turned off (prop_rules); kanji False: the hour in the brush digits
-    ("Hour in kanji" off)."""
+    ("Hour in kanji" off). cloud, sunrise, sunset, workout, notified:
+    prop_rules (night stays the caller's: the watch sets it from sunset to
+    sunrise, arc_t)."""
     import time
     epoch = time.time() if epoch is None else epoch
     day_of_month = datetime.date.today().day if day is None else day
@@ -938,12 +979,12 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     layout = mid_plane_layout(history, trace)
     base = Image.new("RGBA", (W, H), (0, 0, 0, 255) if night else PAPER)
 
-    # the sun (06:00-18:00) or the moon by its phase on the arc, west to
-    # east: props from the sheet (prop_rules). The day cut on day paper
-    # (the moon after 18:00 until the night window), the night cut in night
-    # mode.
+    # the sun (sunrise to sunset) or the moon by its phase on the arc, west
+    # to east, or a cloudy sky's cloud bank in its place: props from the
+    # sheets (prop_rules); the night cut in night mode.
     props = prop_rules(layout, minute_of_day, epoch, day_of_month, steps_met, battery, hide,
-                       foreground_index(month, day, scene))
+                       foreground_index(month, day, scene), sunrise, sunset,
+                       None if weather in WX_PRECIP else cloud, workout, notified)
     if weather in WX_PRECIP:
         props["sky"] = []     # the rain or snow replaces the sun or moon
     base = paint_props(base, props["sky"], night)
