@@ -25,6 +25,13 @@ white on black and cut by brightness. John's picks (11-05):
                 long wind streaks, quieter than Gemini's busier leaves
                 (John: "new wind is def better"); windy, or a wind over
                 WIND_LEAVES (the Scene)
+    wind_winter, wind_spring
+                the same wind for the foreground's season (John's picks,
+                11-06, both ChatGPT): dry winter leaves and pine needles
+                (windwinter-b), cherry petals (windspring-b); the maples
+                blow in summer, autumn and the pass. The Scene's
+                seasonalWeather / compose_preview.wind_painting swap them
+                in for "wind"
 
 Sized to the face, never tiled, never mirrored (John); only the heavy rain
 lays its one painting twice. Nothing
@@ -67,6 +74,8 @@ WEATHER = [
     ("storm", [("storm-b", 0.55, "")], 0.0),
     ("snow", [("snowfall2-a", 1.0, "")], 0.22),
     ("wind", [("wind2-b", 1.0, "")], 0.0),
+    ("wind_winter", [("windwinter-b", 1.0, "")], 0.0),
+    ("wind_spring", [("windspring-b", 1.0, "")], 0.0),
 ]
 NEAR_SCALE = 1.6
 SHIFT = (0.37, 0.21)

@@ -88,7 +88,7 @@ PROPS = [
     ("geese", "props-b/06_geese", ("w", 78), 0.80, 0.85, False, False),
     ("village", "props2-b/08_village", ("w", 96), 0.55, 0.75, False, False),
     ("hut", "props2-b/03_hut", ("w", 84), 0.55, 0.75, False, False),
-    ("hiker", "props-b/15_hiker", ("h", 28), 1.0, 1.0, False, False),   # 34 until 11-06 (John: shrink a bit)
+    ("hiker", "props-b/15_hiker", ("h", 24), 1.0, 1.0, False, False),   # 34, then 28, then 24 (John, 11-06)
     ("lantern", "props2-b/02_lantern", ("h", 50), 1.0, 1.0, False, False),
     ("seal_oval", "props2-b/14_seal_oval", ("h", 32), 0.92, 1.0, False, True),
     ("seal_rect", "props2-b/13_seal_square", ("wh", (52, 34)), 0.92, 1.0, False, True),

@@ -327,7 +327,7 @@ CLOUD_SPILL = 0.40         # a cloud over the sun may fade this share of its wid
 MOON_MIST_DROP = 0.015     # the moon behind cloud: its painting's middle this far (H) under the arc
 INSCRIPTION_BOX = (0.36, 0.60)   # the time column and seal with their halos: x and y
                                  # under these (W, H); no prop lands there
-HIKER_SINK = 10            # px the hiker sinks under the summit: he stands just below it, his ground hidden
+HIKER_SINK = 9             # px the hiker sinks under the summit: he stands just below it, his ground hidden
 # the low-battery lantern stands where John placed it on each foreground
 # (spot_table.json, scripts/bake_spots.py), just behind the foreground
 BATTERY_LOW = 30.0         # percent under which the lantern shows
@@ -735,6 +735,16 @@ def foreground_index(month=None, day=None, scene=0):
     return season * t["painters"] + day % t["painters"]
 
 
+def wind_painting(weather, fg):
+    """The wind's painting for foreground fg's season (John, 11-06): dry
+    leaves in winter, cherry petals in spring, the maples otherwise; any
+    other weather unchanged. The Scene's seasonalWeather."""
+    if weather != "wind":
+        return weather
+    season = fg // foreground_table()["painters"]
+    return {0: "wind_spring", 3: "wind_winter"}.get(season, "wind")
+
+
 def foreground_image(i, night):
     """The baked foreground i (resources/drawables/fg_*.png)."""
     key = ("fg", i, night)
@@ -1040,7 +1050,8 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     base = paint_props(base, props["air"], night)
     # 3d. the weather (weather_veil's pick), behind the grasses
     if weather:
-        base = paste_at(base, load("wx_%s%s.png" % (weather, sfx)), 0, 0)
+        wx = wind_painting(weather, foreground_index(month, day, scene))
+        base = paste_at(base, load("wx_%s%s.png" % (wx, sfx)), 0, 0)
 
     # 4. the near range (round 5): a near hill in each third of the screen
     #    the masses leave empty, under the half-way line, to balance the

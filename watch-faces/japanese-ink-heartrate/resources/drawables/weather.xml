@@ -11,4 +11,8 @@
     <bitmap id="WxSnowNight" filename="wx_snow_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="WxWind" filename="wx_wind.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="WxWindNight" filename="wx_wind_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WxWindWinter" filename="wx_wind_winter.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WxWindWinterNight" filename="wx_wind_winter_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WxWindSpring" filename="wx_wind_spring.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="WxWindSpringNight" filename="wx_wind_spring_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>
