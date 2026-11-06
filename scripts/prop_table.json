@@ -81,9 +81,9 @@
   },
   {
    "name": "clouds",
-   "cut": "clouds-b/01_clouds_gathering",
-   "w": 150,
-   "h": 69
+   "cut": "weather-b/06_overcast",
+   "w": 200,
+   "h": 46
   },
   {
    "name": "cloud_wisp",

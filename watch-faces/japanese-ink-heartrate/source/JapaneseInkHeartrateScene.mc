@@ -1739,7 +1739,8 @@ class JapaneseInkHeartrateScene {
 
         drawPaper(dc);
         // rain, a storm or snow replaces the sun or moon, and so does a
-        // cloudy sky's cloud bank; the wind and a wisp of cloud do not
+        // cloudy sky's cloud band; the wind and a wisp of cloud do not (the
+        // wisp is by day only: a bright moon behind it looked wrong, 11-06)
         var wx = weatherShown();
         var cloud = mShowWeather ? mCloud : -1;
         if (wx == WX_NONE || wx == WX_WIND) {
@@ -1749,7 +1750,7 @@ class JapaneseInkHeartrateScene {
             if (cloud == PROP_CLOUDS) {
                 drawProp(dc, cloud, (CLOUDS_X * w - mPropW[cloud] / 2.0).toNumber(),
                          (CLOUDS_Y * h - mPropH[cloud] / 2.0).toNumber());
-            } else if (cloud == PROP_CLOUD_WISP) {
+            } else if (cloud == PROP_CLOUD_WISP && !mNight) {
                 drawProp(dc, cloud, celestialX(width) - mPropW[cloud] / 2,
                          (celestialY(height) + WISP_DROP * h - mPropH[cloud] / 2.0).toNumber());
             }

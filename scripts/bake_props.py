@@ -14,10 +14,14 @@ shown by one rule, so a prop always means something (John, 11-05).
     hiker          a recorded workout overlaps the window (11-06; the heart
                    rate alone said workout on a lazy day): on the highest summit
     swallow        unread notifications: at its spot (bake_spots.py), 24 px
-    clouds         a cloudy sky (or a chance of rain or snow): the cloud bank
-                   in place of the sun or moon, upper right (11-06)
-    cloud_wisp     a few clouds, mist, haze or smoke: a wisp across the sun
-                   or moon
+    clouds         a cloudy sky (or a chance of rain or snow): ChatGPT's soft
+                   band in place of the sun or moon, upper right, its ink
+                   1.5x (tone over 1 darkens; John 11-06: the band was best,
+                   a bit subtle; the gathering bank, cut flat on one side,
+                   looked stupid)
+    cloud_wisp     a few clouds, mist, haze or smoke: a wisp across the sun,
+                   by day only (a bright moon behind a wisp is wrong: the
+                   moon behind cloud waits for round 11's art)
     lantern        the battery is under 30%: on the foreground's ground
     seal_oval /    the artist's seal under the time, carrying the live HR:
     seal_rect      the oval while the HR is near the resting baseline, the
@@ -83,8 +87,8 @@ PROPS = [
     ("seal_rect", "props2-b/13_seal_square", ("wh", (52, 34)), 0.92, 1.0, False, True),
     ("seal_square", "props2-b/13_seal_square", ("wh", (42, 42)), 0.92, 1.0, False, True),
     ("swallow", "props-b/07_swallow", ("w", 24), 1.0, 1.0, False, False),
-    ("clouds", "clouds-b/01_clouds_gathering", ("w", 150), 0.70, 0.85, False, False),
-    ("cloud_wisp", "weather-b/06_overcast", ("w", 76), 0.90, 0.90, False, False),
+    ("clouds", "weather-b/06_overcast", ("w", 200), 1.5, 0.9, False, False),
+    ("cloud_wisp", "weather-b/06_overcast", ("w", 76), 1.5, 0.9, False, False),
 ]
 # Turned before sizing (degrees counter-clockwise): the sheet's oval stands
 # upright, too narrow for three digits.

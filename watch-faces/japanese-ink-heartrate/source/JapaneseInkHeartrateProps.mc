@@ -25,11 +25,11 @@ const PROP_CLOUDS = 13;
 const PROP_CLOUD_WISP = 14;
 
 function propW() as Lang.Array<Lang.Number> {
-    return [34, 34, 29, 29, 78, 96, 84, 21, 45, 46, 52, 42, 24, 150, 76] as Lang.Array<Lang.Number>;
+    return [34, 34, 29, 29, 78, 96, 84, 21, 45, 46, 52, 42, 24, 200, 76] as Lang.Array<Lang.Number>;
 }
 
 function propH() as Lang.Array<Lang.Number> {
-    return [34, 34, 34, 34, 46, 74, 76, 34, 50, 32, 34, 42, 22, 69, 17] as Lang.Array<Lang.Number>;
+    return [34, 34, 34, 34, 46, 74, 76, 34, 50, 32, 34, 42, 22, 46, 17] as Lang.Array<Lang.Number>;
 }
 
 // Prop i, day or night; the caller catches a refusal.

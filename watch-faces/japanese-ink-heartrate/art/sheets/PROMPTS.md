@@ -711,3 +711,90 @@ depths and at night (`~/Downloads/ink-face-weather-<kind>.png`):
 - **Wind:** both work; the leaves are small now. On the autumn foreground
   the red leaves blend with the maples.
 
+
+## Round 11 (2026-11-06, to send): the moon behind cloud, cloud bands, wind leaves for winter and spring
+
+John wore the build (11-06): no cloud ever showed; then, mocked, the
+gathering-cloud bank looked stupid cut off flat on one side, and the moon
+with a wisp in front was wrong ("the moon should be less bright behind a
+cloud"). Round 9's moon in mist, cut either way, reads as a sticker cut out
+with scissors: its mist is a hard-edged shape, with no fade. ChatGPT's soft
+overcast band (weather-b 06) was the best cloud, a bit subtle. Garmin names
+the cloud levels (partly clear, thin clouds, partly cloudy, mostly cloudy,
+cloudy), so the cloud sheet asks for bands to build those levels from. The
+moon sheet is on black, cut by brightness like the snow, so the cloud can
+fade into the night instead of ending at an edge. The two wind prompts are
+the ones pinned on 11-05 (the maple blows all year until then). Send each
+to both painters, a new chat each.
+
+### 11.1 The moon behind cloud (2x2, on black)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape at night: pale grey ink mountains on black, a small moon in the sky. The look is restrained, quiet and traditional. Not anime, not cartoon, not colorful.
+
+I need a sprite sheet that I will cut apart by machine and layer onto that night sky. The rules matter more than the art:
+- One square PNG, 2048x2048, laid out as a 2x2 grid of 4 subjects. Background pure flat BLACK (#000000) everywhere, on purpose: the moon and the cloud are the only light things, so I can lift them off the black by brightness.
+- One subject per cell, centered, with wide empty black space around it. Nothing may touch or cross into another cell or the image edge.
+- No grid lines, borders, frames, text, labels, seals or watermarks.
+- Ink only: white, light greys and greys. No color.
+- The cloud is the point of this sheet. It must be a soft, thin, translucent wash of grey mist that fades gradually to pure black at every edge, like breath on glass: no outline, no hard edge, no cut-out shape anywhere. Where the cloud crosses the moon, the moon shows through it dimmer and blurred; the moon is never pasted on top of the cloud.
+- Every subject must read at thumbnail size (the moon will be about 40 pixels across on the watch).
+
+Left to right, top to bottom:
+(1) a full moon, a pale textured disc, with a thin veil of mist drifting across its lower third; most of the moon still bright.
+(2) the same full moon mostly hidden behind a thicker drift of cloud: only a dim glow and part of its rim show through; the whole subject much darker than (1).
+(3) a waxing crescent moon, lit on the right, with a thin veil of mist across its lower half.
+(4) the same crescent mostly hidden behind a thicker drift of cloud, only a faint glow of it showing.
+```
+
+### 11.2 Cloud bands (2x2, on white)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, small dry-brush grasses in the foreground, and a single red sun disc. The look is restrained, quiet and traditional, with lots of empty space. Not anime, not cartoon, not colorful watercolor.
+
+I need a sprite sheet that I will cut apart by machine and layer into that sky. The rules matter more than the art:
+- One square PNG, 2048x2048, laid out as a 2x2 grid of 4 subjects. Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no grid lines, no borders, no frames, no shadows.
+- One subject per cell, centered, with wide empty white space around it. Nothing may touch or cross into another cell or the image edge.
+- No text, labels, signatures, seals or watermarks anywhere.
+- Ink only: black and greys, soft wet wash. No color.
+- Every cloud is a horizontal band, much wider than tall, and it fades out softly and completely at BOTH ends and along its top and bottom: no flat or cut-off side, no hard outline, nothing that looks like it continues past the cell. Think of the long soft mist bands in a classical ink landscape.
+- Mid grey, not pale: each band must still read clearly when the whole sheet is shrunk to 416 pixels.
+
+Left to right, top to bottom:
+(1) one thin wisp of cloud, a single soft stroke of grey wash.
+(2) one soft cloud band, a little fuller, darker in its middle.
+(3) two soft bands, one above and slightly behind the other, overlapping.
+(4) a broad overcast bank of three or four soft layered bands, the fullest and darkest of the four, still fading out at both ends.
+```
+
+### 11.3 Wind, winter (whole face)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, dry-brush grasses in the foreground, a red artist's seal. The look is restrained, quiet and traditional. Not anime, not cartoon, not colorful watercolor.
+
+I need ONE image that I will lay over that whole landscape as weather. Rules:
+- One square PNG, 2048x2048. Not a grid, not a sprite sheet: a single image whose subject is spread evenly over the entire square, right up to every edge, as if it continues past them.
+- Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no shading.
+- No landscape, ground, horizon, mountains, clouds, sky color, frame, border, text, seal or watermark: only the weather itself.
+- Keep the upper-left area (the left third, top half) noticeably sparser than the rest: the clock sits there.
+- Ink only: black and greys with real brush character. No color.
+- It must read at thumbnail size without becoming busy: favor fewer, bolder marks over many fine ones.
+
+The weather: a cold winter wind. About 12 small dry, curled winter leaves and a few short pine needles blown along one gusting path from the top right to the bottom left of the image, tumbling at different angles, all in grey ink. Each leaf SMALL: no wider than one twentieth of the image width. A few faint dry-brush wind streaks along the same path are welcome. No branches, no tree, no snow.
+```
+
+### 11.4 Wind, spring (whole face)
+
+```
+I'm building a watch face for a Garmin Forerunner 265, a round 416x416 pixel color screen. The face is a Japanese sumi-e ink landscape: soft grey-black brush mountains fading into mist on warm off-white rice paper, dry-brush grasses in the foreground, a red artist's seal. The look is restrained, quiet and traditional. Not anime, not cartoon, not colorful watercolor.
+
+I need ONE image that I will lay over that whole landscape as weather. Rules:
+- One square PNG, 2048x2048. Not a grid, not a sprite sheet: a single image whose subject is spread evenly over the entire square, right up to every edge, as if it continues past them.
+- Background pure flat white (#FFFFFF) everywhere: no paper texture, no vignette, no shading.
+- No landscape, ground, horizon, mountains, clouds, sky color, frame, border, text, seal or watermark: only the weather itself.
+- Keep the upper-left area (the left third, top half) noticeably sparser than the rest: the clock sits there.
+- Ink only: black and greys with real brush character. The ONLY color allowed is a soft blossom pink (#E3A9A8) on some petals.
+- It must read at thumbnail size without becoming busy: favor fewer, bolder marks over many fine ones.
+
+The weather: a spring wind. About 16 small cherry blossom petals and two or three small whole blossoms blown along one gusting path from the top right to the bottom left of the image, tumbling at different angles, about half of them soft blossom pink (#E3A9A8), the rest pale grey ink with a darker grey edge so they never vanish on white. Each petal SMALL: no wider than one twenty-fifth of the image width. A few faint dry-brush wind streaks along the same path are welcome. No branches, no tree.
+```

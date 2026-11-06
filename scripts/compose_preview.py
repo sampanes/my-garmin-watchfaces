@@ -460,7 +460,7 @@ def prop_rules(layout, minute_of_day, epoch, day, steps_met, battery, hide=(), f
     if cloud == "clouds":
         w, h = size["clouds"]
         out["sky"].append(("clouds", int(CLOUDS_XY[0] * W - w / 2.0), int(CLOUDS_XY[1] * H - h / 2.0)))
-    elif cloud == "cloud_wisp":
+    elif cloud == "cloud_wisp" and not moon:
         w, h = size["cloud_wisp"]
         out["sky"].append(("cloud_wisp", sx - w // 2, int(sy + WISP_DROP * H - h / 2.0)))
     if steps_met and "geese" not in hide:
