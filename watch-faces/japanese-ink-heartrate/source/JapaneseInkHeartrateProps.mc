@@ -7,7 +7,7 @@ using Toybox.WatchUi;
 // rule (the Scene's props; compose_preview.prop_rules). Baked at the size
 // they are drawn on a 416 px face, drawn 1:1.
 
-const PROP_COUNT = 15;
+const PROP_COUNT = 23;
 const PROP_SUN = 0;
 const PROP_MOON_FULL = 1;
 const PROP_MOON_WAXING = 2;
@@ -21,15 +21,23 @@ const PROP_SEAL_OVAL = 9;
 const PROP_SEAL_RECT = 10;
 const PROP_SEAL_SQUARE = 11;
 const PROP_SWALLOW = 12;
-const PROP_CLOUDS = 13;
+const PROP_CLOUD_BANK = 13;
 const PROP_CLOUD_WISP = 14;
+const PROP_CLOUD_BAND = 15;
+const PROP_CLOUD_BANDS2 = 16;
+const PROP_MOON_FULL_VEIL = 17;
+const PROP_MOON_FULL_HIDDEN = 18;
+const PROP_MOON_WAXING_VEIL = 19;
+const PROP_MOON_WAXING_HIDDEN = 20;
+const PROP_MOON_WANING_VEIL = 21;
+const PROP_MOON_WANING_HIDDEN = 22;
 
 function propW() as Lang.Array<Lang.Number> {
-    return [34, 34, 29, 29, 78, 96, 84, 21, 45, 46, 52, 42, 24, 200, 76] as Lang.Array<Lang.Number>;
+    return [34, 34, 29, 29, 78, 96, 84, 21, 45, 46, 52, 42, 24, 200, 130, 160, 170, 73, 68, 56, 65, 56, 65] as Lang.Array<Lang.Number>;
 }
 
 function propH() as Lang.Array<Lang.Number> {
-    return [34, 34, 34, 34, 46, 74, 76, 34, 50, 32, 34, 42, 22, 46, 17] as Lang.Array<Lang.Number>;
+    return [34, 34, 34, 34, 46, 74, 76, 34, 50, 32, 34, 42, 22, 113, 22, 48, 57, 54, 54, 54, 54, 54, 54] as Lang.Array<Lang.Number>;
 }
 
 // Prop i, day or night; the caller catches a refusal.
@@ -47,7 +55,15 @@ function loadPropBitmap(i as Lang.Number, night as Lang.Boolean) as Graphics.Bit
     if (i == 10) { return WatchUi.loadResource(night ? Rez.Drawables.PropSealRectNight : Rez.Drawables.PropSealRect) as Graphics.BitmapType; }
     if (i == 11) { return WatchUi.loadResource(night ? Rez.Drawables.PropSealSquareNight : Rez.Drawables.PropSealSquare) as Graphics.BitmapType; }
     if (i == 12) { return WatchUi.loadResource(night ? Rez.Drawables.PropSwallowNight : Rez.Drawables.PropSwallow) as Graphics.BitmapType; }
-    if (i == 13) { return WatchUi.loadResource(night ? Rez.Drawables.PropCloudsNight : Rez.Drawables.PropClouds) as Graphics.BitmapType; }
+    if (i == 13) { return WatchUi.loadResource(night ? Rez.Drawables.PropCloudBankNight : Rez.Drawables.PropCloudBank) as Graphics.BitmapType; }
     if (i == 14) { return WatchUi.loadResource(night ? Rez.Drawables.PropCloudWispNight : Rez.Drawables.PropCloudWisp) as Graphics.BitmapType; }
+    if (i == 15) { return WatchUi.loadResource(night ? Rez.Drawables.PropCloudBandNight : Rez.Drawables.PropCloudBand) as Graphics.BitmapType; }
+    if (i == 16) { return WatchUi.loadResource(night ? Rez.Drawables.PropCloudBands2Night : Rez.Drawables.PropCloudBands2) as Graphics.BitmapType; }
+    if (i == 17) { return WatchUi.loadResource(night ? Rez.Drawables.PropMoonFullVeilNight : Rez.Drawables.PropMoonFullVeil) as Graphics.BitmapType; }
+    if (i == 18) { return WatchUi.loadResource(night ? Rez.Drawables.PropMoonFullHiddenNight : Rez.Drawables.PropMoonFullHidden) as Graphics.BitmapType; }
+    if (i == 19) { return WatchUi.loadResource(night ? Rez.Drawables.PropMoonWaxingVeilNight : Rez.Drawables.PropMoonWaxingVeil) as Graphics.BitmapType; }
+    if (i == 20) { return WatchUi.loadResource(night ? Rez.Drawables.PropMoonWaxingHiddenNight : Rez.Drawables.PropMoonWaxingHidden) as Graphics.BitmapType; }
+    if (i == 21) { return WatchUi.loadResource(night ? Rez.Drawables.PropMoonWaningVeilNight : Rez.Drawables.PropMoonWaningVeil) as Graphics.BitmapType; }
+    if (i == 22) { return WatchUi.loadResource(night ? Rez.Drawables.PropMoonWaningHiddenNight : Rez.Drawables.PropMoonWaningHidden) as Graphics.BitmapType; }
     return null;
 }

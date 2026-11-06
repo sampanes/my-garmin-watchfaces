@@ -205,9 +205,9 @@ class JapaneseInkHeartrateScene {
     // read once per scene job; the "Weather" setting.
     var mWeather as Lang.Number = -1;
     var mShowWeather as Lang.Boolean = true;
-    // The clouds in the sky (PROP_CLOUDS, PROP_CLOUD_WISP, -1 for none),
-    // from the same conditions (cloudForCondition).
-    var mCloud as Lang.Number = -1;
+    // The sky's cloud level, 0 (none) to 4 (cloudy), from the same
+    // conditions (cloudLevel).
+    var mCloudLevel as Lang.Number = 0;
     var mForeground as Lang.Number = 0;   // the "foreground" setting: 0 by season, 1..FG_SEASONS a scene
     // The props' inputs, read once per scene job (readPropInputs).
     var mStepsMet as Lang.Boolean = false;
@@ -317,8 +317,17 @@ class JapaneseInkHeartrateScene {
     const WIND_LEAVES = 8.0;          // m/s over which the leaves blow without a "windy" forecast
     const WX_STALE = 10800;           // s: an observation older than this shows no weather
     const CLOUDS_X = 0.64;            // a cloudy sky's cloud bank, its middle (W) ...
-    const CLOUDS_Y = 0.13;            // ... and (H), clear of the time column
-    const WISP_DROP = 0.035;          // a few clouds' wisp: this far (H) under the sun or moon's middle
+    const CLOUDS_Y = 0.145;           // ... and (H), clear of the time column
+    // the cloud over the sun by level 1-3, its middle's offset (W, H) from
+    // the sun's middle (compose_preview.CLOUD_OVER)
+    const WISP_DX = 0.024;
+    const WISP_DY = 0.043;
+    const BAND_DX = 0.014;
+    const BAND_DY = 0.029;
+    const BANDS2_DX = 0.010;
+    const BANDS2_DY = 0.010;
+    const CLOUD_SPILL = 0.40;         // a cloud over the sun may fade this share of its width past the rim
+    const MOON_MIST_DROP = 0.015;     // the moon behind cloud: its painting's middle this far (H) under the arc
 
     // ------------------------------------------------------- the §13 probe
     // RENDERER_PLAN §13: what can the FR265 blend? Set PROBE to true, build,
@@ -479,7 +488,7 @@ class JapaneseInkHeartrateScene {
     // current conditions' painting, else the leaves when the wind is over
     // WIND_LEAVES; none when the observation is stale or missing.
     function readWeather() as Lang.Number {
-        mCloud = -1;
+        mCloudLevel = 0;
         if (!(Toybox has :Weather)) { return WX_NONE; }
         var cc = Weather.getCurrentConditions();
         if (cc == null) { return WX_NONE; }
@@ -489,7 +498,7 @@ class JapaneseInkHeartrateScene {
         var c = cc.condition;
         if (c != null) {
             veil = weatherForCondition(c);
-            mCloud = cloudForCondition(c);
+            mCloudLevel = cloudLevel(c);
         }
         if (veil == WX_NONE) {
             var wind = cc.windSpeed;
@@ -529,26 +538,28 @@ class JapaneseInkHeartrateScene {
         return WX_NONE;
     }
 
-    // The clouds in the sky (compose_preview.cloud_for): the cloud bank in
-    // place of the sun or moon for a cloudy sky or a chance of rain or
-    // snow; a wisp across it for a few clouds, mist, haze or smoke; -1.
-    function cloudForCondition(c as Lang.Number) as Lang.Number {
-        if (c == Weather.CONDITION_MOSTLY_CLOUDY || c == Weather.CONDITION_CLOUDY
+    // The sky's cloud level (compose_preview.cloud_level), by Garmin's own
+    // names: 4 cloudy or a chance of rain or snow, 3 mostly cloudy, 2
+    // partly cloudy, 1 thin clouds, partly clear, mist, haze or smoke; 0.
+    function cloudLevel(c as Lang.Number) as Lang.Number {
+        if (c == Weather.CONDITION_CLOUDY
             || c == Weather.CONDITION_CHANCE_OF_SHOWERS || c == Weather.CONDITION_CHANCE_OF_THUNDERSTORMS
             || c == Weather.CONDITION_CHANCE_OF_SNOW || c == Weather.CONDITION_CHANCE_OF_RAIN_SNOW
             || c == Weather.CONDITION_CLOUDY_CHANCE_OF_RAIN || c == Weather.CONDITION_CLOUDY_CHANCE_OF_SNOW
             || c == Weather.CONDITION_CLOUDY_CHANCE_OF_RAIN_SNOW) {
-            return PROP_CLOUDS;
+            return 4;
         }
-        if (c == Weather.CONDITION_PARTLY_CLOUDY || c == Weather.CONDITION_PARTLY_CLEAR
+        if (c == Weather.CONDITION_MOSTLY_CLOUDY) { return 3; }
+        if (c == Weather.CONDITION_PARTLY_CLOUDY) { return 2; }
+        if (c == Weather.CONDITION_PARTLY_CLEAR
             || c == Weather.CONDITION_THIN_CLOUDS || c == Weather.CONDITION_FOG
             || c == Weather.CONDITION_HAZY || c == Weather.CONDITION_MIST
             || c == Weather.CONDITION_HAZE || c == Weather.CONDITION_SMOKE
             || c == Weather.CONDITION_DUST || c == Weather.CONDITION_SAND
             || c == Weather.CONDITION_SANDSTORM || c == Weather.CONDITION_VOLCANIC_ASH) {
-            return PROP_CLOUD_WISP;
+            return 1;
         }
-        return -1;
+        return 0;
     }
 
     // Today's sunrise and sunset where the weather was observed, else where
@@ -1738,22 +1749,10 @@ class JapaneseInkHeartrateScene {
         var h = height.toFloat();
 
         drawPaper(dc);
-        // rain, a storm or snow replaces the sun or moon, and so does a
-        // cloudy sky's cloud band; the wind and a wisp of cloud do not (the
-        // wisp is by day only: a bright moon behind it looked wrong, 11-06)
+        // rain, a storm or snow replaces the sun or moon; the wind does not
         var wx = weatherShown();
-        var cloud = mShowWeather ? mCloud : -1;
         if (wx == WX_NONE || wx == WX_WIND) {
-            if (cloud != PROP_CLOUDS) {
-                drawCelestial(dc, width, height);
-            }
-            if (cloud == PROP_CLOUDS) {
-                drawProp(dc, cloud, (CLOUDS_X * w - mPropW[cloud] / 2.0).toNumber(),
-                         (CLOUDS_Y * h - mPropH[cloud] / 2.0).toNumber());
-            } else if (cloud == PROP_CLOUD_WISP && !mNight) {
-                drawProp(dc, cloud, celestialX(width) - mPropW[cloud] / 2,
-                         (celestialY(height) + WISP_DROP * h - mPropH[cloud] / 2.0).toNumber());
-            }
+            drawSky(dc, width, height, mShowWeather ? mCloudLevel : 0);
         }
 
         // 1. the far range as a level line at the window's floor, its crest
@@ -2157,6 +2156,76 @@ class JapaneseInkHeartrateScene {
         dc.setColor(PROBE_INK, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx.toNumber(), cy.toNumber(), Graphics.FONT_XTINY, text,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    // The sun or moon and its cloud, one painting per cloud level, never a
+    // cloud copied or moved (compose_preview.prop_rules; John, 11-06): by
+    // day the sun under the wisp, the band or the two bands; by night the
+    // moon veiled (levels 1-2) or hidden (3) in its own painting, nothing
+    // at new moon; the bank alone, upper right, at 4.
+    function drawSky(dc as Graphics.Dc, width as Lang.Number, height as Lang.Number,
+                     level as Lang.Number) as Void {
+        var w = width.toFloat();
+        var h = height.toFloat();
+        if (level >= 4) {
+            drawProp(dc, PROP_CLOUD_BANK, (CLOUDS_X * w - mPropW[PROP_CLOUD_BANK] / 2.0).toNumber(),
+                     (CLOUDS_Y * h - mPropH[PROP_CLOUD_BANK] / 2.0).toNumber());
+            return;
+        }
+        if (level <= 0) {
+            drawCelestial(dc, width, height);
+            return;
+        }
+        var x = celestialX(width);
+        var y = celestialY(height);
+        if (nightAt(minuteNow())) {
+            var moon = mistyMoon(moonProp(), level >= 3);
+            if (moon >= 0) {
+                drawProp(dc, moon, x - mPropW[moon] / 2,
+                         (y + MOON_MIST_DROP * h - mPropH[moon] / 2.0).toNumber());
+            }
+            return;
+        }
+        drawProp(dc, PROP_SUN, x - mPropW[PROP_SUN] / 2, y - mPropH[PROP_SUN] / 2);
+        var cloud = PROP_CLOUD_WISP;
+        var dx = WISP_DX;
+        var dy = WISP_DY;
+        if (level == 2) {
+            cloud = PROP_CLOUD_BAND;
+            dx = BAND_DX;
+            dy = BAND_DY;
+        } else if (level == 3) {
+            cloud = PROP_CLOUD_BANDS2;
+            dx = BANDS2_DX;
+            dy = BANDS2_DY;
+        }
+        var cw = mPropW[cloud].toFloat();
+        var cy = y + dy * h;
+        var cx = cloudX(x + dx * w, cy, cw, w);
+        drawProp(dc, cloud, (cx - cw / 2.0).toNumber(), (cy - mPropH[cloud] / 2.0).toNumber());
+    }
+
+    // The moon behind cloud for a moon prop (moonProp): veiled, or hidden
+    // when thick; -1 stays -1 (new moon).
+    function mistyMoon(moon as Lang.Number, thick as Lang.Boolean) as Lang.Number {
+        if (moon == PROP_MOON_FULL) { return thick ? PROP_MOON_FULL_HIDDEN : PROP_MOON_FULL_VEIL; }
+        if (moon == PROP_MOON_WAXING) { return thick ? PROP_MOON_WAXING_HIDDEN : PROP_MOON_WAXING_VEIL; }
+        if (moon == PROP_MOON_WANING) { return thick ? PROP_MOON_WANING_HIDDEN : PROP_MOON_WANING_VEIL; }
+        return -1;
+    }
+
+    // A cloud's middle x, moved off the time column and in from the rim
+    // (compose_preview.cloud_x): cw its width, w the face's.
+    function cloudX(cx as Lang.Float, cy as Lang.Float, cw as Lang.Float, w as Lang.Float) as Lang.Float {
+        var r = w / 2.0;
+        var lo = INSCRIPTION_BOX_X * w + cw / 2.0;
+        var d = r * r - (cy - r) * (cy - r);
+        if (d < 0.0) { d = 0.0; }
+        var hi = r + Math.sqrt(d) - CLOUD_SPILL * cw;
+        if (lo > hi) { return (lo + hi) / 2.0; }
+        if (cx < lo) { return lo; }
+        if (cx > hi) { return hi; }
+        return cx;
     }
 
     // The sun arcs from sunrise to sunset, the moon from sunset to sunrise,

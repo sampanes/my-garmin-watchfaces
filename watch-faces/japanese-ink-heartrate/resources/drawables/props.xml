@@ -26,8 +26,24 @@
     <bitmap id="PropSealSquareNight" filename="prop_seal_square_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropSwallow" filename="prop_swallow.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropSwallowNight" filename="prop_swallow_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="PropClouds" filename="prop_clouds.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
-    <bitmap id="PropCloudsNight" filename="prop_clouds_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudBank" filename="prop_cloud_bank.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudBankNight" filename="prop_cloud_bank_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropCloudWisp" filename="prop_cloud_wisp.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PropCloudWispNight" filename="prop_cloud_wisp_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudBand" filename="prop_cloud_band.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudBandNight" filename="prop_cloud_band_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudBands2" filename="prop_cloud_bands2.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropCloudBands2Night" filename="prop_cloud_bands2_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonFullVeil" filename="prop_moon_full_veil.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonFullVeilNight" filename="prop_moon_full_veil_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonFullHidden" filename="prop_moon_full_hidden.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonFullHiddenNight" filename="prop_moon_full_hidden_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonWaxingVeil" filename="prop_moon_waxing_veil.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonWaxingVeilNight" filename="prop_moon_waxing_veil_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonWaxingHidden" filename="prop_moon_waxing_hidden.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonWaxingHiddenNight" filename="prop_moon_waxing_hidden_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonWaningVeil" filename="prop_moon_waning_veil.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonWaningVeilNight" filename="prop_moon_waning_veil_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonWaningHidden" filename="prop_moon_waning_hidden.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="PropMoonWaningHiddenNight" filename="prop_moon_waning_hidden_night.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
 </drawables>

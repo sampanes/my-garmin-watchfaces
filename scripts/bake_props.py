@@ -14,14 +14,18 @@ shown by one rule, so a prop always means something (John, 11-05).
     hiker          a recorded workout overlaps the window (11-06; the heart
                    rate alone said workout on a lazy day): on the highest summit
     swallow        unread notifications: at its spot (bake_spots.py), 24 px
-    clouds         a cloudy sky (or a chance of rain or snow): ChatGPT's soft
-                   band in place of the sun or moon, upper right, its ink
-                   1.5x (tone over 1 darkens; John 11-06: the band was best,
-                   a bit subtle; the gathering bank, cut flat on one side,
-                   looked stupid)
-    cloud_wisp     a few clouds, mist, haze or smoke: a wisp across the sun,
-                   by day only (a bright moon behind a wisp is wrong: the
-                   moon behind cloud waits for round 11's art)
+    cloud_*        the sky's cloud level (Toybox.Weather's names; John 11-06:
+                   one ChatGPT painting per level, never a cloud copied or
+                   moved): by day the sun under the wisp (thin clouds,
+                   partly clear, haze), the band (partly cloudy) or the two
+                   bands (mostly cloudy); the bank alone, upper right, for a
+                   cloudy sky or a chance of rain or snow, day and night.
+                   Ink 1.3x (tone over 1 darkens; the band was a bit subtle)
+    moon_*_veil /  the moon behind cloud at night (round 11, painted on black
+    moon_*_hidden  and lifted off it, so the cloud fades instead of ending at
+                   an edge): veiled for levels 1-2, hidden for mostly
+                   cloudy; full or crescent by phase, the waning twins
+                   mirrored, none at new moon
     lantern        the battery is under 30%: on the foreground's ground
     seal_oval /    the artist's seal under the time, carrying the live HR:
     seal_rect      the oval while the HR is near the resting baseline, the
@@ -87,8 +91,17 @@ PROPS = [
     ("seal_rect", "props2-b/13_seal_square", ("wh", (52, 34)), 0.92, 1.0, False, True),
     ("seal_square", "props2-b/13_seal_square", ("wh", (42, 42)), 0.92, 1.0, False, True),
     ("swallow", "props-b/07_swallow", ("w", 24), 1.0, 1.0, False, False),
-    ("clouds", "weather-b/06_overcast", ("w", 200), 1.5, 0.9, False, False),
-    ("cloud_wisp", "weather-b/06_overcast", ("w", 76), 1.5, 0.9, False, False),
+    # round 11 (11-06): one ChatGPT painting per cloud level, never copied
+    ("cloud_bank", "cloudbands-b/04_cloud_bank", ("w", 200), 1.3, 1.0, False, False),
+    ("cloud_wisp", "cloudbands-b/01_cloud_wisp", ("w", 130), 1.3, 1.0, False, False),
+    ("cloud_band", "cloudbands-b/02_cloud_band", ("w", 160), 1.3, 1.0, False, False),
+    ("cloud_bands2", "cloudbands-b/03_cloud_bands2", ("w", 170), 1.3, 1.0, False, False),
+    ("moon_full_veil", "moonmist-b/01_moon_full_veil_night", ("h", 54), 1.0, 1.0, False, True),
+    ("moon_full_hidden", "moonmist-b/02_moon_full_hidden_night", ("h", 54), 1.0, 1.0, False, True),
+    ("moon_waxing_veil", "moonmist-b/03_moon_crescent_veil_night", ("h", 54), 1.0, 1.0, False, True),
+    ("moon_waxing_hidden", "moonmist-b/04_moon_crescent_hidden_night", ("h", 54), 1.0, 1.0, False, True),
+    ("moon_waning_veil", "moonmist-b/03_moon_crescent_veil_night", ("h", 54), 1.0, 1.0, True, True),
+    ("moon_waning_hidden", "moonmist-b/04_moon_crescent_hidden_night", ("h", 54), 1.0, 1.0, True, True),
 ]
 # Turned before sizing (degrees counter-clockwise): the sheet's oval stands
 # upright, too narrow for three digits.
