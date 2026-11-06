@@ -40,15 +40,15 @@ FACE_PX = 416
 PIECES = ("lantern", "heron", "deer", "torii", "bridge")
 # foreground: {piece: (center x, foot y)} px on the 416 face (John, 11-05)
 SPOTS = [
-    ("fg_spring_b", {"lantern": (328, 347), "heron": (210, 389), "deer": (210, 389), "torii": (210, 389), "bridge": (210, 389)}),
+    ("fg_spring_b", {"lantern": (280, 387), "heron": (210, 389), "deer": (210, 389), "torii": (210, 389), "bridge": (210, 389)}),
     ("fg_spring_a", {"lantern": (260, 347), "heron": (199, 357), "deer": (199, 357), "torii": (199, 357), "bridge": (199, 357)}),
     ("fg_summer_b", {"lantern": (284, 364), "heron": (193, 373), "deer": (193, 373), "torii": (193, 373), "bridge": (193, 373)}),
-    ("fg_summer_a", {"lantern": (304, 328), "heron": (225, 357), "deer": (225, 357), "torii": (225, 341), "bridge": (225, 341)}),
+    ("fg_summer_a", {"lantern": (288, 328), "heron": (225, 357), "deer": (225, 357), "torii": (225, 341), "bridge": (225, 341)}),
     ("fg_autumn_b", {"lantern": (320, 354), "heron": (210, 405), "deer": (210, 405), "torii": (210, 405), "bridge": (210, 405)}),
-    ("fg_autumn_c", {"lantern": (368, 315), "heron": (230, 357), "deer": (230, 357), "torii": (230, 357), "bridge": (230, 357)}),
-    ("fg_winter_b", {"lantern": (336, 319), "heron": (209, 389), "deer": (209, 389), "torii": (209, 389), "bridge": (209, 389)}),
+    ("fg_autumn_c", {"lantern": (352, 315), "heron": (230, 357), "deer": (230, 357), "torii": (230, 357), "bridge": (230, 357)}),
+    ("fg_winter_b", {"lantern": (272, 359), "heron": (209, 389), "deer": (209, 389), "torii": (209, 389), "bridge": (209, 389)}),
     ("fg_winter_c", {"lantern": (392, 271), "heron": (220, 357), "deer": (220, 357), "torii": (220, 357), "bridge": (220, 357)}),
-    ("fg_pass_b", {"lantern": (344, 313), "heron": (196, 384), "deer": (208, 384), "torii": (208, 384), "bridge": (208, 384)}),
+    ("fg_pass_b", {"lantern": (328, 313), "heron": (196, 384), "deer": (208, 384), "torii": (208, 384), "bridge": (208, 384)}),
     ("fg_pass_c", {"lantern": (332, 300), "heron": (229, 357), "deer": (229, 357), "torii": (205, 357), "bridge": (205, 357)}),
 ]
 SWALLOW = (324, 125)   # center x, foot y; the same on every painting

@@ -8,8 +8,8 @@
   {
    "name": "fg_spring_b",
    "lantern": [
-    328,
-    347
+    280,
+    387
    ],
    "heron": [
     210,
@@ -77,7 +77,7 @@
   {
    "name": "fg_summer_a",
    "lantern": [
-    304,
+    288,
     328
    ],
    "heron": [
@@ -123,7 +123,7 @@
   {
    "name": "fg_autumn_c",
    "lantern": [
-    368,
+    352,
     315
    ],
    "heron": [
@@ -146,8 +146,8 @@
   {
    "name": "fg_winter_b",
    "lantern": [
-    336,
-    319
+    272,
+    359
    ],
    "heron": [
     209,
@@ -192,7 +192,7 @@
   {
    "name": "fg_pass_b",
    "lantern": [
-    344,
+    328,
     313
    ],
    "heron": [

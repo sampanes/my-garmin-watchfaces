@@ -3,8 +3,8 @@
 // px on the 416 face, the piece's center x and foot y, one entry per
 // foreground in foregroundIndex order.
 
-const SPOT_LANTERN_X = [328, 260, 284, 304, 320, 368, 336, 392, 344, 332];
-const SPOT_LANTERN_FOOT = [347, 347, 364, 328, 354, 315, 319, 271, 313, 300];
+const SPOT_LANTERN_X = [280, 260, 284, 288, 320, 352, 272, 392, 328, 332];
+const SPOT_LANTERN_FOOT = [387, 347, 364, 328, 354, 315, 359, 271, 313, 300];
 const SPOT_HERON_X = [210, 199, 193, 225, 210, 230, 209, 220, 196, 229];
 const SPOT_HERON_FOOT = [389, 357, 373, 357, 405, 357, 389, 357, 384, 357];
 const SPOT_DEER_X = [210, 199, 193, 225, 210, 230, 209, 220, 208, 229];
