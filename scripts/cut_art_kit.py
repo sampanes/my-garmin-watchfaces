@@ -72,9 +72,12 @@ RECIPE = {
     "wind": ("1x1", "wind", "", "", True),
     "wind2": ("1x1", "wind2", "", "", True),
     "snowfall2": ("1x1", "snowfall2", "", "", True),
+    # round 11: cloud levels, one painting each; the moon behind cloud, on black
+    "cloudbands": ("2x2", "cloud_wisp,cloud_band,cloud_bands2,cloud_bank", "", "", False),
+    "moonmist": ("2x2", "moon_full_veil,moon_full_hidden,moon_crescent_veil,moon_crescent_hidden", "", "", False),
 }
 # sheets painted light on black (cut by brightness)
-LIGHT = {"snowfall", "snowfall2"}
+LIGHT = {"snowfall", "snowfall2", "moonmist"}
 for season in ("spring", "summer", "autumn", "winter", "pass"):
     RECIPE["fg-" + season] = ("1x1", "fg", "", "", True)
 
