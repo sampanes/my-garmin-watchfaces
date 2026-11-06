@@ -156,6 +156,7 @@ class JapaneseInkHeartrateScene {
     var mFitBestIndex as Lang.Number = -1;
     var mFitBestLeft as Lang.Float = 0.0;
     var mFitBestStretch as Lang.Float = 1.0;
+    var mFitStretchLo as Lang.Float = 0.67;
 
     // The near hills by index (P_NEAR*): width/height of the PNG and the
     // painted crest inside it (JapaneseInkHeartratePlanes.mc, measured by the
@@ -253,6 +254,8 @@ class JapaneseInkHeartrateScene {
     const FIT_APEX_K = 1.0;       // error per px between a shape's apex and the run's summit
     const FIT_STRETCH_LO = 0.67;  // a shape's width is stretched to its run's width, within ...
     const FIT_STRETCH_HI = 1.5;   // ... this (compose_preview.FIT_STRETCH)
+    const SUB_MAX = 4;            // separate efforts inside one run that each get a mass, at most ...
+    const SUB_STRETCH_LO = 0.30;  // ... each stretched no narrower than this (compose_preview.SUB_STRETCH)
     const FOOT_Y = 0.80;          // a placed shape's bottom edge must reach this far down (H)
     const LIB_W = 416.0;          // the screen width the library was baked for
     const TREE_MAX = 3;           // ridge trees per window, at most ...
@@ -289,6 +292,12 @@ class JapaneseInkHeartrateScene {
     const R_ELEV = 4;
     const R_NX = 5;
     const R_LEAN_END = 6;
+    // a piece (one mass to fit) is a run's fields and then these
+    const P_X0 = 7;               // its span on the face, px ...
+    const P_X1 = 8;
+    const P_SX = 9;               // its summit x, px (-1: find it in the samples)
+    const P_SUB = 10;             // 1: one effort of several in its run (narrower stretch)
+    const P_HOST = 11;            // 1: the host mass (drawn last)
     const M_CX = 4;
     const M_CY = 5;
     const M_PLANE = 6;
@@ -1113,7 +1122,7 @@ class JapaneseInkHeartrateScene {
         }
         if (vis < 1) { vis = 1; }
         var st = (mFitRunX1 - mFitRunX0) * SHAPE_K / (vis * mShapeW[i] * s);
-        if (st < FIT_STRETCH_LO) { st = FIT_STRETCH_LO; }
+        if (st < mFitStretchLo) { st = mFitStretchLo; }
         if (st > FIT_STRETCH_HI) { st = FIT_STRETCH_HI; }
         var sw = mShapeW[i] * s * st;
         var ax = mShapeAx[i] * s * st;
@@ -1151,6 +1160,75 @@ class JapaneseInkHeartrateScene {
                 mFitBestStretch = st;
             }
         }
+    }
+
+    // The first index of the lowest value in arr[a..b].
+    function lowestIn(arr as Lang.Array<Lang.Float>, a as Lang.Number, b as Lang.Number) as Lang.Number {
+        var best = a;
+        for (var k = a + 1; k <= b; k++) {
+            if (arr[k] < arr[best]) { best = k; }
+        }
+        return best;
+    }
+
+    // The separate efforts inside one run, from the stored trace (about four
+    // minutes a sample, where a bucket is fifteen): [[nx, bpm, nx0, nx1]] in
+    // time order, each a local high standing MASS_MIN over the floor and
+    // parted from its neighbor by a dip of VALLEY_MIN under the lower of the
+    // two; nx0..nx1 is its share of the run, cut at the dips. Empty when the
+    // run is one effort (2026-11-06: four 5-minute intervals painted as one
+    // block). compose_preview.trace_peaks, step for step.
+    function traceSubPeaks(floor as Lang.Float, x0 as Lang.Float, x1 as Lang.Float) as Lang.Array<Lang.Array<Lang.Float>> {
+        var none = [] as Lang.Array<Lang.Array<Lang.Float>>;
+        var nxs = mTraceNx;
+        var hrs = mTraceHr;
+        if (nxs == null || hrs == null) { return none; }
+        var px = [] as Lang.Array<Lang.Float>;
+        var ph = [] as Lang.Array<Lang.Float>;
+        for (var i = 0; i < nxs.size() && i < hrs.size(); i++) {
+            if (nxs[i] >= x0 && nxs[i] <= x1) {
+                px.add(nxs[i]);
+                ph.add(HR_MIN + hrs[i] * (HR_MAX - HR_MIN));
+            }
+        }
+        if (px.size() < 3) { return none; }
+        var pk = [] as Lang.Array<Lang.Number>;   // the index of each effort's high
+        for (var i = 0; i < px.size(); i++) {
+            var hr = ph[i];
+            if (pk.size() == 0) {
+                if (hr - floor >= MASS_MIN) { pk.add(i); }
+                continue;
+            }
+            var last = pk[pk.size() - 1];
+            var top = ph[last];
+            var dip = lowestIn(ph, last, i);
+            var lower = (top < hr) ? top : hr;
+            if (hr > top && dip == last) {
+                pk[pk.size() - 1] = i;            // still climbing the same effort
+            } else if (hr - floor >= MASS_MIN && lower - ph[dip] >= VALLEY_MIN) {
+                pk.add(i);                        // a new effort past a real dip
+            } else if (hr > top) {
+                pk[pk.size() - 1] = i;            // a shallow dip: the same effort, higher
+            }
+        }
+        if (pk.size() < 2) { return none; }
+        // keep the SUB_MAX highest (of equals, the earlier), in time order
+        while (pk.size() > SUB_MAX) {
+            var drop = 0;
+            for (var k = 1; k < pk.size(); k++) {
+                if (ph[pk[k]] <= ph[pk[drop]]) { drop = k; }
+            }
+            pk.remove(pk[drop]);
+        }
+        var out = [] as Lang.Array<Lang.Array<Lang.Float>>;
+        for (var k = 0; k < pk.size(); k++) {
+            var a = x0;
+            if (k > 0) { a = px[lowestIn(ph, pk[k - 1], pk[k])]; }
+            var b = x1;
+            if (k < pk.size() - 1) { b = px[lowestIn(ph, pk[k], pk[k + 1])]; }
+            out.add([px[pk[k]], ph[pk[k]], a, b] as Lang.Array<Lang.Float>);
+        }
+        return out;
     }
 
     // Draw order: the other masses first (the taller farther), the host last.
@@ -1195,6 +1273,35 @@ class JapaneseInkHeartrateScene {
             runs.add(r);
         }
 
+        // the pieces to fit: a run's separate efforts (traceSubPeaks), one
+        // each, else the run whole; the host run's highest piece (the
+        // first, on a tie) is the host
+        var pieces = [] as Lang.Array<Lang.Array<Lang.Float>>;
+        for (var i = 0; i < runs.size(); i++) {
+            var r = runs[i];
+            var x0 = (r[R_LO] - 0.5) / denom;
+            var x1 = (r[R_HI] + 0.5) / denom;
+            var subs = traceSubPeaks(floor, x0, x1);
+            var first = pieces.size();
+            if (subs.size() > 0) {
+                for (var k = 0; k < subs.size(); k++) {
+                    var sb = subs[k];
+                    pieces.add([r[R_LO], r[R_HI], r[R_BUCKETS], sb[1], sb[1] - floor, r[R_NX], r[R_LEAN_END],
+                                sb[2] * w, sb[3] * w, sb[0] * w, 1.0, 0.0] as Lang.Array<Lang.Float>);
+                }
+            } else {
+                pieces.add([r[R_LO], r[R_HI], r[R_BUCKETS], r[R_PEAK], r[R_ELEV], r[R_NX], r[R_LEAN_END],
+                            x0 * w, x1 * w, -1.0, 0.0, 0.0] as Lang.Array<Lang.Float>);
+            }
+            if (i == host) {
+                var top = first;
+                for (var k = first + 1; k < pieces.size(); k++) {
+                    if (pieces[k][R_PEAK] > pieces[top][R_PEAK]) { top = k; }
+                }
+                pieces[top][P_HOST] = 1.0;
+            }
+        }
+
         // the samples the fit scores: the stored trace, else the buckets
         var smpX = [] as Lang.Array<Lang.Float>;
         var smpY = [] as Lang.Array<Lang.Float>;
@@ -1218,7 +1325,7 @@ class JapaneseInkHeartrateScene {
         var base = [] as Lang.Array<Lang.Float>;
         for (var j = 0; j < smpY.size(); j++) { base.add(fitCost(floorY, smpY[j], floorY)); }
 
-        mFitRuns = runs;
+        mFitRuns = pieces;
         mFitSmpX = smpX;
         mFitSmpY = smpY;
         mFitBase = base;
@@ -1232,7 +1339,7 @@ class JapaneseInkHeartrateScene {
         mFitWidth = w;
         mFitHeight = h;
 
-        if (runs.size() == 0) {
+        if (pieces.size() == 0) {
             finishReliefJob();
             mJobState = JOB_READY;
             return;
@@ -1252,20 +1359,26 @@ class JapaneseInkHeartrateScene {
             return;
         }
         var r = runs[mFitRunIndex];
-        mFitRunX0 = (r[R_LO] - 0.5) * mFitBucketPx;
-        mFitRunX1 = (r[R_HI] + 0.5) * mFitBucketPx;
+        mFitRunX0 = r[P_X0];
+        mFitRunX1 = r[P_X1];
         mFitCrestY = crestY(heightForHr(r[R_PEAK]), mFitHeight);
+        mFitStretchLo = (r[P_SUB] > 0.5) ? SUB_STRETCH_LO : FIT_STRETCH_LO;
 
-        // The run's summit is its highest sample inside it, else its centroid.
-        mFitSummitX = axisX(r[R_NX]) * mFitWidth;
-        var found = false;
-        var bestY = 0.0;
-        for (var j = 0; j < smpX.size(); j++) {
-            if (smpX[j] >= mFitRunX0 && smpX[j] <= mFitRunX1 &&
-                (!found || smpY[j] < bestY)) {
-                mFitSummitX = smpX[j];
-                bestY = smpY[j];
-                found = true;
+        // An effort's summit is its own high; a whole run's is its highest
+        // sample inside it, else its centroid.
+        if (r[P_SX] >= 0.0) {
+            mFitSummitX = r[P_SX];
+        } else {
+            mFitSummitX = axisX(r[R_NX]) * mFitWidth;
+            var found = false;
+            var bestY = 0.0;
+            for (var j = 0; j < smpX.size(); j++) {
+                if (smpX[j] >= mFitRunX0 && smpX[j] <= mFitRunX1 &&
+                    (!found || smpY[j] < bestY)) {
+                    mFitSummitX = smpX[j];
+                    bestY = smpY[j];
+                    found = true;
+                }
             }
         }
         mFitShapeIndex = 0;
@@ -1307,7 +1420,7 @@ class JapaneseInkHeartrateScene {
             var cy = mFitCrestY;
             masses.add([left, cy - mShapeAy[si] * s, mShapeW[si] * sx, mShapeH[si] * s,
                         left + mShapeAx[si] * sx, cy, si.toFloat(), 0.0,
-                        (mFitRunIndex == mFitHost) ? 1.0 : 0.0,
+                        runs[mFitRunIndex][P_HOST],
                         runs[mFitRunIndex][R_ELEV]] as Lang.Array<Lang.Float>);
         }
 

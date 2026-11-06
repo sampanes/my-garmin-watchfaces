@@ -196,11 +196,14 @@ FOOT_Y = 0.80            # a placed shape's bottom edge must reach this far down
 FIT_SLIDE = (0.0, -12.0, 12.0, -24.0, 24.0)   # px: the apex tried this far from the run's summit
 FIT_APEX_K = 1.0         # error per px between the shape's apex and the run's summit (its minute)
 FIT_STRETCH = (0.67, 1.5)   # a shape's width is stretched to its run's width, within this
+SUB_STRETCH = (0.30, 1.5)   # ... and for one effort of several in a run, narrower, so the
+                            # rests between efforts open as dips (11-06)
 NEAR_CREST_Y = 0.60      # the near range's crest, under the lowest horizon (0.58 H)
 NEAR_H = 0.21            # its height (fraction of H): the foot under the mist and foreground ...
 NEAR_HR_SPAN = 30.0      # ... up by almost half over this many bpm of its third over the floor
 NEAR_EMPTY = 0.25        # a third of the screen with less mass cover than this is empty
 NEAR_LEAN = (-0.05, 0.03, 0.05)   # the near hills lean outward from their third's center (W)
+SUB_MAX = 4              # trace peaks inside one run that each get their own mass, at most
 TREE_MAX = 3             # ridge trees per window, at most ...
 TREE_NEED = 9.0          # ... each where the data stands this many px over the ridge ...
 TREE_OVER = 3.0          # ... the tallest baked size within this many px over the data ...
@@ -845,7 +848,7 @@ def fit_cost(py, y, floor_y):
     return c
 
 
-def fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y):
+def fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y, stretch=FIT_STRETCH):
     """The library shape that best paints one run: (error, index, left,
     stretch).
 
@@ -871,7 +874,7 @@ def fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y):
             continue
         vis = sum(1 for t in sh["top"] if t >= 0 and top0 + t < floor_y)
         st = (run_x1 - run_x0) * k_cols / (max(vis, 1) * sh["w"])
-        st = min(max(st, FIT_STRETCH[0]), FIT_STRETCH[1])
+        st = min(max(st, stretch[0]), stretch[1])
         w, ax = sh["w"] * st, sh["ax"] * st
         lefts = [sx + dx - ax for dx in FIT_SLIDE]
         lefts.append(0.5 * (run_x0 + run_x1) - 0.5 * w)
@@ -890,6 +893,44 @@ def fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y):
     return best
 
 
+def trace_peaks(trace, floor, x0, x1):
+    """The separate efforts inside one run, from the thinned trace (about
+    four minutes a sample, where a bucket is fifteen): [(nx, hr, nx0, nx1)]
+    in time order, each a local high standing MASS_MIN over the floor and
+    parted from its neighbor by a dip of GUEST_PROMINENCE under the lower
+    of the two; nx0..nx1 is its share of the run, cut at the dips. One
+    entry or none means the run is one effort (2026-11-06: four 5-minute
+    intervals inside an hour painted as one block)."""
+    pts = [(nx, HR_MIN + n * (HR_MAX - HR_MIN)) for nx, n in thin_trace(trace) if x0 <= nx <= x1]
+    if len(pts) < 3:
+        return []
+    peaks = []          # [index of the high, index of the dip before it]
+    lo_i = 0
+    for i, (_, hr) in enumerate(pts):
+        if not peaks:
+            if hr - floor >= MASS_MIN:
+                peaks.append([i, None])
+            continue
+        top = pts[peaks[-1][0]][1]
+        dip = min(range(peaks[-1][0], i + 1), key=lambda k: pts[k][1])
+        if hr > top and dip == peaks[-1][0]:
+            peaks[-1][0] = i              # still climbing the same effort
+        elif (hr - floor >= MASS_MIN and min(top, hr) - pts[dip][1] >= GUEST_PROMINENCE):
+            peaks.append([i, dip])        # a new effort past a real dip
+        elif hr > top:
+            peaks[-1][0] = i              # a shallow dip: the same effort, higher
+    if len(peaks) < 2:
+        return []
+    peaks = sorted(peaks, key=lambda p: -pts[p[0]][1])[:SUB_MAX]
+    peaks.sort()
+    out = []
+    for k, (i, _) in enumerate(peaks):
+        a = x0 if k == 0 else pts[min(range(peaks[k - 1][0], i + 1), key=lambda q: pts[q][1])][0]
+        b = x1 if k == len(peaks) - 1 else pts[min(range(i, peaks[k + 1][0] + 1), key=lambda q: pts[q][1])][0]
+        out.append((pts[i][0], pts[i][1], a, b))
+    return out
+
+
 def mid_plane_layout(history, trace=None):
     """The relief for a window: {"floor": bpm, "horizon_y": px or None,
     "masses": [{"rect": (x, y, w, h), "crest": (x, y), "plane": name,
@@ -901,7 +942,9 @@ def mid_plane_layout(history, trace=None):
     painted one.
 
     Each run standing MASS_MIN over the floor gets the library shape that
-    fits it best (fit_shape), crest on the run's peak, drawn at its baked
+    fits it best (fit_shape), crest on the run's peak; a run holding
+    separate efforts in the trace (trace_peaks: intervals) gets one
+    narrower shape per effort instead, crest on each, drawn at its baked
     height and "stretch" times its baked width. "vis" is the stretch of the screen where the shape stands over
     the far bank (kept for the record; the near range's cover still counts
     the middle 70% of each mass's bitmap, as in round 6). Draw order: the other masses first (the taller farther),
@@ -926,15 +969,32 @@ def mid_plane_layout(history, trace=None):
     table = shape_table()
     k_cols = table["k"]
     masses = []
+    pieces = []         # (run, x0 px, x1 px, peak hr, summit x px or None)
     for r in runs:
         run_x0, run_x1 = (r["lo"] - 0.5) * bucket_px, (r["hi"] + 0.5) * bucket_px
-        cy = crest_y(height_for_hr(r["peak_hr"]))
-        # the run's summit: its highest sample inside the run, else its centroid
-        sx, best_y = axis_x(r["nx"]) * W, None
-        for x, y in samples:
-            if run_x0 <= x <= run_x1 and (best_y is None or y < best_y):
-                sx, best_y = x, y
-        fit = fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y)
+        subs = trace_peaks(trace, floor, run_x0 / W, run_x1 / W) if trace else []
+        if subs:
+            # separate efforts inside the run: one mass each, a cluster
+            # whose crowns rise and dip with the efforts
+            for nx, hr, a, b in subs:
+                pieces.append((r, a * W, b * W, hr, nx * W))
+        else:
+            pieces.append((r, run_x0, run_x1, r["peak_hr"], None))
+    top_piece = {}
+    for pc in pieces:
+        if pc[0]["lo"] not in top_piece or pc[3] > top_piece[pc[0]["lo"]][3]:
+            top_piece[pc[0]["lo"]] = pc
+    for pc in pieces:
+        r, run_x0, run_x1, peak_hr, sx = pc
+        cy = crest_y(height_for_hr(peak_hr))
+        if sx is None:
+            # the run's summit: its highest sample inside the run, else its centroid
+            sx, best_y = axis_x(r["nx"]) * W, None
+            for x, y in samples:
+                if run_x0 <= x <= run_x1 and (best_y is None or y < best_y):
+                    sx, best_y = x, y
+        fit = fit_shape(samples, base, run_x0, run_x1, sx, cy, floor_y,
+                        SUB_STRETCH if pc[4] is not None else FIT_STRETCH)
         if fit is None:
             continue
         _, i, left, st = fit
@@ -946,7 +1006,8 @@ def mid_plane_layout(history, trace=None):
                if cols else (left + ax, left + ax))
         masses.append({"rect": (left, top0, w, sh["h"]), "crest": (left + ax, cy),
                        "plane": sh["name"], "shape": i, "stretch": st, "vis": vis, "flip": False,
-                       "host": r is host, "run": (r["lo"], r["hi"]), "elev": r["elev"]})
+                       "host": r is host and top_piece[r["lo"]] is pc, "run": (r["lo"], r["hi"]),
+                       "elev": peak_hr - floor})
     # depth: the other masses first (the taller farther), the host last
     masses.sort(key=lambda m: (m["host"], m["crest"][1]))
     out["masses"] = masses
