@@ -322,7 +322,7 @@ INSCRIPTION_BOX = (0.36, 0.60)   # the time column and seal with their halos: x 
                                  # under these (W, H); no prop lands there
 HIKER_SINK = 12            # px the hiker sinks under the summit: he stands just below it, his ground hidden
 LANTERN_X = 0.64           # the low-battery lantern's middle (W) ...
-LANTERN_FOOT = 0.885       # ... its foot (H), on the foreground's ground
+LANTERN_FOOT = 0.93        # ... its foot (H), low on the foreground's ground
 BATTERY_LOW = 30.0         # percent under which the lantern shows
 SEAL_WORK = 30.0           # bpm over the resting baseline that turns the seal rectangular ...
 # The seal digits' nudge per position (x, y px), on top of their baked

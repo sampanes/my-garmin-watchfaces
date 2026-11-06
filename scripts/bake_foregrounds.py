@@ -19,6 +19,15 @@ baked here at the face's size, day and night:
     was loud: round 6);
   * packed as a 256-color palette PNG, like the shape library.
 
+The snow scenes (SNOW_GROUND, winter): the cut makes paper transparent,
+and the painted snow is paper, so the snow banks became holes (the masses
+showed through by day, black paper at night). There the white closed in by
+ink and the frame's bottom and lower sides (snow_mask; the sky reaches the
+top, so it stays open) is kept as ground: opaque paper by day; at night the
+painting stays positive inside it, pale snow and dark ink dimmed to
+SNOW_NIGHT, moonlit snow beside the pale-ink negative around it. Baked
+once, like every other cut: the watch only draws the result.
+
 Which one shows (compose_preview.foreground_index, the Scene's
 foregroundIndex): the season from the month (Dec-Feb winter, Mar-May
 spring, Jun-Aug summer, Sep-Nov autumn) unless the watch setting
@@ -66,6 +75,13 @@ NIGHT_RED = 0.60              # the red's brightness at night
 PALETTE = 256
 
 
+SNOW_GROUND = {"winter"}
+SNOW_NIGHT = 0.60      # the moonlit snow's brightness, a share of day paper
+SNOW_INK = 0.15        # alpha over which a pixel is ink for the snow mask
+SNOW_SIDES = 0.45      # the frame's sides close the snow below this share of H
+PAPER_RGB = (242, 238, 230)
+
+
 def name_of(season, letter):
     return "fg_%s_%s" % (season, letter)
 
@@ -99,7 +115,44 @@ def bake_one(season, letter):
     night[:] = np.array(NIGHT_INK, dtype=float) / 255.0
     night[red] = rgb[red] * NIGHT_RED
     night = np.dstack([night, a]) * 255.0
-    return im, Image.fromarray(np.round(np.clip(night, 0, 255)).astype(np.uint8), "RGBA")
+    night = Image.fromarray(np.round(np.clip(night, 0, 255)).astype(np.uint8), "RGBA")
+    if season in SNOW_GROUND:
+        return snow_ground(im, night)
+    return im, night
+
+
+def snow_mask(a):
+    """0..1: the white closed in by ink and the frame's bottom and lower
+    sides (the painted snow), softened a px."""
+    from PIL import ImageFilter
+    from scipy import ndimage
+    ink = ndimage.binary_closing(a > SNOW_INK, structure=np.ones((5, 5)))
+    h, w = ink.shape
+    pad = np.zeros((h + 2, w + 2), bool)
+    pad[1:-1, 1:-1] = ink
+    pad[-1, :] = True
+    pad[int(SNOW_SIDES * h):, 0] = True
+    pad[int(SNOW_SIDES * h):, -1] = True
+    filled = ndimage.binary_fill_holes(pad)[1:-1, 1:-1]
+    soft = Image.fromarray((filled * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2))
+    return np.asarray(soft, float) / 255.0
+
+
+def snow_ground(day, night):
+    """(day, night) with the painted snow kept as ground (the docstring)."""
+    d = np.asarray(day, float) / 255.0
+    n = np.asarray(night, float) / 255.0
+    m = snow_mask(d[..., 3])[..., None]
+    paper = np.array(PAPER_RGB, float) / 255.0
+    pos = d[..., :3] * d[..., 3:] + paper * (1 - d[..., 3:])      # the ink on its snow
+    out = []
+    for px, inside in ((d, pos), (n, pos * SNOW_NIGHT)):
+        rgb, a = px[..., :3], px[..., 3:]
+        new_a = a + (1 - a) * m
+        new_rgb = (inside * m + rgb * a * (1 - m)) / np.maximum(new_a, 1e-6)
+        out.append(Image.fromarray(np.round(np.clip(np.dstack([new_rgb, new_a]), 0, 1) * 255)
+                                   .astype(np.uint8), "RGBA"))
+    return tuple(out)
 
 
 def pack(img):

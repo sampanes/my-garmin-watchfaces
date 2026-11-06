@@ -301,7 +301,7 @@ class JapaneseInkHeartrateScene {
     const INSCRIPTION_BOX_X = 0.36;   // the time column and seal with their halos:
     const INSCRIPTION_BOX_Y = 0.60;   // x and y under these (W, H) take no prop
     const LANTERN_X = 0.64;           // the low-battery lantern's middle (W) ...
-    const LANTERN_FOOT = 0.885;       // ... its foot (H)
+    const LANTERN_FOOT = 0.93;        // ... its foot (H), low on the ground
     const BATTERY_LOW = 30.0;         // percent under which the lantern shows
     const SEAL_WORK = 30.0;           // bpm over the resting baseline that turns the seal rectangular ...
     const SEAL_HYST = 8.0;            // ... and back to the oval this far under that

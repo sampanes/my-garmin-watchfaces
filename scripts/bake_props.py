@@ -87,6 +87,17 @@ ROTATE = {"seal_oval": 90}
 # sloped summit (John, 11-05). A patch stays under his feet.
 TRIM = {"hiker": [(0.0, 0.66, 0.40, 1.0), (0.64, 0.80, 1.0, 1.0)]}
 TRIM_FEATHER = 6
+# Solid inside its outline: the cut makes paper clear, so the lantern's
+# paper panels let the foreground through and it looked like a ghost
+# (John, 11-05). Inside the ink closed by OPAQUE_CLOSE px it is paper by
+# day and black paper at night.
+OPAQUE = {"lantern"}
+OPAQUE_CLOSE = 5
+PAPER_RGB = (242, 238, 230)
+# A hand-edited cut wins over the sheet's: art/edits/<name>.png, a full
+# RGBA cut erased by hand (John, 11-05: more ground off the hiker).
+# `bake_props.py --export-edit <name>` writes the current one to start from.
+EDITS = os.path.join(FACE, "art", "edits")
 NIGHT_INK = (168, 164, 152)   # cut_sprite_sheet.NIGHT_INK
 NIGHT_RED = 0.60              # the red's brightness at night (bake_foregrounds)
 INK_FLOOR = 12                # alpha under this is not ink when cropping
@@ -124,10 +135,31 @@ def trim(im, boxes):
     return Image.fromarray(np.round(p).astype(np.uint8), "RGBA")
 
 
-def bake_one(name, cut, size, tone, night_share, mirror, own):
+def source(name, cut):
+    """The cut a prop starts from: the hand edit if there is one, else the
+    sheet's cut with its TRIM boxes erased."""
+    edit = os.path.join(EDITS, name + ".png")
+    if os.path.exists(edit):
+        return Image.open(edit).convert("RGBA")
     im = Image.open(cut_path(cut)).convert("RGBA")
     if name in TRIM:
         im = trim(im, TRIM[name])
+    return im
+
+
+def solid_inside(alpha):
+    """0..1: the area closed in by the ink (holes filled), softened a px."""
+    from PIL import ImageFilter
+    from scipy import ndimage
+    ink = alpha > 0.15
+    k = np.ones((OPAQUE_CLOSE, OPAQUE_CLOSE))
+    filled = ndimage.binary_fill_holes(ndimage.binary_closing(ink, structure=k))
+    soft = Image.fromarray((filled * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.7))
+    return np.asarray(soft, float) / 255.0
+
+
+def bake_one(name, cut, size, tone, night_share, mirror, own):
+    im = source(name, cut)
     if name in ROTATE:
         im = im.rotate(ROTATE[name], expand=True, resample=Image.BICUBIC)
     a = np.asarray(im)[..., 3]
@@ -156,6 +188,19 @@ def bake_one(name, cut, size, tone, night_share, mirror, own):
         out = np.dstack([c, al]) * 255.0
         return Image.fromarray(np.round(np.clip(out, 0, 255)).astype(np.uint8), "RGBA")
 
+    if name in OPAQUE:
+        m = solid_inside(alpha)
+        paper = np.array(PAPER_RGB, float) / 255.0
+        a = alpha[..., None]
+        day_rgb = rgb * a + paper * (1 - a)
+        night_rgb = night * a
+        out_a = np.maximum(alpha, m)
+        keep = (out_a > 0)[..., None]
+        day_rgb = np.where(keep, (day_rgb * m[..., None] + rgb * a * (1 - m[..., None]))
+                           / np.maximum(out_a, 1e-6)[..., None], rgb)
+        night_rgb = np.where(keep, (night_rgb * m[..., None] + night * a * (1 - m[..., None]))
+                             / np.maximum(out_a, 1e-6)[..., None], night)
+        return img(day_rgb, out_a), img(night_rgb, out_a)
     return img(rgb, alpha * tone), img(night, alpha * tone * night_share)
 
 
@@ -211,7 +256,23 @@ def tables():
     return {JSON: js, XML: xml, MC: "\n".join(mc)}
 
 
+def export_edit(name):
+    """Write prop name's current source cut to art/edits/<name>.png to erase by hand."""
+    row = [p for p in PROPS if p[0] == name]
+    if not row:
+        raise SystemExit("no prop %s" % name)
+    os.makedirs(EDITS, exist_ok=True)
+    out = os.path.join(EDITS, name + ".png")
+    if os.path.exists(out):
+        raise SystemExit("%s exists; delete it first to start over" % out)
+    source(name, row[0][1]).save(out)
+    print("wrote", out)
+
+
 def main(argv):
+    if "--export-edit" in argv:
+        export_edit(argv[argv.index("--export-edit") + 1])
+        return 0
     if "--check" not in argv:
         bake_all()
     stale = 0
