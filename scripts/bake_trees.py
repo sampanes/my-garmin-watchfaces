@@ -96,8 +96,9 @@ def bake_all():
 
 def measure(name, h):
     a = np.asarray(Image.open(os.path.join(DRAW, bitmap_name(name, h) + ".png")).getchannel("A"))
-    rows = [y for y in range(a.shape[0]) if (a[y] >= 128).any()]
-    cols = np.nonzero(a[rows[-1]] >= 128)[0]
+    solid = 128 * TONE   # "opaque" scales with the tone, so the foot stays put
+    rows = [y for y in range(a.shape[0]) if (a[y] >= solid).any()]
+    cols = np.nonzero(a[rows[-1]] >= solid)[0]
     return {"w": int(a.shape[1]), "foot": int(round(0.5 * (cols[0] + cols[-1])))}
 
 
