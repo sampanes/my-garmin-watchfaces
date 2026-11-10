@@ -1,11 +1,25 @@
-# Friend MVP (formerly Wrist Diary)
+# Friend (formerly Wrist Diary)
+
+> **For the home PC: 0.8.0 has never been compiled.** It was written on a machine with no SDK.
+> Run `scripts/home-verify.ps1` (or `scripts/build-friend.ps1`) and expect compiler errors in the
+> three new files (`FriendPet.mc`, `FriendArt.mc`, `FriendVoice.mc`) and the pet section at the
+> end of `WristDiaryView.mc`; the sensing code above it is unchanged from 0.7.1. Then compare the
+> simulator with the eight sheets in [preview/](preview/) (`python scripts/friend_preview.py`
+> redraws them; `--check` holds the mock to the Monkey C). Unproven on a compiler: the
+> `FriendLook` module constants, the three-deep `mLines` array cast, `Math.pow(...).toFloat()`,
+> `onTap` in the behavior delegate, and whether a tap on the FR265 would otherwise arrive as
+> START. Add what the compiler says to `common/language/COMPILER_FACTS.md`.
+>
+> **The drawn friend is a placeholder, on purpose.** It is shapes in code so the game can be
+> played; no more effort goes into it. Real art is made by hand outside this repo and replaces it
+> behind one seam, `FriendArt.draw` (see "Art slots" below).
 
 A deliberately plain, local-only first friend. It reuses Wrist Diary's application UUID so
 installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.7.1`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.8.0`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
 dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
 build that never reached git, and `0.4.0` was built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
@@ -39,6 +53,61 @@ closed can show whether the close followed a hide that never got its show back. 
 [field log](../../field-logs/2026-10-31_friend-export.md) counted 3 hides in each such session and
 could say no more. No stored data or export format change.
 
+**0.8.0 -- The friend becomes a pet (unbuilt):** designed against the
+[2026-11-10 field log](../../field-logs/2026-11-10_friend-export.md). The effort chapters Friend
+already senses now feed a pet that grows, following
+[`12-pet-state-and-economy.md`](../../12-pet-state-and-economy.md):
+
+- **First open is an egg.** Up/Down picks its colorway, START hatches it, then Up/Down picks one
+  of four voices (Drill Sergeant, Hype Cheerleader, Deadpan, Zen), each shown with a sample line.
+  The egg "heard it all": every chapter Friend still holds is credited at the hatch, so the pet is
+  born with its history (about 370 XP, band 2, on the watch this was designed against).
+- **Effort is XP.** A chapter earns effort minutes (x1, x1.25 or x1.5 by heart rate over the
+  four-hour baseline, shown as one to three flames), tapered within a day, plus a daily-first
+  bonus. While a chapter is open the home screen shows the flames and the XP it has earned so far,
+  and the bar fills in gold.
+- **Back pays out.** After the session is saved, a reward card shows the XP, the flames, one line
+  in the pet's voice and the bar moving; START or Back leaves, or it leaves by itself after 20
+  seconds. If nobody pressed, or the watch closed Friend, the card opens the next visit instead
+  (`LAST TIME`). A band gained adds a `GREW UP!` card.
+- **Bands change the pet:** Hatchling (in its shell), Sprout (a leaf, the flex emote), Trainee
+  (a headband, the spin emote), then the first **evolution** at 660 XP: the GROWING card offers
+  it, Up/Down previews three forms (sleek, round, wild) and a second START makes it permanent.
+  Later bands add flames, a cape and an aura. The pet waits one band below an evolution until
+  the wearer chooses.
+- **Mood is weather**, drawn in the sky and on the face (misty, fair, sunny, radiant). It drifts
+  to a calm middle, stops drifting after 48 hours away and greets a return warmly. Nothing decays
+  as a punishment and there is no fail state.
+- **Up/Down is a card stack:** TODAY (weather, today's effort snack out of 30 minutes, warmth and
+  rest-day shields), GROWING (band, XP to the next, what it unlocks), OUR TRAIL (distance walked
+  with Friend, toward landmarks at 1, 5, 10, 21.1 and 42.2 km) and DEBUG DATA.
+- **A tap pets it** (an emote, a line, +5 mood once a day). A tap is never START, so a sleeve on
+  the touchscreen cannot start or save a walk.
+- **A stray walk is not saved.** Ending a walk under a minute and under 50 m offers
+  `START drop it` instead of `START save`.
+- The pet is one array of 32 numbers under the Storage key `pet`; every exit exports it as a
+  `FRIEND_PET` line (export format 6) and `read-friend.ps1` prints it, so the watch's XP can be
+  held against `pet-model.ps1`. `scripts/test-friend-pet.ps1` holds the watch's integer math and
+  every tuning constant to the model.
+- On the DEBUG DATA card, MENU reopens the colorway and voice choice (a dogfood escape hatch;
+  nothing else resets).
+
+Where 0.8.0 departs from doc 12 as written: flames at +15 / +30 bpm instead of +10 / +20 (the
+field log shows why); the displayed band waits below an evolution instead of showing it early;
+the only care action is petting; every band's unlock is expressive, because no classifier for
+naming moves or counting reps exists yet.
+
+## Art slots
+
+Everything the pet shows is drawn by `FriendArt` from five numbers the game sets
+(`setLook`, `setPose`): **stage** (egg, baby, child, adult), **band** (accessories: shell 0,
+leaf 1-2, headband 2+, cape 5+), **form** (sleek, round, wild; adult only), **colorway** (6) and
+**face/pose** (faces: misty, fair, sunny, radiant, effort, joy, sleep; poses: idle, run, hop,
+flex, spin, flames, sleep), plus a frame counter at 5 frames a second. Hand-made art replaces
+the body of `FriendArt.draw` and `drawEgg`; nothing else in the game knows how the pet is drawn.
+The sky, the flame, heart, shield and sparkle icons are separate small functions in the same
+class. The app uses 31 KB of its 768 KB at its peak, so there is room for bitmaps.
+
 ## What it does
 
 - Opening Friend captures a daily/wrist snapshot and immediately starts observing. There is no
@@ -51,21 +120,20 @@ could say no more. No stored data or export format change.
   Two positive buckets within one minute open a chapter; six quiet buckets among the latest eight
   close it at the last strong evidence, excluding a forgotten-at-the-desk tail. Friend never names
   the activity: lifting, stress, chores, and other everyday movement remain deliberately indistinguishable.
-- During a chapter the friend says `WITH YOU`. Afterward it says `I SAW N MIN`, remembers the
-  chapter at the next check-in, and adds a small persistent memory mark below its face. Memories
-  never decay and skipped days carry no penalty.
+- During a chapter the friend speaks in its voice (`With you.` is one of the lines). Afterward it
+  says `I saw N min.` and remembers the chapter at the next check-in. Memories never decay and
+  skipped days carry no penalty.
 - From the companion screen, START enters `FRIEND WALK` and begins warming GPS; START again begins
   the activity even if a fix is still settling. While walking, START or Back opens `END WALK?`;
   START explicitly stops and saves, while Back resumes without a route gap. A successful result
   says `WE WALKED` and the activity syncs through Garmin normally.
-- Up/Down opens the debug-data card. START there performs the larger text export on demand and
+- Up/Down pages through the cards to the debug-data card. START there performs the larger text export on demand and
   shows `EXPORTED`; ordinary open/close use does not serialize the whole history. The card also
   shows the T11 tally at a glance: `RR 812  93% VARY` (intervals this session and the share that
   differed from the previous one), `RR NONE YET`, or `RR OFF` when the watch refused the option.
 - Back from the companion screen exits immediately after saving a compact session summary, even
   if that save fails. Back from preparation cancels it, and Back from a walk result returns home.
-- The face has three moods: calm (green, small smile), effort (orange, open mouth) and remember
-  (gold, happy closed eyes). Every text line is sized to fit the round screen at its height.
+- Every text line is sized to fit the round screen at its height.
 - Every session summary records how it ended (`exit_reason` `1` Back, `2` the watch closed the
   app), the elapsed second of the last button press (`last_input_s`, `-1` for none) and the
   number of presses (`inputs`). Each exit also prints one `FRIEND_EXIT,reason,elapsed,last_input,
@@ -75,14 +143,15 @@ could say no more. No stored data or export format change.
 
 Garmin rotates the app log at about 5 KB and keeps one older file (measured on the FR265:
 `.BAK` files of 5150 and 5160 bytes), so only an export under 5 KB is always retrieved whole; a
-7.3 KB export on 2026-10-22 lost its start. Export format 5 is therefore host-tested below 4.8 KB
+7.3 KB export on 2026-10-22 lost its start. Export format 6 is therefore host-tested below 4.8 KB
 with conservative high-width values even when every detailed row came from a separate short session:
 
 - `FRIEND_DEVICE`: part number, firmware, Connect IQ version, and whether tones and vibration
   are switched on (`1`/`0`).
 - CSV rows without header lines (the column names live in `scripts/friend-export.ps1`): the 4
   newest check-in snapshots, the 8 newest session summaries and the 10 newest effort chapters.
-- The 35 newest 20-second live records (the last 11 minutes 40 seconds Friend was open) in a compact
+- Since 0.8.0, one `FRIEND_PET` line: the pet's 32 saved numbers.
+- The 30 newest 20-second live records (the last 10 minutes Friend was open) in a compact
   fixed-width base-36 form, 22 characters a row instead of about 65.
 
 Each check-in snapshot also answers open hardware questions: respiration rate, time to recovery

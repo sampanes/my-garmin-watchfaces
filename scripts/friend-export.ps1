@@ -10,6 +10,22 @@ $FriendColumns = @{
     chapter3 = "start_epoch,end_epoch,duration_s,partial,baseline_hr,hr_min,hr_avg,hr_max,hr_delta_peak,motion_avg,motion_peak,moving_pct,steps_start,steps_end,reason"
 }
 
+# Format 6 (Friend 0.8.0) adds one FRIEND_PET line: the pet's whole saved state,
+# in the order of the P_* indexes in FriendPet.mc.
+$FriendPetColumns = "v,born,tz,mood,ts_settle,ts_open,xp,evos,ts_evo,warm,shields,last_active_day,active_days,day_idx,day_min_x100,day_bonus,reunion_owed,last_ch_end,ch_total,care_day,care_mask,palette,persona,form,evo_hist,walk_m,walk_count,owed_points,owed_band,owed_flames,owed_seconds,owed_flags" -split ","
+
+# The pet in an export block as one object, or $null for an export without one.
+function Read-FriendPet([string[]]$Block) {
+    $line = @($Block | Where-Object { $_ -like "FRIEND_PET,*" }) | Select-Object -First 1
+    if (-not $line) { return $null }
+    $values = @(($line -split ",") | Select-Object -Skip 1)
+    $pet = [ordered]@{}
+    for ($i = 0; $i -lt $FriendPetColumns.Count -and $i -lt $values.Count; $i += 1) {
+        $pet[$FriendPetColumns[$i]] = [long]$values[$i]
+    }
+    return [pscustomobject]$pet
+}
+
 # The newest complete export in the log, or $null.
 function Get-FriendExportBlock([string[]]$Lines) {
     $begin = -1

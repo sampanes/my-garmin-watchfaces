@@ -13,9 +13,9 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.7.1";
+    const APP_VERSION = "0.8.0";
     const SCHEMA = 3;           // On-watch storage layout.
-    const EXPORT_FORMAT = 5;    // Log export layout; friend-export.ps1 holds the columns.
+    const EXPORT_FORMAT = 6;    // Log export layout; friend-export.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;
     const MAX_LIVE = 700;       // Just under four hours of foreground detail.
     const MAX_SNAPSHOTS = 60;   // Roughly a month at two opens per day.
@@ -23,7 +23,7 @@ class WristDiaryView extends WatchUi.View {
     const MAX_CHAPTERS = 60;
     // Garmin rotates the app log at about 5 KB and keeps one older file, so only an
     // export under 5 KB always survives whole. These counts keep it under 4.8 KB.
-    const EXPORT_LIVE = 35;     // Newest 11 m 40 s at full 20-second resolution.
+    const EXPORT_LIVE = 30;     // Newest 10 minutes at full 20-second resolution.
     const EXPORT_SNAPSHOTS = 4;
     const EXPORT_SESSIONS = 8;
     const EXPORT_CHAPTERS = 10;
@@ -38,9 +38,6 @@ class WristDiaryView extends WatchUi.View {
     const EXIT_BACK = 1;
     const EXIT_OTHER = 2;
 
-    const MOOD_CALM = 0;
-    const MOOD_EFFORT = 1;
-    const MOOD_REMEMBER = 2;
     const SAVED_SECONDS = 3;
 
     const SCREEN_HOME = 0;
@@ -48,6 +45,25 @@ class WristDiaryView extends WatchUi.View {
     const SCREEN_END_WALK = 2;
     const SCREEN_WALK_RESULT = 3;
     const SCREEN_EXPORT = 4;
+    const SCREEN_TODAY = 5;
+    const SCREEN_GROWTH = 6;
+    const SCREEN_TRAIL = 7;
+    const SCREEN_EGG = 8;
+    const SCREEN_HATCHING = 9;
+    const SCREEN_VOICE = 10;
+    const SCREEN_REWARD = 11;
+    const SCREEN_GREW = 12;
+    const SCREEN_EVOLVE = 13;
+    const SCREEN_EVOLVE_CONFIRM = 14;
+
+    const ANIM_MS = 200;            // Five frames a second while the screen shows.
+    const REWARD_LINGER_MS = 20000; // The exit reward card closes itself after this.
+    const HATCH_FRAMES = 14;
+
+    const C_ACCENT = 0x3E7A62;
+    const C_MINT = 0x6ED6A8;
+    const C_GOLD = 0xE8CF70;
+    const C_ORANGE = 0xFFB15C;
 
     const L_EPOCH = 0;
     const L_SESSION = 1;
@@ -135,6 +151,37 @@ class WristDiaryView extends WatchUi.View {
     var mScreen as Lang.Number = SCREEN_HOME;
     var mWalk as FriendWalkRecorder;
 
+    // The pet layer (0.8.0): saved state and economy, drawn art, voice lines.
+    var mPet as FriendPet;
+    var mArt as FriendArt;
+    var mVoice as FriendVoice;
+    var mAnimTimer as Timer.Timer?;
+    var mAnimating as Lang.Boolean = false;
+    var mExitTimer as Timer.Timer?;
+    var mFrame as Lang.Number = 0;
+    var mMood as Lang.Number = 60;          // The pet's mood, refreshed each minute.
+    var mBand as Lang.Number = 0;
+    var mEvoReady as Lang.Boolean = false;
+    var mDayFull as Lang.Boolean = false;
+    var mGreeting as Lang.String = "";
+    var mSay as Lang.String = "";           // A passing line, shown until mSayUntil.
+    var mSayUntil as Lang.Number = 0;
+    var mSalt as Lang.Number = 0;           // Varies the canned lines between sessions.
+    var mEmote as Lang.Number = 0;
+    var mEmoteUntil as Lang.Number = 0;     // Frame the emote ends on.
+    var mEmoteCount as Lang.Number = 0;
+    var mAwakeUntil as Lang.Number = 8;     // Elapsed second a night-time friend dozes off.
+    var mPending as Lang.Number = 0;        // What the open chapter would earn right now.
+    var mPendingFlames as Lang.Number = 0;
+    var mPickPal as Lang.Number = 0;
+    var mPickVoice as Lang.Number = 0;
+    var mPickForm as Lang.Number = 1;
+    var mRepick as Lang.Boolean = false;
+    var mHatchFrame as Lang.Number = 0;
+    var mRewardExit as Lang.Boolean = false;    // The reward card is the last stop before leaving.
+    var mRecap as Lang.Boolean = false;         // The reward card is last session's, shown at open.
+    var mRecapUntil as Lang.Number = 10;
+
     // T11 (DIY HRV): beat-to-beat intervals in ms from the sensor listener. A
     // "change" is an interval unlike the one before it, so interpolated beats
     // (a constant 1000 ms) read as 0% and real variability reads near 100%.
@@ -151,6 +198,9 @@ class WristDiaryView extends WatchUi.View {
     function initialize() {
         View.initialize();
         mWalk = new FriendWalkRecorder();
+        mPet = new FriendPet();
+        mArt = new FriendArt();
+        mVoice = new FriendVoice();
         migrateFromDiary();
         readFourHourBaseline();
         refreshSlowSignals();
@@ -164,6 +214,8 @@ class WristDiaryView extends WatchUi.View {
         mLastChapterDuration = readNumber("chapter_last_duration", 0);
         mLastChapterEpoch = readNumber("chapter_last_epoch", 0);
         saveSnapshot();
+        mSalt = (mSessionId / 60) % 1000;
+        beginPet();
     }
 
     function onLayout(dc as Graphics.Dc) as Void {
@@ -176,70 +228,74 @@ class WristDiaryView extends WatchUi.View {
         System.println("FRIEND_SHOW," + mElapsed);
         startSession();
         mWalk.onShow();
+        startAnimation();
     }
 
     // The screen went away (a notification, another app, or the app closing).
     function onHide() as Void {
         mHideCount += 1;
         System.println("FRIEND_HIDE," + mElapsed + "," + mHideCount);
+        stopAnimation();
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
+        if (dc has :setAntiAlias) { dc.setAntiAlias(true); }
 
         if (mScreen == SCREEN_WALK) {
             drawWalkScreen(dc);
-            return;
-        }
-        if (mScreen == SCREEN_END_WALK) {
+        } else if (mScreen == SCREEN_END_WALK) {
             drawEndWalkScreen(dc);
-            return;
-        }
-        if (mScreen == SCREEN_WALK_RESULT) {
+        } else if (mScreen == SCREEN_WALK_RESULT) {
             drawWalkResultScreen(dc);
-            return;
-        }
-        if (mScreen == SCREEN_EXPORT) {
+        } else if (mScreen == SCREEN_EXPORT) {
             drawExportScreen(dc);
-            return;
+        } else if (mScreen == SCREEN_EGG || mScreen == SCREEN_HATCHING) {
+            drawEggScreen(dc);
+        } else if (mScreen == SCREEN_VOICE) {
+            drawVoiceScreen(dc);
+        } else if (mScreen == SCREEN_REWARD) {
+            drawReward(dc);
+        } else if (mScreen == SCREEN_GREW) {
+            drawGrew(dc);
+        } else if (mScreen == SCREEN_EVOLVE || mScreen == SCREEN_EVOLVE_CONFIRM) {
+            drawEvolveScreen(dc);
+        } else if (mScreen == SCREEN_TODAY) {
+            drawToday(dc);
+        } else if (mScreen == SCREEN_GROWTH) {
+            drawGrowth(dc);
+        } else if (mScreen == SCREEN_TRAIL) {
+            drawTrail(dc);
+        } else {
+            drawHome(dc);
         }
+    }
 
+    // Home: the friend, alive and already observing. Every line is placed as a
+    // share of the screen and sized to the chord of the round display where it
+    // sits, so nothing runs off the bezel.
+    function drawHome(dc as Graphics.Dc) as Void {
         var height = dc.getHeight();
-        var centerX = dc.getWidth() / 2;
-        var mood = moodNow();
+        var width = dc.getWidth();
+        var centerX = width / 2;
 
-        // Every line is placed as a share of the screen and sized to the chord of
-        // the round display where it sits, so nothing runs off the bezel.
-        var y = height * 10 / 100;
-        var title = "FRIEND " + APP_VERSION;
-        dc.setColor(0x3E7A62, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(centerX, y, fitFont(dc, title, [Graphics.FONT_XTINY], y),
-                    title, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        drawCenteredLine(dc, centerX, height * 9 / 100, "FRIEND " + APP_VERSION, C_ACCENT,
+                         [Graphics.FONT_XTINY]);
+        mArt.drawSky(dc, width, height, mPet.weather(mMood), isNight(), mFrame);
+        drawPet(dc, centerX, height * 54 / 100, 100, homeFace(), homePose());
 
-        drawFace(dc, centerX, height * 30 / 100, height * 13 / 100, mood);
-        drawMemoryMarks(dc, centerX, height * 46 / 100);
-
-        y = height * 56 / 100;
-        var status = statusText();
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(centerX, y, fitFont(dc, status,
-                    [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL, Graphics.FONT_TINY], y),
-                    status, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        drawHeartLine(dc, centerX, height * 69 / 100);
-
-        y = height * 80 / 100;
-        var info = mLifetimeChapters.toString() +
-                   ((mLifetimeChapters == 1) ? " memory   " : " memories   ") +
-                   elapsedText();
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(centerX, y, fitFont(dc, info, [Graphics.FONT_XTINY], y),
-                    info, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        drawCenteredLine(dc, centerX, height * 90 / 100, "START walk   DOWN data",
-                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
-
+        drawCenteredLine(dc, centerX, height * 63 / 100, homeLine(), Graphics.COLOR_WHITE,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawPulseRow(dc, centerX, height * 72 / 100);
+        drawXpBar(dc, centerX - width * 24 / 100, height * 78 / 100, width * 48 / 100, 10,
+                  mPet.xp(), mPending, mBand);
+        var info = bandName(mBand) + "  " + (mPet.xp() + mPending) + "/" +
+                   mPet.bandThreshold(mBand + 1);
+        drawCenteredLine(dc, centerX, height * 85 / 100, info, Graphics.COLOR_LT_GRAY,
+                         [Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 92 / 100, "START walk", Graphics.COLOR_DK_GRAY,
+                         [Graphics.FONT_XTINY]);
         drawStartHint(dc);
     }
 
@@ -248,12 +304,13 @@ class WristDiaryView extends WatchUi.View {
         var centerX = dc.getWidth() / 2;
         var recording = mWalk.isRecording();
 
-        drawCenteredLine(dc, centerX, height * 10 / 100, "FRIEND WALK", 0x3E7A62,
+        drawCenteredLine(dc, centerX, height * 10 / 100, "FRIEND WALK", C_ACCENT,
                          [Graphics.FONT_XTINY]);
-        drawFace(dc, centerX, height * 28 / 100, height * 10 / 100,
-                 recording ? MOOD_EFFORT : moodNow());
+        drawPet(dc, centerX, height * 33 / 100, 45,
+                recording ? FriendLook.FACE_EFFORT : FriendLook.FACE_SUNNY,
+                recording ? FriendLook.POSE_RUN : FriendLook.POSE_IDLE);
         drawCenteredLine(dc, centerX, height * 43 / 100,
-                         recording ? "WITH YOU" : "READY TO WALK",
+                         recording ? mVoice.walkStart(mPet.persona(), mSalt) : "READY TO WALK",
                          recording ? 0xFFB15C : 0x6ED6A8,
                          [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL, Graphics.FONT_TINY]);
         drawCenteredLine(dc, centerX, height * 55 / 100,
@@ -276,17 +333,22 @@ class WristDiaryView extends WatchUi.View {
     function drawEndWalkScreen(dc as Graphics.Dc) as Void {
         var height = dc.getHeight();
         var centerX = dc.getWidth() / 2;
-        drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND WALK", 0x3E7A62,
+        var tooShort = walkTooShort();
+        drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND WALK", C_ACCENT,
                          [Graphics.FONT_XTINY]);
-        drawFace(dc, centerX, height * 32 / 100, height * 11 / 100, MOOD_EFFORT);
+        drawPet(dc, centerX, height * 43 / 100, 62, FriendLook.FACE_EFFORT, FriendLook.POSE_IDLE);
         drawCenteredLine(dc, centerX, height * 53 / 100, "END WALK?", Graphics.COLOR_WHITE,
                          [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
-        drawCenteredLine(dc, centerX, height * 66 / 100, "recording continues", 0xE8CF70,
+        // A walk this short is a stray press, not an activity worth a FIT file.
+        drawCenteredLine(dc, centerX, height * 66 / 100,
+                         tooShort ? "too short to keep" : "recording continues", C_GOLD,
                          [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
-        drawCenteredLine(dc, centerX, height * 80 / 100, "START save", 0x6ED6A8,
+        drawCenteredLine(dc, centerX, height * 80 / 100,
+                         tooShort ? "START drop it" : "START save", C_MINT,
                          [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
-        drawCenteredLine(dc, centerX, height * 90 / 100, "BACK resume", Graphics.COLOR_LT_GRAY,
-                         [Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 90 / 100,
+                         tooShort ? "BACK keep walking" : "BACK resume",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
         drawStartHint(dc);
     }
 
@@ -294,19 +356,30 @@ class WristDiaryView extends WatchUi.View {
         var height = dc.getHeight();
         var centerX = dc.getWidth() / 2;
         var failed = mWalk.isFailed();
-        drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND WALK", 0x3E7A62,
+        var kept = mWalk.wasSaved();
+        var headline = "WE WALKED";
+        var detail = "ACTIVITY SAVED";
+        if (failed) {
+            headline = "WALK FAILED";
+            detail = mWalk.errorText();
+        } else if (!kept) {
+            headline = "NO WALK KEPT";
+            detail = "too short";
+        } else if (mPet.exists()) {
+            detail = "SAVED   TRAIL " + kmText(mPet.trailMeters());
+        }
+        drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND WALK", C_ACCENT,
                          [Graphics.FONT_XTINY]);
-        drawFace(dc, centerX, height * 32 / 100, height * 11 / 100,
-                 failed ? MOOD_CALM : MOOD_REMEMBER);
-        drawCenteredLine(dc, centerX, height * 53 / 100,
-                         failed ? "WALK FAILED" : "WE WALKED",
-                         failed ? 0xFF6060 : 0xE8CF70,
+        drawPet(dc, centerX, height * 43 / 100, 62,
+                (failed || !kept) ? FriendLook.FACE_FAIR : FriendLook.FACE_JOY,
+                (failed || !kept) ? FriendLook.POSE_IDLE : FriendLook.POSE_HOP);
+        drawCenteredLine(dc, centerX, height * 53 / 100, headline,
+                         failed ? 0xFF6060 : C_GOLD,
                          [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL, Graphics.FONT_TINY]);
         drawCenteredLine(dc, centerX, height * 66 / 100,
                          walkElapsedText() + "   " + walkDistanceText(), Graphics.COLOR_WHITE,
                          [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
-        drawCenteredLine(dc, centerX, height * 78 / 100,
-                         failed ? mWalk.errorText() : "ACTIVITY SAVED",
+        drawCenteredLine(dc, centerX, height * 78 / 100, detail,
                          Graphics.COLOR_LT_GRAY, [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
         drawCenteredLine(dc, centerX, height * 90 / 100, "START home", Graphics.COLOR_LT_GRAY,
                          [Graphics.FONT_XTINY]);
@@ -316,20 +389,24 @@ class WristDiaryView extends WatchUi.View {
     function drawExportScreen(dc as Graphics.Dc) as Void {
         var height = dc.getHeight();
         var centerX = dc.getWidth() / 2;
-        drawCenteredLine(dc, centerX, height * 12 / 100, "FRIEND " + APP_VERSION, 0x3E7A62,
+        var exported = (Time.now().value() <= mSavedUntil);
+        drawCenteredLine(dc, centerX, height * 11 / 100, "FRIEND " + APP_VERSION, C_ACCENT,
                          [Graphics.FONT_XTINY]);
-        drawFace(dc, centerX, height * 31 / 100, height * 10 / 100, moodNow());
-        drawCenteredLine(dc, centerX, height * 50 / 100, "DEBUG DATA", Graphics.COLOR_WHITE,
+        drawPet(dc, centerX, height * 37 / 100, 55, FriendLook.FACE_FAIR, FriendLook.POSE_IDLE);
+        drawCenteredLine(dc, centerX, height * 46 / 100, "DEBUG DATA", Graphics.COLOR_WHITE,
                          [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
-        drawCenteredLine(dc, centerX, height * 62 / 100, beatIntervalText(),
+        drawCenteredLine(dc, centerX, height * 56 / 100, beatIntervalText(),
                          Graphics.COLOR_LT_GRAY,
                          [Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY]);
-        drawCenteredLine(dc, centerX, height * 74 / 100,
-                         (Time.now().value() <= mSavedUntil) ? "EXPORTED" : "START export",
-                         (Time.now().value() <= mSavedUntil) ? 0x6ED6A8 : Graphics.COLOR_LT_GRAY,
+        drawCenteredLine(dc, centerX, height * 65 / 100, petDebugText(),
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 76 / 100,
+                         exported ? "EXPORTED" : "START export",
+                         exported ? C_MINT : Graphics.COLOR_LT_GRAY,
                          [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
-        drawCenteredLine(dc, centerX, height * 86 / 100, "UP/DOWN home   BACK home",
-                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 87 / 100,
+                         mPet.exists() ? "MENU new look" : "BACK egg",
+                         Graphics.COLOR_DK_GRAY, [Graphics.FONT_XTINY]);
         drawStartHint(dc);
     }
 
@@ -356,94 +433,6 @@ class WristDiaryView extends WatchUi.View {
 
     function walkDistanceText() as Lang.String {
         return mWalk.distanceMeters().toNumber().format("%d") + " m";
-    }
-
-    function moodNow() as Lang.Number {
-        if (mChapterState == CHAPTER_ACTIVE || effortScore() > 35) { return MOOD_EFFORT; }
-        if (recentlyRemembered()) { return MOOD_REMEMBER; }
-        return MOOD_CALM;
-    }
-
-    function moodColor(mood as Lang.Number) as Lang.Number {
-        if (mood == MOOD_EFFORT) { return 0xFFB15C; }
-        if (mood == MOOD_REMEMBER) { return 0xE8CF70; }
-        return 0x6ED6A8;
-    }
-
-    function drawFace(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number,
-                      radius as Lang.Number, mood as Lang.Number) as Void {
-        dc.setColor(0x10241C, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(x, y, radius);
-        dc.setColor(moodColor(mood), Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(5);
-        dc.drawCircle(x, y, radius);
-
-        if (mood == MOOD_EFFORT) {
-            // Open, laughing mouth: a disc with its top half painted back out.
-            var mouth = radius * 30 / 100;
-            var mouthY = y + radius * 16 / 100;
-            dc.fillCircle(x, mouthY, mouth);
-            dc.setColor(0x10241C, Graphics.COLOR_TRANSPARENT);
-            dc.fillRectangle(x - mouth - 1, mouthY - mouth - 1, mouth * 2 + 2, mouth + 1);
-            dc.setColor(moodColor(mood), Graphics.COLOR_TRANSPARENT);
-        } else {
-            dc.drawArc(x, y - radius * 18 / 100, radius * 58 / 100,
-                       Graphics.ARC_COUNTER_CLOCKWISE, 240, 300);
-        }
-
-        // Eyes go on top: the open mouth paints over its own top half.
-        var eyeX = radius * 36 / 100;
-        var eyeY = y - radius * 16 / 100;
-        var eye = radius * 11 / 100;
-        if (mood == MOOD_REMEMBER) {
-            // Happy closed eyes: two small upturned arcs.
-            dc.setPenWidth(4);
-            dc.drawArc(x - eyeX, eyeY + eye, eye + 2, Graphics.ARC_COUNTER_CLOCKWISE, 20, 160);
-            dc.drawArc(x + eyeX, eyeY + eye, eye + 2, Graphics.ARC_COUNTER_CLOCKWISE, 20, 160);
-        } else {
-            dc.fillEllipse(x - eyeX, eyeY, eye, eye * 14 / 10);
-            dc.fillEllipse(x + eyeX, eyeY, eye, eye * 14 / 10);
-        }
-    }
-
-    function drawMemoryMarks(dc as Graphics.Dc, x as Lang.Number,
-                             y as Lang.Number) as Void {
-        var count = (mLifetimeChapters < 10) ? mLifetimeChapters : 10;
-        if (count == 0) { return; }
-        var gap = 16;
-        var startX = x - ((count - 1) * gap / 2);
-        dc.setColor(0xE8CF70, Graphics.COLOR_TRANSPARENT);
-        for (var i = 0; i < count; i += 1) {
-            dc.fillCircle(startX + i * gap, y, 5);
-        }
-    }
-
-    function drawHeartLine(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number) as Void {
-        var text = "--";
-        if (mHeartRate >= 0) {
-            text = mHeartRate.toString();
-            if (mBaselineAvg >= 0) {
-                var delta = heartDelta();
-                text += (delta >= 0) ? ("   +" + delta) : ("   " + delta);
-            }
-        }
-        // "MM " reserves room for the drawn heart while choosing the font.
-        var font = fitFont(dc, "MM " + text,
-                           [Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY], y);
-        var size = dc.getFontHeight(font) * 30 / 100;
-        var total = size * 3 + dc.getTextWidthInPixels(text, font);
-        var heartX = x - total / 2 + size;
-
-        // A drawn heart, so it never depends on a font having the glyph.
-        dc.setColor(0xFF6B6B, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(heartX - size / 2, y - size / 3, size / 2 + 1);
-        dc.fillCircle(heartX + size / 2, y - size / 3, size / 2 + 1);
-        dc.fillPolygon([[heartX - size - 1, y - size / 4], [heartX + size + 1, y - size / 4],
-                        [heartX, y + size]]);
-
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(heartX + size * 2, y, font, text,
-                    Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     // Garmin's own convention: a short arc on the rim beside the START button
@@ -526,9 +515,11 @@ class WristDiaryView extends WatchUi.View {
         mLastInputElapsed = mElapsed;
     }
 
-    // One primary action, interpreted by the current full-screen card.
-    function selectAction() as Void {
-        if (mScreen == SCREEN_HOME) {
+    // One primary action, interpreted by the current full-screen card. True
+    // means the delegate should leave the app (the exit reward was accepted).
+    function selectAction() as Lang.Boolean {
+        var leave = false;
+        if (mScreen == SCREEN_HOME || mScreen == SCREEN_TRAIL) {
             mWalk.enterReady();
             mScreen = mWalk.isFailed() ? SCREEN_WALK_RESULT : SCREEN_WALK;
         } else if (mScreen == SCREEN_WALK) {
@@ -541,65 +532,143 @@ class WristDiaryView extends WatchUi.View {
                 mScreen = SCREEN_WALK_RESULT;
             }
         } else if (mScreen == SCREEN_END_WALK) {
-            mWalk.saveFromSelect();
+            if (walkTooShort()) {
+                mWalk.discard();
+            } else if (mWalk.saveFromSelect()) {
+                walkKept();
+            }
             mScreen = SCREEN_WALK_RESULT;
         } else if (mScreen == SCREEN_WALK_RESULT) {
             // Home whether or not the cleanup worked: a FIT session that refuses
             // to discard must never trap the wearer on this card. enterReady()
             // retries the discard the next time a walk is started.
             mWalk.close();
-            mScreen = SCREEN_HOME;
+            mScreen = homeScreen();
         } else if (mScreen == SCREEN_EXPORT) {
             exportNow();
+        } else if (mScreen == SCREEN_EGG) {
+            if (mRepick) {
+                mScreen = SCREEN_VOICE;
+            } else {
+                mHatchFrame = mFrame;
+                mScreen = SCREEN_HATCHING;
+            }
+        } else if (mScreen == SCREEN_HATCHING) {
+            mScreen = SCREEN_VOICE;
+        } else if (mScreen == SCREEN_VOICE) {
+            commitHatch();
+        } else if (mScreen == SCREEN_REWARD || mScreen == SCREEN_GREW) {
+            leave = advanceReward();
+        } else if (mScreen == SCREEN_GROWTH) {
+            if (mEvoReady) {
+                mPickForm = FriendLook.FORM_ROUND;
+                mScreen = SCREEN_EVOLVE;
+            }
+        } else if (mScreen == SCREEN_EVOLVE) {
+            mScreen = SCREEN_EVOLVE_CONFIRM;
+        } else if (mScreen == SCREEN_EVOLVE_CONFIRM) {
+            commitEvolve();
         }
         WatchUi.requestUpdate();
+        return leave;
     }
 
     // True means the delegate should leave the app. Every other screen consumes Back
     // as a literal step backward; a running walk gets a confirmation screen first.
     function backAction() as Lang.Boolean {
         if (mScreen == SCREEN_HOME) { return true; }
-        if (mScreen == SCREEN_EXPORT) {
+        if (mScreen == SCREEN_EGG && !mRepick) { return true; }
+        if (mScreen == SCREEN_REWARD || mScreen == SCREEN_GREW) {
+            var leave = advanceReward();
+            WatchUi.requestUpdate();
+            return leave;
+        }
+        if (mScreen == SCREEN_EXPORT || mScreen == SCREEN_TODAY ||
+            mScreen == SCREEN_GROWTH || mScreen == SCREEN_TRAIL) {
+            mScreen = homeScreen();
+        } else if (mScreen == SCREEN_EGG) {
+            mRepick = false;
             mScreen = SCREEN_HOME;
+        } else if (mScreen == SCREEN_HATCHING || mScreen == SCREEN_VOICE) {
+            mScreen = SCREEN_EGG;
+        } else if (mScreen == SCREEN_EVOLVE) {
+            mScreen = SCREEN_GROWTH;
+        } else if (mScreen == SCREEN_EVOLVE_CONFIRM) {
+            mScreen = SCREEN_EVOLVE;
         } else if (mScreen == SCREEN_END_WALK) {
             mScreen = SCREEN_WALK;
         } else if (mScreen == SCREEN_WALK_RESULT) {
             // Same escape hatch as START: Back always leaves the result card.
             mWalk.close();
-            mScreen = SCREEN_HOME;
+            mScreen = homeScreen();
         } else if (mScreen == SCREEN_WALK) {
             if (mWalk.isRecording()) {
                 mScreen = SCREEN_END_WALK;
             } else {
                 mWalk.close();
-                mScreen = SCREEN_HOME;
+                mScreen = homeScreen();
             }
         }
         WatchUi.requestUpdate();
         return false;
     }
 
-    function pageAction() as Void {
-        if (mScreen == SCREEN_HOME) {
-            mScreen = SCREEN_EXPORT;
-        } else if (mScreen == SCREEN_EXPORT) {
-            mScreen = SCREEN_HOME;
+    // Up and Down browse the card stack, or the choices on a choosing screen.
+    function pageAction(step as Lang.Number) as Void {
+        if (mScreen == SCREEN_EGG) {
+            mPickPal = (mPickPal + step + FriendLook.PALETTE_COUNT) % FriendLook.PALETTE_COUNT;
+        } else if (mScreen == SCREEN_VOICE) {
+            mPickVoice = (mPickVoice + step + mVoice.voiceCount()) % mVoice.voiceCount();
+        } else if (mScreen == SCREEN_EVOLVE) {
+            mPickForm = (mPickForm + step + FriendLook.FORM_COUNT) % FriendLook.FORM_COUNT;
+        } else if (mPet.exists()) {
+            var order = [SCREEN_HOME, SCREEN_TODAY, SCREEN_GROWTH, SCREEN_TRAIL,
+                         SCREEN_EXPORT] as Lang.Array<Lang.Number>;
+            for (var i = 0; i < order.size(); i += 1) {
+                if (order[i] == mScreen) {
+                    mScreen = order[(i + step + order.size()) % order.size()];
+                    break;
+                }
+            }
         }
         WatchUi.requestUpdate();
     }
 
     function menuAction() as Void {
-        if (mScreen == SCREEN_HOME) {
+        if (mScreen == SCREEN_HOME || (mScreen == SCREEN_EGG && !mRepick)) {
             mScreen = SCREEN_EXPORT;
-            WatchUi.requestUpdate();
+        } else if (mScreen == SCREEN_EXPORT && mPet.exists()) {
+            // Dogfood escape hatch: pick the colorway and voice again.
+            mRepick = true;
+            mPickPal = mPet.palette();
+            mPickVoice = mPet.persona();
+            mScreen = SCREEN_EGG;
         }
+        WatchUi.requestUpdate();
+    }
+
+    // A tap anywhere pets the friend. Touch never starts, ends or saves a walk:
+    // only the START button does.
+    function tapAction() as Void {
+        if (mScreen != SCREEN_HOME || mStopped || !mPet.exists()) { return; }
+        var asleep = isAsleep();
+        mAwakeUntil = mElapsed + 30;
+        if (asleep) {
+            say(mVoice.woke(mPet.persona()), 4);
+        } else {
+            mPet.petted(Time.now().value());
+            refreshPet();
+            say(mVoice.petted(mPet.persona(), mEmoteCount), 4);
+            startEmote(nextEmote());
+        }
+        WatchUi.requestUpdate();
     }
 
     // Keep exit-reason constants private to the view. Monkey C class constants are
     // not static members, so callers use these named actions instead.
     function stopFromBack() as Void {
         try {
-            if (mWalk.isRecording()) { mWalk.saveFromBack(); }
+            if (mWalk.isRecording() && mWalk.saveFromBack()) { walkKept(); }
         } catch (e) {
             System.println("FRIEND_WALK_EXIT_ERROR," + e.getErrorMessage());
         }
@@ -609,7 +678,7 @@ class WristDiaryView extends WatchUi.View {
 
     function stopFromSystemClose() as Void {
         try {
-            if (mWalk.isRecording()) { mWalk.saveFromSystemClose(); }
+            if (mWalk.isRecording() && mWalk.saveFromSystemClose()) { walkKept(); }
         } catch (e) {
             System.println("FRIEND_WALK_CLOSE_ERROR," + e.getErrorMessage());
         }
@@ -645,8 +714,17 @@ class WristDiaryView extends WatchUi.View {
         mElapsed += 1;
         readLiveHeartRate();
         mWalk.tick();
-        if ((mElapsed % 60) == 0) { refreshSlowSignals(); }
+        if ((mElapsed % 60) == 0) {
+            refreshSlowSignals();
+            refreshPet();
+        }
         if ((mElapsed % LIVE_INTERVAL_SECONDS) == 0) { captureLive(); }
+        // Last session's reward, shown at open, steps aside by itself.
+        if (mRecap && mElapsed >= mRecapUntil &&
+            (mScreen == SCREEN_REWARD || mScreen == SCREEN_GREW)) {
+            advanceReward();
+            mRecapUntil = mElapsed + 8;
+        }
         WatchUi.requestUpdate();
     }
 
@@ -866,6 +944,7 @@ class WristDiaryView extends WatchUi.View {
         var movingPct = percentage(mMovingSamples, mMotionSamples);
         updateChapter(hrMin, hrAvg, hrMax, hrDeltaAvg,
                       motionAvg, mMotionPeak, movingPct);
+        updatePending();
         saveRing("live3", MAX_LIVE, [
             Time.now().value(), mSessionId, mElapsed, mHeartRate,
             hrMin, hrAvg, hrMax, hrDeltaAvg,
@@ -986,6 +1065,20 @@ class WristDiaryView extends WatchUi.View {
         mChapterState = CHAPTER_IDLE;
         mEvidenceBits = 0;
         mStatus = "I REMEMBER";
+
+        // The chapter feeds the pet. The row above stays the evidence; the pet
+        // keeps only a watermark, so crediting the same chapter twice is harmless.
+        if (mPet.exists()) {
+            var points = mPet.creditChapter(mChapterStart, mChapterLastStrong, duration,
+                                            mBaselineAvg, hrAvg, true);
+            mPending = 0;
+            mPendingFlames = 0;
+            refreshPet();
+            if (points > 0 && !mStopped) {
+                say("+" + points + " XP", 8);
+                startEmote(FriendLook.POSE_HOP);
+            }
+        }
     }
 
     function countRecentEvidence(window as Lang.Number) as Lang.Number {
@@ -1052,6 +1145,7 @@ class WristDiaryView extends WatchUi.View {
     function exportAllRecords() as Void {
         System.println("FRIEND_EXPORT_BEGIN," + EXPORT_FORMAT + "," + APP_VERSION);
         exportDevice();
+        if (mPet.exists()) { System.println(mPet.exportLine()); }
         exportRecentRing("snap", MAX_SNAPSHOTS, EXPORT_SNAPSHOTS);
         exportRecentRing("session3", MAX_SESSIONS, EXPORT_SESSIONS);
         exportRecentRing("chapter3", MAX_CHAPTERS, EXPORT_CHAPTERS);
@@ -1175,19 +1269,6 @@ class WristDiaryView extends WatchUi.View {
         return delta + motion;
     }
 
-    function statusText() as Lang.String {
-        if (Time.now().value() <= mSavedUntil) { return "SAVED"; }
-        if (mChapterState == CHAPTER_ACTIVE) { return "WITH YOU"; }
-        if (recentlyRemembered()) {
-            var minutes = (mLastChapterDuration + 30) / 60;
-            if (minutes < 1) { minutes = 1; }
-            return "I SAW " + minutes + " MIN";
-        }
-        if (effortScore() > 35) { return "I SEE IT"; }
-        if (mHeartRate < 0) { return "WATCHING"; }
-        return "I'M HERE";
-    }
-
     // For a few minutes after a chapter (and the first 30 s of a visit) the
     // friend talks about what it saw.
     function recentlyRemembered() as Lang.Boolean {
@@ -1229,5 +1310,716 @@ class WristDiaryView extends WatchUi.View {
         var line = "" + record[0];
         for (var i = 1; i < record.size(); i += 1) { line += "," + record[i]; }
         return line;
+    }
+
+    // ====================================================== the pet layer (0.8.0)
+    // Sensing above is unchanged. Everything below turns its chapters into a
+    // friend that grows: garmin-pet/12-pet-state-and-economy.md for the rules,
+    // FriendPet for the state, FriendArt for the drawing, FriendVoice for lines.
+    // scripts/friend_preview.py mirrors every draw* function here.
+
+    // Meet the pet, or the egg it has not hatched from yet.
+    function beginPet() as Void {
+        if (!mPet.exists()) {
+            mScreen = SCREEN_EGG;
+            return;
+        }
+        var now = Time.now().value();
+        mPet.creditStored();
+        var reunion = mPet.open(now);
+        refreshPet();
+        var voice = mPet.persona();
+        if (reunion) {
+            mGreeting = mVoice.reunion(voice, mSalt);
+        } else if (mBodyBattery >= 0 && mBodyBattery < 25) {
+            mGreeting = mVoice.drained(voice, mSalt);
+        } else {
+            mGreeting = mVoice.hello(hourNow(), voice, mSalt);
+        }
+        // A reward the wearer never saw (the watch closed Friend, or nobody
+        // looked) opens the next visit.
+        if (mPet.owedPoints() > 0) {
+            mRecap = true;
+            mScreen = SCREEN_REWARD;
+        }
+    }
+
+    function refreshPet() as Void {
+        if (!mPet.exists()) { return; }
+        var now = Time.now().value();
+        mMood = mPet.moodNow(now);
+        mBand = mPet.band();
+        mEvoReady = mPet.evoReady(now);
+        mDayFull = (mPet.dayMinutes(now) >= 30);
+    }
+
+    function homeScreen() as Lang.Number {
+        return mPet.exists() ? SCREEN_HOME : SCREEN_EGG;
+    }
+
+    function petStage() as Lang.Number {
+        if (mBand >= 3) { return FriendLook.STAGE_ADULT; }
+        if (mBand >= 1) { return FriendLook.STAGE_CHILD; }
+        return FriendLook.STAGE_BABY;
+    }
+
+    function dressPet() as Void {
+        mArt.setLook(petStage(), mBand, mPet.form(), mPet.evos(), mPet.palette());
+    }
+
+    // The friend standing on footY, at a percentage of its home-screen size.
+    // Before it hatches, the egg stands there instead.
+    function drawPet(dc as Graphics.Dc, x as Lang.Number, footY as Lang.Number,
+                     percent as Lang.Number, face as Lang.Number,
+                     pose as Lang.Number) as Void {
+        var height = dc.getHeight();
+        if (!mPet.exists()) {
+            mArt.setLook(FriendLook.STAGE_EGG, 0, 0, 0, mPickPal);
+            mArt.setPose(face, pose, mFrame);
+            var eggSize = mArt.sizeFor(FriendLook.STAGE_EGG, height) * percent / 100;
+            mArt.drawEgg(dc, x, footY - eggSize * 108 / 100, eggSize, 0);
+            return;
+        }
+        dressPet();
+        mArt.setPose(face, pose, mFrame);
+        var size = mArt.sizeFor(petStage(), height) * percent / 100;
+        mArt.draw(dc, x, footY - size, size);
+    }
+
+    // The animation timer only runs while the screen shows.
+    function startAnimation() as Void {
+        if (mAnimating) { return; }
+        if (mAnimTimer == null) { mAnimTimer = new Timer.Timer(); }
+        (mAnimTimer as Timer.Timer).start(method(:onFrame), ANIM_MS, true);
+        mAnimating = true;
+    }
+
+    function stopAnimation() as Void {
+        if (!mAnimating) { return; }
+        var timer = mAnimTimer;
+        if (timer != null) { timer.stop(); }
+        mAnimating = false;
+    }
+
+    function onFrame() as Void {
+        mFrame += 1;
+        if (mScreen == SCREEN_HATCHING && (mFrame - mHatchFrame) >= HATCH_FRAMES) {
+            mScreen = SCREEN_VOICE;
+        }
+        WatchUi.requestUpdate();
+    }
+
+    function hourNow() as Lang.Number {
+        return System.getClockTime().hour;
+    }
+
+    function isNight() as Lang.Boolean {
+        var hour = hourNow();
+        return hour >= 20 || hour < 6;
+    }
+
+    // Late at night the friend dozes, unless there is effort to watch or it was
+    // just woken. Asleep is a look, never a lockout: sensing carries on.
+    function isAsleep() as Lang.Boolean {
+        var hour = hourNow();
+        return (hour >= 23 || hour < 5) && mChapterState != CHAPTER_ACTIVE &&
+               mElapsed >= mAwakeUntil && !emoteActive();
+    }
+
+    function emoteActive() as Lang.Boolean {
+        return mFrame < mEmoteUntil;
+    }
+
+    function startEmote(pose as Lang.Number) as Void {
+        mEmote = pose;
+        mEmoteUntil = mFrame + 16;
+    }
+
+    // Petting cycles through the emotes the friend has grown into.
+    function nextEmote() as Lang.Number {
+        var known = 1;
+        if (mBand >= 1) { known = 2; }
+        if (mBand >= 2) { known = 3; }
+        if (mBand >= 4) { known = 4; }
+        var pick = mEmoteCount % known;
+        mEmoteCount += 1;
+        if (pick == 1) { return FriendLook.POSE_FLEX; }
+        if (pick == 2) { return FriendLook.POSE_SPIN; }
+        if (pick == 3) { return FriendLook.POSE_FLAMES; }
+        return FriendLook.POSE_HOP;
+    }
+
+    function say(text as Lang.String, seconds as Lang.Number) as Void {
+        mSay = text;
+        mSayUntil = mElapsed + seconds;
+    }
+
+    function homeFace() as Lang.Number {
+        if (mChapterState == CHAPTER_ACTIVE || effortScore() > 35) {
+            return FriendLook.FACE_EFFORT;
+        }
+        if (emoteActive() || recentlyRemembered()) { return FriendLook.FACE_JOY; }
+        if (isAsleep()) { return FriendLook.FACE_SLEEP; }
+        // Mood weather 0..3 is FACE_MISTY..FACE_RADIANT.
+        return mPet.weather(mMood);
+    }
+
+    function homePose() as Lang.Number {
+        if (emoteActive()) { return mEmote; }
+        if (mChapterState == CHAPTER_ACTIVE) { return FriendLook.POSE_RUN; }
+        if (isAsleep()) { return FriendLook.POSE_SLEEP; }
+        return FriendLook.POSE_IDLE;
+    }
+
+    // What the friend says under itself. A passing line wins, then what it is
+    // watching, then a greeting, then quiet company.
+    function homeLine() as Lang.String {
+        var voice = mPet.persona();
+        if (Time.now().value() <= mSavedUntil) { return "Saved."; }
+        if (mElapsed < mSayUntil) { return mSay; }
+        if (mChapterState == CHAPTER_ACTIVE) {
+            return mVoice.effort(mPendingFlames, voice, mSalt + mElapsed / 40);
+        }
+        if (recentlyRemembered()) {
+            var minutes = (mLastChapterDuration + 30) / 60;
+            if (minutes < 1) { minutes = 1; }
+            return "I saw " + minutes + " min.";
+        }
+        if (effortScore() > 35) { return "I see it."; }
+        if (isAsleep()) { return "zzz"; }
+        if (mElapsed <= 12) { return mGreeting; }
+        var slot = mElapsed / 30;
+        if (mEvoReady) { return mVoice.evoReady(slot); }
+        if (mDayFull && (slot % 2) == 1) { return mVoice.full(voice, mSalt + slot); }
+        return mVoice.idle(voice, mSalt + slot);
+    }
+
+    // Heart rate, then either its distance from the four-hour baseline or, while
+    // a chapter is open, the flames and the XP it has earned so far.
+    function drawPulseRow(dc as Graphics.Dc, centerX as Lang.Number, y as Lang.Number) as Void {
+        var text = (mHeartRate >= 0) ? mHeartRate.toString() : "--";
+        var lit = (mChapterState == CHAPTER_ACTIVE) ? mPendingFlames : 0;
+        var tail = "";
+        if (lit > 0) {
+            tail = "+" + mPending;
+        } else if (mHeartRate >= 0 && mBaselineAvg >= 0) {
+            var delta = heartDelta();
+            tail = (delta >= 0) ? ("+" + delta) : ("" + delta);
+        }
+        var font = Graphics.FONT_TINY;
+        var size = dc.getFontHeight(font) * 30 / 100;
+        var flame = dc.getFontHeight(font) * 34 / 100;
+        var textWidth = dc.getTextWidthInPixels(text, font);
+        var tailWidth = dc.getTextWidthInPixels(tail, font);
+        var total = size * 3 + textWidth + 14 + lit * (flame + 6) + tailWidth;
+        var x = centerX - total / 2;
+        mArt.drawHeart(dc, x + size, y, size);
+        x = x + size * 3;
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y, font, text, Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+        x = x + textWidth + 14;
+        for (var i = 0; i < lit; i += 1) {
+            mArt.drawFlame(dc, x + flame / 2, y, flame, true);
+            x = x + flame + 6;
+        }
+        dc.setColor((lit > 0) ? C_GOLD : Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y, font, tail, Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    // Progress through the current band in the friend's own color, with what
+    // is being earned right now in gold ahead of it.
+    function drawXpBar(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number,
+                       width as Lang.Number, height as Lang.Number, xp as Lang.Number,
+                       pending as Lang.Number, band as Lang.Number) as Void {
+        var low = mPet.bandThreshold(band);
+        var span = mPet.bandThreshold(band + 1) - low;
+        var done = xp - low;
+        if (done < 0) { done = 0; }
+        if (done > span) { done = span; }
+        var filled = width * done / span;
+        var extra = width * pending / span;
+        if (filled + extra > width) { extra = width - filled; }
+        // A sliver narrower than the bar is tall would lose its round ends.
+        if (filled > 0 && filled < height) { filled = height; }
+        if (extra > 0 && filled + extra < height) { extra = height - filled; }
+        dc.setColor(0x1E2A26, Graphics.COLOR_TRANSPARENT);
+        dc.fillRoundedRectangle(x, y, width, height, height / 2);
+        if (extra > 0) {
+            dc.setColor(C_GOLD, Graphics.COLOR_TRANSPARENT);
+            dc.fillRoundedRectangle(x, y, filled + extra, height, height / 2);
+        }
+        if (filled > 0) {
+            dc.setColor(mArt.bodyColor(), Graphics.COLOR_TRANSPARENT);
+            dc.fillRoundedRectangle(x, y, filled, height, height / 2);
+        }
+    }
+
+    function drawMeter(dc as Graphics.Dc, x as Lang.Number, y as Lang.Number,
+                       width as Lang.Number, height as Lang.Number, value as Lang.Number,
+                       full as Lang.Number, backColor as Lang.Number,
+                       fillColor as Lang.Number) as Void {
+        dc.setColor(backColor, Graphics.COLOR_TRANSPARENT);
+        dc.fillRoundedRectangle(x, y, width, height, height / 2);
+        var filled = width * value / full;
+        if (filled > width) { filled = width; }
+        if (filled > 0 && filled < height) { filled = height; }
+        if (filled > 0) {
+            dc.setColor(fillColor, Graphics.COLOR_TRANSPARENT);
+            dc.fillRoundedRectangle(x, y, filled, height, height / 2);
+        }
+    }
+
+    // ---- words ------------------------------------------------------------
+    function bandName(band as Lang.Number) as Lang.String {
+        var names = ["HATCHLING", "SPROUT", "TRAINEE", "ATHLETE", "VETERAN", "ACE",
+                     "LEGEND", "HERO", "MYTHIC"] as Lang.Array<Lang.String>;
+        if (band < names.size()) { return names[band]; }
+        return "MYTHIC " + (band - 7);
+    }
+
+    // What a band brings. Every one is an expressive unlock for now: the sensing
+    // ladder in doc 12 (naming moves, counting reps) waits for classifiers that
+    // work on real wrists.
+    function unlockWords(band as Lang.Number) as Lang.String {
+        if (band == 1) { return "leaf + flex"; }
+        if (band == 2) { return "headband + spin"; }
+        if (band == 3) { return "grown-up form"; }
+        if (band == 4) { return "flames"; }
+        if (band == 5) { return "cape"; }
+        if (band == 6) { return "aura"; }
+        return "bragging rights";
+    }
+
+    function nextText(band as Lang.Number) as Lang.String {
+        if ((band % 3) == 0) { return "next: evolution"; }
+        return "next: " + unlockWords(band);
+    }
+
+    function weatherName(weather as Lang.Number) as Lang.String {
+        if (weather >= 3) { return "RADIANT"; }
+        if (weather == 2) { return "SUNNY"; }
+        if (weather == 1) { return "FAIR"; }
+        return "MISTY";
+    }
+
+    // Energy is read off the wearer's real clock; it is never a stored bar.
+    function energyName() as Lang.String {
+        var hour = hourNow();
+        if (hour >= 23 || hour < 5) { return "asleep"; }
+        if (hour >= 21) { return "winding down"; }
+        return "awake";
+    }
+
+    // Fullness is today's effort minutes. It resets to peckish each day and
+    // never reaches "starving".
+    function snackName(minutes as Lang.Number) as Lang.String {
+        if (minutes >= 30) { return "FULL"; }
+        if (minutes > 0) { return "SNACKED"; }
+        return "PECKISH";
+    }
+
+    function warmName(warm as Lang.Number) as Lang.String {
+        if (warm >= 90) { return "IN THE ZONE"; }
+        if (warm >= 70) { return "WARMED UP"; }
+        if (warm >= 40) { return "LOOSE"; }
+        return "RUSTY BUT FINE";
+    }
+
+    function paletteName(pal as Lang.Number) as Lang.String {
+        var names = ["MINT", "PEACH", "SKY", "LILAC", "SUN", "ROSE"] as Lang.Array<Lang.String>;
+        return names[pal % names.size()];
+    }
+
+    function formName(form as Lang.Number) as Lang.String {
+        if (form == FriendLook.FORM_SLEEK) { return "SLEEK"; }
+        if (form == FriendLook.FORM_WILD) { return "WILD"; }
+        return "ROUND";
+    }
+
+    function goalName(goal as Lang.Number) as Lang.String {
+        if (goal == 1000) { return "first km"; }
+        if (goal == 5000) { return "5 km picnic"; }
+        if (goal == 10000) { return "10 km ridge"; }
+        if (goal == 21097) { return "half marathon"; }
+        if (goal == 42195) { return "marathon"; }
+        return "" + (goal / 1000) + " km club";
+    }
+
+    function kmText(meters as Lang.Number) as Lang.String {
+        return "" + (meters / 1000) + "." + ((meters % 1000) / 100) + " km";
+    }
+
+    function petDebugText() as Lang.String {
+        if (!mPet.exists()) { return "NO PET YET"; }
+        return "XP " + mPet.xp() + "  B" + mBand + "  M" + mMood;
+    }
+
+    // ---- cards ------------------------------------------------------------
+    // Today: three readouts derived on the spot. Nothing here is a bar that
+    // drains while the wearer is away.
+    function drawToday(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var width = dc.getWidth();
+        var centerX = width / 2;
+        var now = Time.now().value();
+        var weather = mPet.weather(mMood);
+        drawCenteredLine(dc, centerX, height * 10 / 100, "TODAY", C_ACCENT,
+                         [Graphics.FONT_XTINY]);
+        // Mist bars would cross the text here, so a misty day shows as cloud.
+        mArt.drawSky(dc, width, height, (weather < 1) ? 1 : weather, isNight(), 0);
+        drawCenteredLine(dc, centerX, height * 23 / 100, weatherName(weather),
+                         Graphics.COLOR_WHITE, [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
+        drawCenteredLine(dc, centerX, height * 33 / 100,
+                         "mood " + mMood + "   " + energyName(),
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+
+        var minutes = mPet.dayMinutes(now);
+        drawCenteredLine(dc, centerX, height * 45 / 100, snackName(minutes), C_ORANGE,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        var barWidth = width * 44 / 100;
+        drawMeter(dc, centerX - barWidth / 2, height * 51 / 100, barWidth, 8, minutes, 30,
+                  0x2A2018, C_ORANGE);
+        drawCenteredLine(dc, centerX, height * 58 / 100, "" + minutes + " of 30 effort min",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+
+        drawCenteredLine(dc, centerX, height * 70 / 100, warmName(mPet.warmth(now)), C_GOLD,
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        var held = mPet.shields(now);
+        mArt.drawShield(dc, centerX - 16, height * 79 / 100, 9, held >= 1);
+        mArt.drawShield(dc, centerX + 16, height * 79 / 100, 9, held >= 2);
+        drawCenteredLine(dc, centerX, height * 88 / 100, "rest-day shields",
+                         Graphics.COLOR_DK_GRAY, [Graphics.FONT_XTINY]);
+    }
+
+    function drawGrowth(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var width = dc.getWidth();
+        var centerX = width / 2;
+        var toGo = mPet.bandThreshold(mBand + 1) - mPet.xp();
+        drawCenteredLine(dc, centerX, height * 10 / 100, "GROWING", C_ACCENT,
+                         [Graphics.FONT_XTINY]);
+        drawPet(dc, centerX, height * 37 / 100, 62, FriendLook.FACE_SUNNY, FriendLook.POSE_IDLE);
+        drawCenteredLine(dc, centerX, height * 46 / 100, bandName(mBand), Graphics.COLOR_WHITE,
+                         [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
+        drawXpBar(dc, centerX - width * 30 / 100, height * 54 / 100, width * 60 / 100, 12,
+                  mPet.xp(), 0, mBand);
+        drawCenteredLine(dc, centerX, height * 63 / 100,
+                         (toGo > 0) ? ("" + toGo + " XP to " + bandName(mBand + 1))
+                                    : "enough to evolve",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 73 / 100, nextText(mBand + 1), C_GOLD,
+                         [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 82 / 100, "" + mPet.memories() + " memories",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        if (mEvoReady) {
+            drawCenteredLine(dc, centerX, height * 90 / 100, "START evolve", C_MINT,
+                             [Graphics.FONT_XTINY]);
+            drawStartHint(dc);
+        } else {
+            drawCenteredLine(dc, centerX, height * 90 / 100,
+                             "day " + mPet.ageDays(Time.now().value()),
+                             Graphics.COLOR_DK_GRAY, [Graphics.FONT_XTINY]);
+        }
+    }
+
+    // Walks with Friend add up to one long trail with landmarks along it.
+    function drawTrail(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var width = dc.getWidth();
+        var centerX = width / 2;
+        var meters = mPet.trailMeters();
+        var walks = mPet.trailWalks();
+        var goal = mPet.trailGoal();
+        dressPet();
+        drawCenteredLine(dc, centerX, height * 11 / 100, "OUR TRAIL", C_ACCENT,
+                         [Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 26 / 100, kmText(meters), Graphics.COLOR_WHITE,
+                         [Graphics.FONT_LARGE, Graphics.FONT_MEDIUM]);
+        drawCenteredLine(dc, centerX, height * 38 / 100,
+                         (walks == 1) ? "1 walk together" : ("" + walks + " walks together"),
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+
+        // A dotted path to a flag at the next landmark.
+        var left = centerX - width * 30 / 100;
+        var span = width * 60 / 100;
+        var y = height * 56 / 100;
+        var reached = 12 * meters / goal;
+        for (var i = 0; i <= 12; i += 1) {
+            var x = left + span * i / 12;
+            var dotY = y + (((i % 4) < 2) ? -3 : 3);
+            if (i <= reached) {
+                dc.setColor(mArt.bodyColor(), Graphics.COLOR_TRANSPARENT);
+                dc.fillCircle(x, dotY, 5);
+            } else {
+                dc.setColor(0x33403A, Graphics.COLOR_TRANSPARENT);
+                dc.fillCircle(x, dotY, 3);
+            }
+        }
+        var flagX = left + span;
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(3);
+        dc.drawLine(flagX, y - 30, flagX, y);
+        dc.setColor(C_GOLD, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([[flagX, y - 30], [flagX + 20, y - 23], [flagX, y - 16]]);
+
+        drawCenteredLine(dc, centerX, height * 70 / 100, "next: " + goalName(goal), C_GOLD,
+                         [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 80 / 100, kmText(goal - meters) + " to go",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 90 / 100, "START walk", Graphics.COLOR_DK_GRAY,
+                         [Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    // ---- the reward --------------------------------------------------------
+    // One clean payoff: what the effort earned, how hard it was, one line of
+    // reaction, and the bar moving toward the next band. No spreadsheet.
+    function drawReward(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var width = dc.getWidth();
+        var centerX = width / 2;
+        var points = mPet.owedPoints();
+        var lit = mPet.owedFlames();
+        var hatch = (lit == 0);
+        var title = "LAST TIME";
+        if (hatch) {
+            title = "HATCHED!";
+        } else if (mRewardExit) {
+            title = "EFFORT SNACK";
+        }
+        drawCenteredLine(dc, centerX, height * 9 / 100, title, C_ACCENT, [Graphics.FONT_XTINY]);
+        drawPet(dc, centerX, height * 43 / 100, 66, FriendLook.FACE_JOY, FriendLook.POSE_HOP);
+        drawCenteredLine(dc, centerX, height * 55 / 100, "+" + points + " XP", C_GOLD,
+                         [Graphics.FONT_LARGE, Graphics.FONT_MEDIUM]);
+        var rowY = height * 66 / 100;
+        if (hatch) {
+            mArt.drawSparkle(dc, centerX - 44, rowY, 8, 0xFFF3B8);
+            mArt.drawSparkle(dc, centerX, rowY, 11, 0xFFF3B8);
+            mArt.drawSparkle(dc, centerX + 44, rowY, 8, 0xFFF3B8);
+        } else {
+            var flame = 26;
+            var x = centerX - (3 * flame + 2 * 10) / 2 + flame / 2;
+            for (var i = 0; i < 3; i += 1) {
+                mArt.drawFlame(dc, x, rowY, flame, i < lit);
+                x = x + flame + 10;
+            }
+        }
+        drawCenteredLine(dc, centerX, height * 75 / 100,
+                         hatch ? mVoice.hatched() : mVoice.reward(lit, mPet.persona(), mSalt),
+                         Graphics.COLOR_WHITE, [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawXpBar(dc, centerX - width * 22 / 100, height * 81 / 100, width * 44 / 100, 10,
+                  mPet.xp() - points, points, mBand);
+        drawCenteredLine(dc, centerX, height * 89 / 100, rewardDetail(hatch),
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    function rewardDetail(hatch as Lang.Boolean) as Lang.String {
+        if (hatch) { return "" + mPet.memories() + " memories"; }
+        if (mEvoReady) { return "ready to evolve!"; }
+        var minutes = (mPet.owedSeconds() + 30) / 60;
+        if (minutes < 1) { minutes = 1; }
+        var text = "" + minutes + " min";
+        if ((mPet.owedFlags() % 2) == 1) { text += "  first today"; }
+        return text;
+    }
+
+    function drawGrew(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var width = dc.getWidth();
+        var centerX = width / 2;
+        drawCenteredLine(dc, centerX, height * 10 / 100, "GREW UP!", C_GOLD,
+                         [Graphics.FONT_TINY]);
+        mArt.drawSparkle(dc, width * 20 / 100, height * 26 / 100, 9, 0xFFF3B8);
+        mArt.drawSparkle(dc, width * 82 / 100, height * 32 / 100, 7, 0xFFF3B8);
+        mArt.drawSparkle(dc, width * 76 / 100, height * 17 / 100, 5, 0xFFF3B8);
+        drawPet(dc, centerX, height * 53 / 100, 82, FriendLook.FACE_RADIANT,
+                (mBand >= 1) ? FriendLook.POSE_FLEX : FriendLook.POSE_HOP);
+        drawCenteredLine(dc, centerX, height * 64 / 100, bandName(mBand), Graphics.COLOR_WHITE,
+                         [Graphics.FONT_LARGE, Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
+        drawCenteredLine(dc, centerX, height * 75 / 100, "new: " + unlockWords(mBand), C_GOLD,
+                         [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 86 / 100, "START ok", Graphics.COLOR_DK_GRAY,
+                         [Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    // START or Back on the reward card. True means leave the app.
+    function advanceReward() as Lang.Boolean {
+        if (mScreen == SCREEN_REWARD && mPet.band() > mPet.owedBand()) {
+            mScreen = SCREEN_GREW;
+            return false;
+        }
+        mPet.clearOwed();
+        refreshPet();
+        if (mRewardExit) { return true; }
+        mRecap = false;
+        mScreen = SCREEN_HOME;
+        return false;
+    }
+
+    // Called by the delegate once Back has saved the session. True means stay a
+    // moment: the friend shows what this visit earned, then Friend leaves on a
+    // press or by itself.
+    function beginExitReward() as Lang.Boolean {
+        if (mRewardExit || !mPet.exists() || mPet.owedPoints() <= 0) { return false; }
+        mRewardExit = true;
+        mRecap = false;
+        refreshPet();
+        mScreen = SCREEN_REWARD;
+        if (mExitTimer == null) { mExitTimer = new Timer.Timer(); }
+        (mExitTimer as Timer.Timer).start(method(:onRewardTimeout), REWARD_LINGER_MS, false);
+        WatchUi.requestUpdate();
+        return true;
+    }
+
+    // Nobody pressed anything: leave. The reward stays owed, so the next visit
+    // opens with it.
+    function onRewardTimeout() as Void {
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+
+    // ---- first run: the egg -----------------------------------------------
+    function drawEggScreen(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        var hatching = (mScreen == SCREEN_HATCHING);
+        var title = "AN EGG!";
+        if (hatching) {
+            title = "IT'S HATCHING!";
+        } else if (mRepick) {
+            title = "NEW LOOK";
+        }
+        var crack = 0;
+        if (hatching) {
+            crack = (mFrame - mHatchFrame) / 4 + 1;
+            if (crack > 3) { crack = 3; }
+        }
+        mArt.setLook(FriendLook.STAGE_EGG, 0, 0, 0, mPickPal);
+        mArt.setPose(FriendLook.FACE_FAIR, FriendLook.POSE_IDLE, mFrame);
+        var size = mArt.sizeFor(FriendLook.STAGE_EGG, height);
+        drawCenteredLine(dc, centerX, height * 11 / 100, title, C_GOLD, [Graphics.FONT_TINY]);
+        mArt.drawEgg(dc, centerX, height * 56 / 100 - size * 108 / 100, size, crack);
+        drawCenteredLine(dc, centerX, height * 67 / 100, paletteName(mPickPal), mArt.bodyColor(),
+                         [Graphics.FONT_SMALL, Graphics.FONT_TINY]);
+        if (!hatching) {
+            drawCenteredLine(dc, centerX, height * 77 / 100, "UP/DOWN color",
+                             Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+            drawCenteredLine(dc, centerX, height * 86 / 100,
+                             mRepick ? "START next" : "START hatch", C_MINT,
+                             [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+            drawStartHint(dc);
+        }
+    }
+
+    // The voice is a permanent trait, so the wearer hears it before choosing.
+    function drawVoiceScreen(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        var stage = FriendLook.STAGE_BABY;
+        if (mRepick) {
+            stage = petStage();
+            mArt.setLook(stage, mBand, mPet.form(), mPet.evos(), mPickPal);
+        } else {
+            mArt.setLook(stage, 0, 0, 0, mPickPal);
+        }
+        mArt.setPose(FriendLook.FACE_SUNNY, FriendLook.POSE_IDLE, mFrame);
+        var size = mArt.sizeFor(stage, height) * 80 / 100;
+        drawCenteredLine(dc, centerX, height * 10 / 100, "HOW DO I TALK?", C_GOLD,
+                         [Graphics.FONT_XTINY]);
+        mArt.draw(dc, centerX, height * 40 / 100 - size, size);
+        drawCenteredLine(dc, centerX, height * 51 / 100, mVoice.voiceName(mPickVoice),
+                         Graphics.COLOR_WHITE, [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
+        drawCenteredLine(dc, centerX, height * 62 / 100, mVoice.voiceSample(mPickVoice), C_MINT,
+                         [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 75 / 100, "UP/DOWN voice",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 85 / 100, "START keep", C_MINT,
+                         [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    function commitHatch() as Void {
+        if (mRepick) {
+            mPet.setLook(mPickPal, mPickVoice);
+            mRepick = false;
+            refreshPet();
+            mScreen = SCREEN_HOME;
+            return;
+        }
+        // The egg was listening the whole time: every chapter Friend still
+        // holds is credited, and the reward card shows the lot.
+        mPet.hatch(Time.now().value(), mPickPal, mPickVoice);
+        refreshPet();
+        mGreeting = mVoice.hello(hourNow(), mPet.persona(), mSalt);
+        mAwakeUntil = mElapsed + 30;
+        mRecap = false;
+        mScreen = (mPet.owedPoints() > 0) ? SCREEN_REWARD : SCREEN_HOME;
+    }
+
+    // ---- evolution: the one permanent fork ---------------------------------
+    function drawEvolveScreen(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        var confirm = (mScreen == SCREEN_EVOLVE_CONFIRM);
+        mArt.setLook(FriendLook.STAGE_ADULT, mBand + 1, mPickForm, mPet.evos() + 1,
+                     mPet.palette());
+        mArt.setPose(FriendLook.FACE_SUNNY, FriendLook.POSE_IDLE, mFrame);
+        var size = mArt.sizeFor(FriendLook.STAGE_ADULT, height) * 82 / 100;
+        drawCenteredLine(dc, centerX, height * 10 / 100,
+                         confirm ? "KEEP FOREVER?" : "WHO WILL I BE?", C_GOLD,
+                         [Graphics.FONT_XTINY]);
+        mArt.draw(dc, centerX, height * 50 / 100 - size, size);
+        drawCenteredLine(dc, centerX, height * 61 / 100, formName(mPickForm),
+                         Graphics.COLOR_WHITE, [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
+        if (confirm) {
+            drawCenteredLine(dc, centerX, height * 73 / 100, "START yes", C_MINT,
+                             [Graphics.FONT_TINY]);
+            drawCenteredLine(dc, centerX, height * 83 / 100, "BACK look again",
+                             Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        } else {
+            drawCenteredLine(dc, centerX, height * 73 / 100, "UP/DOWN look",
+                             Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+            drawCenteredLine(dc, centerX, height * 83 / 100, "START choose", C_MINT,
+                             [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        }
+        drawStartHint(dc);
+    }
+
+    function commitEvolve() as Void {
+        if (mPet.evolve(Time.now().value(), mPickForm)) {
+            refreshPet();
+            mScreen = SCREEN_GREW;
+        } else {
+            mScreen = SCREEN_GROWTH;
+        }
+    }
+
+    // ---- walks and the live chapter ----------------------------------------
+    // Under a minute and under 50 m is a stray press (the 2026-11-09 export has
+    // a 5-second, 4 m walk that went to Garmin Connect as an activity).
+    function walkTooShort() as Lang.Boolean {
+        return mWalk.elapsed() < 60 && mWalk.distanceMeters() < 50;
+    }
+
+    function walkKept() as Void {
+        if (!mPet.exists()) { return; }
+        mPet.addWalk(mWalk.distanceMeters());
+        say(mVoice.walkDone(mPet.persona(), mSalt), 10);
+    }
+
+    // What the open chapter would earn if it ended now, for the home screen.
+    function updatePending() as Void {
+        if (mChapterState != CHAPTER_ACTIVE || !mPet.exists()) {
+            mPending = 0;
+            mPendingFlames = 0;
+            return;
+        }
+        var duration = mChapterLastStrong - mChapterStart;
+        if (duration < LIVE_INTERVAL_SECONDS) { duration = LIVE_INTERVAL_SECONDS; }
+        var hrAvg = (mChapterHrCount > 0) ? (mChapterHrSum / mChapterHrCount) : -1;
+        var credit = mPet.creditFor(mChapterStart, duration, mBaselineAvg, hrAvg);
+        mPending = credit[0];
+        mPendingFlames = mPet.flameCount(credit[1]);
     }
 }

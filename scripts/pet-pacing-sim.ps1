@@ -55,7 +55,8 @@ foreach ($name in $Users.Keys) {
                 $state = Invoke-PetEvolve $state $openAt
                 $evoDays += ($d + 1)
             }
-            $hrDelta = Get-Rand 8 24
+            # The range Friend logged on a real wrist (2026-10-30 to 2026-11-10): 4 to 36.
+            $hrDelta = Get-Rand 4 36
             $end = $openAt + 120 + $session.Minutes * 60
             $chapter = [pscustomobject]@{
                 start_epoch = $end - $session.Minutes * 60

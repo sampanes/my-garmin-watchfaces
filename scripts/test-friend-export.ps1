@@ -87,7 +87,8 @@ for ($i = 0; $i -lt $records.Count; $i += 1) {
 
 # Size: a full export at the device's export counts with realistic magnitudes
 # must stay under the ~5 KB Garmin log file, with room for a few later lines.
-$exportLines = @("FRIEND_EXPORT_BEGIN,5,0.6.0", "FRIEND_DEVICE,000-TEST00-00,00.00,0.0.0,1,1")
+$petLine = "FRIEND_PET,1,1793400000,-25200,86,1794349026,1794347736,372,0,1793400000,100,0,20766,8,20766,3225,1,0,1794349026,18,20766,1,0,0,0,0,1102,1,37,2,2,1289,1"
+$exportLines = @("FRIEND_EXPORT_BEGIN,6,0.8.0", "FRIEND_DEVICE,000-TEST00-00,00.00,0.0.0,1,1", $petLine)
 $exportLines += "FRIEND_snap_BEGIN,4"
 $exportLines += @(1..4 | ForEach-Object { "1700010000,10000,900,20,8,40,50,60,70,80,900000,10,15,65,95,100000,120" })
 $exportLines += @("FRIEND_snap_END", "FRIEND_session3_BEGIN,8")
@@ -98,10 +99,10 @@ $exportLines += @("FRIEND_session3_END", "FRIEND_chapter3_BEGIN,10")
 $exportLines += @(1..10 | ForEach-Object {
     "1700000001,1700001800,1799,1,70,60,100,130,65,200,15000,55,10000,11000,2"
 })
-$exportLines += @("FRIEND_chapter3_END", "FRIEND_live4_BEGIN,35")
+$exportLines += @("FRIEND_chapter3_END", "FRIEND_live4_BEGIN,30")
 $session = 1700000000
 $many = [System.Collections.Generic.List[long[]]]::new()
-for ($i = 0; $i -lt 35; $i += 1) {
+for ($i = 0; $i -lt 30; $i += 1) {
     if ($i % 15 -eq 0) { $session += 4000 }   # three sessions in the window
     $many.Add([long[]]@(($session + 20 * $i), $session, 0, 120, 110, 120, 140, 50,
                         900, 24600, 100, (10000 + $i * 30), 99, 99, 1))
@@ -109,7 +110,7 @@ for ($i = 0; $i -lt 35; $i += 1) {
 $exportLines += @(Export-CompactLiveModel $many.ToArray())
 $exportLines += @("FRIEND_live4_END", "FRIEND_EXPORT_END")
 $bytes = ($exportLines | ForEach-Object { $_.Length + 1 } | Measure-Object -Sum).Sum
-if ($bytes -gt 4800) { throw "Format 5 export is $bytes bytes; must stay under 4800" }
+if ($bytes -gt 4800) { throw "Format 6 export is $bytes bytes; must stay under 4800" }
 
 # Conservative high-width case: every live row came from a separate short
 # session, so every row needs its own S base line. This was over 7 KB at 90 rows.
@@ -118,30 +119,40 @@ $highSnapshot = "1700010000,200000,20000,1440,1440,100,250,250,250,100,10000000,
 # in case the watch reports an invalid-marker interval.
 $highSession = "1700000000,1700020000,20000,250,250,250,250,250,250,20000,96000,100,100000,200000,100,100,100,100,60,20000,100000,2,20000,1000,100,100,768,100,99999,99999,65535,65535,99999,99999"
 $highChapter = "1700000001,1700020000,19999,1,250,250,250,250,250,20000,96000,100,100000,200000,3"
-$worstPrefix = @("FRIEND_EXPORT_BEGIN,5,0.6.0", "FRIEND_DEVICE,000-TEST00-00,99.99,9.9.9,1,1", "FRIEND_snap_BEGIN,4")
+# Every pet field at its widest: ten-digit epochs, a six-digit XP total, five-digit day indexes.
+$highPet = "FRIEND_PET,1,1700000000,-43200,100,1700000000,1700000000,999999,99,1700000000,100,2,99999,99999,99999,999999,1,1,1700000000,99999,99999,255,5,3,2,268435455,9999999,99999,999999,99,3,999999,3"
+$worstPrefix = @("FRIEND_EXPORT_BEGIN,6,0.8.0", "FRIEND_DEVICE,000-TEST00-00,99.99,9.9.9,1,1", $highPet, "FRIEND_snap_BEGIN,4")
 $worstPrefix += @(1..4 | ForEach-Object { $highSnapshot })
 $worstPrefix += @("FRIEND_snap_END", "FRIEND_session3_BEGIN,8")
 $worstPrefix += @(1..8 | ForEach-Object { $highSession })
 $worstPrefix += @("FRIEND_session3_END", "FRIEND_chapter3_BEGIN,10")
 $worstPrefix += @(1..10 | ForEach-Object { $highChapter })
-$worstPrefix += @("FRIEND_chapter3_END", "FRIEND_live4_BEGIN,35")
+$worstPrefix += @("FRIEND_chapter3_END", "FRIEND_live4_BEGIN,30")
 $worstRecords = [System.Collections.Generic.List[long[]]]::new()
-for ($i = 0; $i -lt 35; $i += 1) {
+for ($i = 0; $i -lt 30; $i += 1) {
     $shortSession = 1700000000 + $i * 30
     $worstRecords.Add([long[]]@(($shortSession + 20), $shortSession, 20,
         250, 250, 250, 250, 250, 20000, 96000, 100, 200000, 100, 100, 1))
 }
 $worstLive = @(Export-CompactLiveModel $worstRecords.ToArray())
-Assert-Equal @($worstLive | Where-Object { $_ -like "S,*" }).Count 35 "Each short session needs a base line"
+Assert-Equal @($worstLive | Where-Object { $_ -like "S,*" }).Count 30 "Each short session needs a base line"
 $worstLines = $worstPrefix + $worstLive + @("FRIEND_live4_END", "FRIEND_EXPORT_END")
 $worstBytes = ($worstLines | ForEach-Object { $_.Length + 1 } | Measure-Object -Sum).Sum
-if ($worstBytes -gt 4800) { throw "Worst-case format 5 export is $worstBytes bytes; must stay under 4800" }
+if ($worstBytes -gt 4800) { throw "Worst-case format 6 export is $worstBytes bytes; must stay under 4800" }
 
 # The reader parses the same block end to end, without headers.
 $block = Get-FriendExportBlock (@("junk") + $exportLines + @("FRIEND_EXIT,1,60,40,3"))
 Assert-Equal (@(Read-FriendCsvSection $block "session3")[0].hides) "3" "Session columns come from the reader"
 Assert-Equal (@(Read-FriendCsvSection $block "session3")[0].rr_walk_changes) "2400" "Format 5 session columns reach the last rr_ column"
-Assert-Equal @(ConvertFrom-FriendLive4 (Get-FriendSectionLines $block "live4")).Count 35 "All live rows parse"
+Assert-Equal @(ConvertFrom-FriendLive4 (Get-FriendSectionLines $block "live4")).Count 30 "All live rows parse"
+
+# Format 6: the pet line parses by name, and an older export simply has no pet.
+$petRead = Read-FriendPet $block
+Assert-Equal $petRead.xp 372 "Pet XP"
+Assert-Equal $petRead.walk_m 1102 "Pet trail meters"
+Assert-Equal $petRead.owed_flags 1 "The last pet column"
+Assert-Equal $FriendPetColumns.Count 32 "One name per pet slot"
+Assert-Equal ($null -eq (Read-FriendPet @("FRIEND_EXPORT_BEGIN,5,0.7.1", "FRIEND_EXPORT_END"))) $true "A format 5 export has no pet"
 
 # A session row stored by a pre-0.6.0 build still sits in the ring when the new
 # build exports: 28 columns under a 34-column header parse with blank rr_ fields.
@@ -176,4 +187,4 @@ try {
     Remove-Item -LiteralPath $archive -ErrorAction SilentlyContinue
 }
 
-Write-Host "[pass] Friend export: compact round trip, $bytes-byte full export, $worstBytes-byte worst case, headerless parse, mixed-width sessions, format 3, archive"
+Write-Host "[pass] Friend export: compact round trip, $bytes-byte full export, $worstBytes-byte worst case, headerless parse, pet line, mixed-width sessions, format 3, archive"

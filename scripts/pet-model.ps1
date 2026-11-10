@@ -25,8 +25,8 @@ $PetConfig = @{
     TaperFullMin      = 30       # first 30 effort minutes a day at full rate
     TaperHalfMin      = 60       # 30..60 at half rate, beyond 60 at quarter rate
     TaperRates        = @(1.0, 0.5, 0.25)
-    HardDelta         = 20       # hr_avg - baseline_hr at or above: level 1.5
-    SteadyDelta       = 10       # at or above: level 1.25, else 1.0
+    HardDelta         = 30       # hr_avg - baseline_hr at or above: level 1.5
+    SteadyDelta       = 15       # at or above: level 1.25, else 1.0
     MinChapterPoints  = 1
     # Momentum (expression only; never read by the credit function)
     WarmStart         = 20

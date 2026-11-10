@@ -92,6 +92,8 @@ $chapters = @(Read-FriendCsvSection $block "chapter3")
 $live = @(ConvertFrom-FriendLive4 (Get-FriendSectionLines $block "live4"))
 if ($live.Count -eq 0) { $live = @(Read-FriendCsvSection $block "live3") }
 if ($live.Count -eq 0) { $live = @(Read-FriendCsvSection $block "live") }
+$pet = Read-FriendPet $block
+if ($pet) { $pet | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outDir "pet.json") }
 $snapshots | Export-Csv (Join-Path $outDir "snapshots.csv") -NoTypeInformation
 $sessions | Export-Csv (Join-Path $outDir "sessions.csv") -NoTypeInformation
 $chapters | Export-Csv (Join-Path $outDir "chapters.csv") -NoTypeInformation
@@ -112,6 +114,16 @@ Write-Host "[copied] $outDir"
 Write-Host "[export] Friend v$appVersion schema=$schemaVersion"
 Write-Host "[records] snapshots=$($snapshots.Count) sessions=$($sessions.Count) chapters=$($chapters.Count) live=$($live.Count)"
 Write-Host "[archive] $archiveDir added snapshots=$($newRows[0]) sessions=$($newRows[1]) chapters=$($newRows[2]) live=$($newRows[3])"
+if ($pet) {
+    # The watch's own answer, to hold against pet-model.ps1.
+    . (Join-Path $PSScriptRoot "pet-model.ps1")
+    $reached = 0
+    while ((Get-BandThreshold ($reached + 1)) -le $pet.xp) { $reached += 1 }
+    $gate = $PetConfig.EvoEvery * ($pet.evos + 1)
+    $shown = if ($reached -ge $gate) { $gate - 1 } else { $reached }
+    Write-Host "[pet] $($pet.xp) XP, band $shown $(Get-BandName $shown), mood $($pet.mood), warmth $($pet.warm), shields $($pet.shields), $($pet.ch_total) chapters, $($pet.active_days) active days, trail $($pet.walk_m) m in $($pet.walk_count) walks"
+    if ($reached -ge $gate) { Write-Host "[pet] enough XP to evolve (band $gate): confirm it on the GROWING card" }
+}
 if ($snapshots.Count -gt 0) {
     Write-Host "`nLatest check-in"
     $snapshots[-1] | Format-List

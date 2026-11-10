@@ -1,6 +1,10 @@
 # Pet state and effort economy — a testable proposal
 
-Status: **PROPOSAL (2026-10-22).** Every number in this doc is **PROPOSED** and remains a project decision. It
+Status: **PROPOSAL (2026-10-22), first built into Friend 0.8.0 (2026-11-10, not yet compiled).**
+`probes/wrist-diary/source/FriendPet.mc` implements §2 to §6 as written, with the departures
+listed in `probes/wrist-diary/README.md`; `scripts/test-friend-pet.ps1` holds it to the host
+model. One number changed on evidence: the effort-level thresholds in §4.1.
+Every number in this doc is **PROPOSED** and remains a project decision. It
 front-loads the progression numbers that `05-progression.md` left as a kicked can
 (`05-progression.md:234-236`, `05-progression.md:292-301`, `open-questions.md:154-158`) so they can
 be argued with concrete values instead of in the abstract.
@@ -170,12 +174,16 @@ the move is never required (`README.md:29-31`, `08-watch-interaction-model.md:26
 ### 4.1 Effort minutes
 
 ```
-level = 1.5   if hr_avg - baseline_hr >= 20      # "hard"   (3 flames)
-        1.25  if hr_avg - baseline_hr >= 10      # "steady" (2 flames)
+level = 1.5   if hr_avg - baseline_hr >= 30      # "hard"   (3 flames)
+        1.25  if hr_avg - baseline_hr >= 15      # "steady" (2 flames)
         1.0   otherwise, or if HR is missing     # "easy"   (1 flame)
 effort_minutes = duration_s / 60 * level
 ```
 
+- **Thresholds retuned 2026-11-10 from +10 / +20 to +15 / +30.** On a real wrist the four-hour
+  baseline includes desk time, so chapters sat 13 to 36 bpm over it: at +20, 6 of the 10 newest
+  chapters would have been "hard", a 21-minute walk among them. At +15 / +30 the same chapters
+  split 2 hard, 4 steady, 4 easy ([field log](field-logs/2026-11-10_friend-export.md)).
 - The level is **shown** on the reward card as flames (`08-watch-interaction-model.md:174-183`), so
   it is a visible description of the session, not a hidden multiplier. It measures this session's
   effort against the wearer's own baseline (`04-activity-sensing.md:155-158`); nothing the wearer
@@ -282,7 +290,7 @@ Week 1 (`05-progression.md:178-179`, loud positive feedback): the sim's users re
 
 `scripts/pet-pacing-sim.ps1`, deterministic. Users: **Daily** (one chapter a day, 20-30 min, 18:00),
 **3x/week** (Mon/Wed/Fri, 45 min), **Weekend** (Sat + Sun, 3 chapters of 35-45 min). HR delta over
-baseline is drawn from 8-24 bpm for all three, so the comparison is cadence only. Each session is
+baseline is drawn from 4-36 bpm (the range the real watch logged) for all three, so the comparison is cadence only. Each session is
 an open followed by one chapter; the sim confirms a ready evolution at the next open.
 
 ```
@@ -290,19 +298,19 @@ an open followed by one chapter; the sim confirms a ready evolution at the next 
 |------|-----------|-----------|-----------|-----------|-----------|
 |    1 | Sprout    |       100 | day 3     | day 3     | day 7     |
 |    2 | Trainee   |       320 | day 9     | day 12    | day 14    |
-|    3 | Athlete*  |       660 | day 17    | day 24    | day 28    |
-|    4 | Veteran   |      1120 | day 28    | day 40    | day 49    |
-|    5 | Ace       |      1700 | day 43    | day 61    | day 76    |
-|    6 | Legend*   |      2400 | day 59    | day 87    | day 104   |
-|    7 | Hero      |      3220 | day 78    | day 117   | -         |
-|    8 | Mythic    |      4160 | day 101   | -         | -         |
+|    3 | Athlete*  |       660 | day 18    | day 24    | day 34    |
+|    4 | Veteran   |      1120 | day 29    | day 43    | day 49    |
+|    5 | Ace       |      1700 | day 44    | day 64    | day 76    |
+|    6 | Legend*   |      2400 | day 61    | day 89    | day 105   |
+|    7 | Hero      |      3220 | day 82    | day 120   | -         |
+|    8 | Mythic    |      4160 | day 105   | -         | -         |
 |    9 | Mythic 2* |      5220 | -         | -         | -         |
 
 | After 120 days | XP | Chapters | Active min | XP per active min | Stage |
 |----------------|----|----------|------------|-------------------|-------|
-| Daily | 4946 | 120 | 3018 | 1.64 | 8 Mythic |
-| 3x/week | 3295 | 52 | 2340 | 1.41 | 7 Hero |
-| Weekend | 2890 | 102 | 4106 | 0.70 | 6 Legend |
+| Daily | 4787 | 120 | 3018 | 1.59 | 8 Mythic |
+| 3x/week | 3255 | 52 | 2340 | 1.39 | 7 Hero |
+| Weekend | 2800 | 102 | 4106 | 0.68 | 6 Legend |
 ```
 
 Weekly mood at a noon look (avg/min), warmth and shields at week end:
@@ -322,7 +330,7 @@ Weekly mood at a noon look (avg/min), warmth and shields at week end:
 
 What the sim says:
 
-- **Everyone reaches the first evolution inside a month** (day 17 / 24 / 28) and keeps growing; no
+- **Everyone reaches the first evolution in about a month** (day 18 / 24 / 34) and keeps growing; no
   pattern stalls.
 - **Mood never dips below 51** for any user in 120 days; the floor of 35 is never touched in normal
   play. The weekend user sees a reunion every Saturday and the 3x/week user every Monday, which
@@ -382,6 +390,15 @@ thresholds, a new `XP_MAX` (about 5000 to show bands 0-8), the slider max, and r
 | 7 | Evolution spacing | every 3rd band; 7-day / 30-day age gates | every 4th band (fewer Layer A choices) |
 | 8 | Warmth saturation | everyone reaches 100 in about 6 weeks | lower gain (+10) so warmth tracks recency more |
 
+### What the first real chapters say (2026-11-10)
+
+Replaying the 18 chapters on the watch ([field log](field-logs/2026-11-10_friend-export.md)):
+about 370 XP and band 2 after 8 active days, close to the sim's Daily user. Three of the open
+decisions now have evidence. **4 (taper):** a 20-minute second session earned +5 after an
+89-minute first one. **8 (warmth):** it reached 100 on the fifth active day. **Not on the list:**
+mood gains 15 per chapter, so a session that splits into three chapters gains 45 and mood sat at
+80 to 100 after every session; credit is split-invariant, mood is not.
+
 ## 10. Unverified (needs hardware)
 
 - Serialized byte size of the `pet` Storage dictionary (§2).
@@ -389,8 +406,8 @@ thresholds, a new `XP_MAX` (about 5000 to show bands 0-8), the slider max, and r
   after a sync. The model treats a backward clock as zero elapsed time and never moves timestamps
   back.
 - Every naming / counting classifier in the §6 ladder.
-- Whether `baseline_hr` is available often enough for the effort level to matter; when it is
-  missing the chapter earns level 1.0.
+- ~~Whether `baseline_hr` is available often enough for the effort level to matter.~~ Answered
+  2026-11-10: present in 12 of 13 sessions. When it is missing the chapter earns level 1.0.
 
 ## Cross-refs
 

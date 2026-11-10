@@ -46,6 +46,10 @@ a foreground end confirmation, and moves the debug export to its own Up/Down car
 Version 0.6 asks the hardware test plan's T11 question on every wear: beat-to-beat intervals
 ride on the existing sensor listener and each session summary records how many arrived and how
 many varied, at rest and inside a walk.
+Version 0.8.0 (written without an SDK, not yet compiled) is the first build with a pet in it:
+the chapters feed the economy of `12-pet-state-and-economy.md`, an egg hatches into a creature
+that grows through bands and an evolution choice, and Back pays the effort out on a reward card.
+Its drawn creature is a deliberate placeholder for hand-made art.
 Anonymized exports from the real watch are in [field-logs/](field-logs/).
 
 **Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer

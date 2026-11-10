@@ -302,6 +302,8 @@ class FriendWalkRecorder {
     function resultText() as Lang.String { return mResult; }
     function errorText() as Lang.String { return mError; }
     function endReason() as Lang.Number { return mEndReason; }
+    // False after a discard: the walk ended without a FIT activity.
+    function wasSaved() as Lang.Boolean { return mSaved; }
 
     function stateText() as Lang.String {
         if (mState == STATE_READY) {

@@ -138,7 +138,11 @@ staff on forums but not in docs; **[FOLKLORE]** = community estimate only.
         (T7, history half) and live stress (T8, live half); see the `11` results log. Friend 0.4.0
         also logs respiration, time-to-recovery, SpO2, pressure and stress-history age on every
         check-in (T9, T10, T12, T17 values, T8 timestamp half), so those resolve on the next read.
-- [ ] **Watch may close a foreground app on its own (FR265).** Multiple Friend sessions ended
+- [x] **Watch may close a foreground app on its own (FR265): not for being idle.** Answered
+      2026-11-10 ([field log](field-logs/2026-11-10_friend-export.md)): an 89-minute session with
+      one press (the Back that ended it) and a 67-minute one both survived, and every session
+      since 2026-10-31 ended with Back. The two watch-closed sessions of 2026-10-30 remain
+      unexplained; an inactivity timeout is ruled out. Original note: Multiple Friend sessions ended
       cleanly (no crash log entry) at roughly 30 minutes while other sessions continued much longer.
       Hypothesis: an inactivity timeout of about 30 min without
       input for a non-recording app. Friend 0.4.0 records `exit_reason`, `last_input_s`, `inputs` and
