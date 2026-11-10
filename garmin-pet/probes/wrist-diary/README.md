@@ -108,6 +108,10 @@ the body of `FriendArt.draw` and `drawEgg`; nothing else in the game knows how t
 The sky, the flame, heart, shield and sparkle icons are separate small functions in the same
 class. The app uses 31 KB of its 768 KB at its peak, so there is room for bitmaps.
 
+The cast that replaces the placeholder (egg, hatchling, sprout, then three lanes of three
+grown forms) and the image-generator prompts for its sheets are in
+[`garmin-pet/art/sheets/PROMPTS.md`](../../art/sheets/PROMPTS.md).
+
 ## What it does
 
 - Opening Friend captures a daily/wrist snapshot and immediately starts observing. There is no
