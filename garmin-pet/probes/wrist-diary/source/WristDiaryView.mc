@@ -13,7 +13,7 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.9.0";
+    const APP_VERSION = "0.10.0";
     const SCHEMA = 3;           // On-watch storage layout.
     const EXPORT_FORMAT = 6;    // Log export layout; friend-export.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;

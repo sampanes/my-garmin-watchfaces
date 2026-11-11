@@ -1,7 +1,8 @@
-"""Bake Friend's creature sprites and belly emblems from the generator sheets.
+"""Bake Friend's creature sprites, faces and belly emblems from the generator sheets.
 
 The sheets in garmin-pet/art/sheets/ are the source (one pose sheet per
-character and one emblem sheet, all color on black; see PROMPTS.md there).
+character, one face sheet and one emblem sheet, all color on black; see
+PROMPTS.md there).
 Everything the watch needs is decided here, so the watch only copies pixels:
 
   - each pose is cut out of the black, cropped and shrunk to the size it is
@@ -10,7 +11,11 @@ Everything the watch needs is decided here, so the watch only copies pixels:
     the watch never tints anything;
   - the poses of one character in one color and one size are packed into one
     strip, loaded once and drawn with setClip + drawBitmap;
-  - every pose carries its foot anchor and the middle of its belly patch;
+  - every pose carries its foot anchor, the middle of its belly patch and
+    the point between its eyes;
+  - the plain face each pose was painted with is taken off, and the faces
+    from the face sheet are cut to fit each character: one small strip of
+    twelve faces per character, good for every colorway;
   - each emblem is one small strip: six colorways by three brightness levels,
     at both sizes.
 
@@ -18,6 +23,7 @@ Writes (all generated, never edited by hand):
 
     garmin-pet/probes/wrist-diary/resources/drawables/pet_<name>_<color>.png      home size
     garmin-pet/probes/wrist-diary/resources/drawables/pet_<name>_<color>_s.png    card size
+    garmin-pet/probes/wrist-diary/resources/drawables/face_<name>.png
     garmin-pet/probes/wrist-diary/resources/drawables/emblem_<name>.png
     garmin-pet/probes/wrist-diary/resources/drawables/sprites.xml
     garmin-pet/probes/wrist-diary/source/FriendSpriteTable.mc
@@ -71,6 +77,12 @@ PETS = [
     ("scamp", "2026-11-10_body-scamp-b.png", 4, 3, 154, list(range(12))),
 ]
 SMALL = 52          # the card size, as a percentage of the home size
+
+# The faces on the face sheet, in sheet order (4 columns by 3 rows).
+FACE_SHEET = "2026-11-11_faces-b.png"
+FACES = ["fair", "blink", "sunny", "radiant", "misty", "effort", "shout", "proud",
+         "asleep", "look_left", "look_right", "surprised"]
+FACE_COLS = 4
 
 EMBLEM_SHEET = "2026-11-10_emblems-b.png"
 EMBLEMS = ["heart", "star", "leaf", "swirl", "paw", "apple", "mountain", "wing",
@@ -257,56 +269,258 @@ def shrink(img, scale):
     return Image.fromarray(out, "RGBA")
 
 
-def largest_blob(mask):
-    """Bounding box (left, top, right, bottom) and size of the biggest patch."""
-    img = Image.fromarray(np.where(mask, 255, 0).astype(np.uint8), "L").copy()
-    best = None
-    label = 1
-    data = np.asarray(img)
+class Blob:
+    """One connected patch of a mask."""
+
+    def __init__(self, mask):
+        ys, xs = np.nonzero(mask)
+        self.mask = mask
+        self.size = len(ys)
+        self.left, self.right = int(xs.min()), int(xs.max()) + 1
+        self.top, self.bottom = int(ys.min()), int(ys.max()) + 1
+        self.x = (self.left + self.right) / 2.0
+        self.y = (self.top + self.bottom) / 2.0
+
+
+def blobs(mask, least=1):
+    """The patches of a mask with at least `least` pixels, biggest first."""
+    found = []
+    todo = mask.copy()
     while True:
-        ys, xs = np.nonzero(data == 255)
+        ys, xs = np.nonzero(todo)
         if len(ys) == 0:
             break
-        ImageDraw.floodfill(img, (int(xs[0]), int(ys[0])), label)
-        data = np.asarray(img)
-        got = data == label
-        size = int(got.sum())
-        if best is None or size > best[1]:
-            gy, gx = np.nonzero(got)
-            best = ((int(gx.min()), int(gy.min()), int(gx.max()) + 1, int(gy.max()) + 1), size)
-        label = label % 200 + 1
-        if label == 1:
-            data = np.where(data < 255, 0, 255).astype(np.uint8)
-            img = Image.fromarray(data, "L").copy()
-    return best
+        img = Image.fromarray(np.where(todo, 255, 0).astype(np.uint8), "L").copy()
+        ImageDraw.floodfill(img, (int(xs[0]), int(ys[0])), 128)
+        got = np.asarray(img) == 128
+        todo = todo & ~got
+        if int(got.sum()) >= least:
+            found.append(Blob(got))
+    return sorted(found, key=lambda blob: -blob.size)
+
+
+def spread(mask, px):
+    """The mask grown by px pixels, or shrunk when px is negative."""
+    size = 2 * abs(px) + 1
+    kind = ImageFilter.MaxFilter(size) if px > 0 else ImageFilter.MinFilter(size)
+    return np.asarray(Image.fromarray(np.where(mask, 255, 0).astype(np.uint8), "L")
+                      .filter(kind)) > 0
 
 
 def belly_of(cell, tone):
     """The middle of the pale belly patch in a cell, with its size, or None."""
     h, s, v = to_hsv(cell[..., :3])
     pale = body_mask(h, s, v) & (s < tone[1] * 0.62) & (v > 0.85) & (cell[..., 3] > 0.99)
-    pale = np.asarray(Image.fromarray(np.where(pale, 255, 0).astype(np.uint8), "L")
-                      .filter(ImageFilter.MinFilter(5))) > 0
-    blob = largest_blob(pale)
-    if blob is None:
+    found = blobs(spread(pale, -2))
+    if not found:
         return None
-    (left, top, right, bottom), size = blob
-    if size < 0.03 * float((cell[..., 3] > 0.5).sum()):
+    blob = found[0]
+    if blob.size < 0.03 * float((cell[..., 3] > 0.5).sum()):
         return None
-    return ((left + right) / 2.0, (top + bottom) / 2.0, right - left + 4, bottom - top + 4)
+    return (blob.x, blob.y, blob.right - blob.left + 4, blob.bottom - blob.top + 4)
+
+
+# ------------------------------------------------------------------- faces
+
+def is_blush(h, s, v):
+    return ((h >= 325) | (h < 15)) & (s > 0.12) & (s < 0.6) & (v > 0.8)
+
+
+class PaintedFace:
+    """The face a pose was painted with: where its eyes are and what to take off."""
+
+    def __init__(self, x, y, space, off, cheeks):
+        self.x = x              # the point midway between the eyes
+        self.y = y
+        self.space = space      # eye to eye, center to center
+        self.off = off          # the eyes, the mouth and any tooth, with their soft rim
+        self.cheeks = cheeks    # [(Blob, color)]: they stay, and are made whole
+
+
+def find_face(cell):
+    """The painted face in a pose, or None when it shows none (the back view).
+
+    Every pose was painted with one plain face. Its two eyes say where a face
+    goes; the eyes, the mouth and a wild one's tooth come off so a face from
+    the face sheet can go on. The cheeks stay on the body.
+    """
+    h, s, v = to_hsv(cell[..., :3])
+    whole = cell[..., 3] > 0.99
+    dark = (v < 0.42) & whole
+    eyes = blobs(dark, 150)[:2]
+    if len(eyes) < 2 or eyes[1].size < 0.6 * eyes[0].size:
+        return None
+    left, right = sorted(eyes, key=lambda blob: blob.x)
+    space = right.x - left.x
+    if abs(right.y - left.y) > 0.3 * space:
+        return None
+    x, y = (left.x + right.x) / 2.0, (left.y + right.y) / 2.0
+    # An eye with its highlights: everything its dark outline encloses.
+    off = ~outside_of(~left.mask) | ~outside_of(~right.mask)
+
+    def below_the_eyes(blob):
+        return left.x < blob.x < right.x and y < blob.y < y + 0.8 * space
+
+    for blob in blobs(dark & ~off, 30):
+        if below_the_eyes(blob):
+            off |= blob.mask
+    for blob in blobs((s < 0.10) & (v > 0.85) & whole & ~off, 12):
+        if below_the_eyes(blob):
+            off |= blob.mask
+    cheeks = [(blob, np.median(cell[..., :3][blob.mask], axis=0))
+              for blob in blobs(is_blush(h, s, v) & whole, 60)
+              if abs(blob.x - x) < 1.3 * space and y - 0.2 * space < blob.y < y + 0.9 * space]
+    return PaintedFace(x, y, space, spread(off, 4), cheeks[:2])
+
+
+def neighbors(rgb, known):
+    """For every pixel, the summed color and the count of its known neighbors."""
+    total = np.zeros_like(rgb)
+    count = np.zeros(known.shape, dtype=np.float32)
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            if dx or dy:
+                near = np.roll(known, (dy, dx), axis=(0, 1))
+                total += np.roll(rgb, (dy, dx), axis=(0, 1)) * near[..., None]
+                count += near
+    return total, count
+
+
+def wipe_face(cell, face):
+    """The pose with its painted face taken off: a blank body, cheeks whole."""
+    rgb = cell[..., :3].copy()
+    h, s, v = to_hsv(rgb)
+    off = face.off & (cell[..., 3] > 0)
+    known = body_mask(h, s, v) & (cell[..., 3] > 0.99) & ~off
+    todo = off.copy()
+    while todo.any():
+        total, count = neighbors(rgb, known)
+        new = todo & (count > 0)
+        if not new.any():
+            break
+        rgb[new] = total[new] / count[new][:, None]
+        known |= new
+        todo &= ~new
+    for _ in range(4):
+        total, count = neighbors(rgb, known)
+        rgb[off] = ((total + rgb) / (count + 1)[..., None])[off]
+    # An eye sat on the corner of its cheek; the cheek is an ellipse, so the
+    # corner the eye hid is painted back.
+    ys, xs = np.mgrid[0:cell.shape[0], 0:cell.shape[1]]
+    for blob, color in face.cheeks:
+        rx, ry = (blob.right - blob.left) / 2.0, (blob.bottom - blob.top) / 2.0
+        inside = ((xs + 0.5 - blob.x) / rx) ** 2 + ((ys + 0.5 - blob.y) / ry) ** 2 <= 1.0
+        rgb[inside & off] = color
+    return np.dstack([rgb, cell[..., 3]])
+
+
+def cut_faces():
+    """The faces off the face sheet, for any body: (tiles, anchor, eye space).
+
+    The sheet shows each face on a blue disc with two cheeks. What is not the
+    disc's blue is the face; the cheeks are dropped because every body has its
+    own. The tiles are straight-alpha float RGBA, all one size, and `anchor`
+    is the point of a tile that goes midway between a pose's eyes. `eye space`
+    is the distance between the first face's eyes, the measure a body's own
+    eye spacing is matched to.
+    """
+    src = np.asarray(Image.open(os.path.join(SHEETS, FACE_SHEET)).convert("RGB")
+                     .filter(ImageFilter.MedianFilter(3)))
+    ink = src.max(axis=2) >= DARK
+    cut = []
+    offset = None
+    space = None
+    for left, top, right, bottom in split_grid(ink, FACE_COLS, len(FACES) // FACE_COLS, 24):
+        cell = src[top:bottom, left:right].astype(np.float32) / 255.0
+        h, s, v = to_hsv(cell)
+        disc = ~outside_of(v < DARK / 255.0)
+        blue = np.median(cell[body_mask(h, s, v) & (s > 0.4)], axis=0)
+        middle = cell.shape[1] / 2.0
+        cheeks = [blob for blob in blobs(is_blush(h, s, v) & disc, 200)
+                  if abs(blob.x - middle) > 0.2 * cell.shape[1]][:2]
+        if len(cheeks) != 2:
+            raise SystemExit("a face on %s has no two cheeks to place it by" % FACE_SHEET)
+        both = cheeks[0].mask | cheeks[1].mask
+        blush = np.median(cell[both], axis=0)
+        # How far a pixel is from the disc: from its blue, or on a cheek from
+        # any blend of the blue and the blush.
+        span = blush - blue
+        along = np.clip(((cell - blue) * span).sum(axis=2) / (span * span).sum(), 0.0, 1.0)
+        back = np.where(spread(both, 6)[..., None], blue + along[..., None] * span, blue)
+        far = np.sqrt(((cell - back) ** 2).sum(axis=2)) * spread(disc, -6)
+        far8 = Image.fromarray(np.clip(far * 255, 0, 255).astype(np.uint8), "L")
+        around = np.asarray(far8.filter(ImageFilter.MaxFilter(7))).astype(np.float32) / 255.0
+        alpha = np.where(spread(far > 0.30, 3),
+                         np.clip(far / np.maximum(around, 0.30), 0.0, 1.0), 0.0)
+        alpha = np.where(spread(far > 0.20, -2), 1.0, alpha).astype(np.float32)
+        # A rim pixel is the face's color mixed into the disc; take the disc out.
+        color = np.clip((cell - (1.0 - alpha[..., None]) * back)
+                        / np.maximum(alpha, 0.05)[..., None], 0.0, 1.0)
+        cheek_x = (cheeks[0].x + cheeks[1].x) / 2.0
+        cheek_y = (cheeks[0].y + cheeks[1].y) / 2.0
+        if offset is None:
+            # The first face is the plain one the poses were painted with.
+            eyes = sorted(blobs((v < 0.42) & disc, 150)[:2], key=lambda blob: blob.x)
+            space = eyes[1].x - eyes[0].x
+            offset = ((eyes[0].x + eyes[1].x) / 2.0 - cheek_x,
+                      (eyes[0].y + eyes[1].y) / 2.0 - cheek_y)
+        cut.append((np.dstack([color, alpha]),
+                    int(round(cheek_x + offset[0])), int(round(cheek_y + offset[1]))))
+
+    half, up, down = 0, 0, 0
+    for face, x, y in cut:
+        ys, xs = np.nonzero(face[..., 3] > 0.05)
+        half = max(half, x - int(xs.min()) + 2, int(xs.max()) - x + 3)
+        up = max(up, y - int(ys.min()) + 2)
+        down = max(down, int(ys.max()) - y + 3)
+    tiles = [face[y - up:y + down, x - half:x + half] for face, x, y in cut]
+    return tiles, (half, up), space
+
+
+def bake_faces(eye_spaces):
+    """{character: (strip, numbers)}: the twelve faces at each character's size.
+
+    A face is the same for every colorway, so a character needs one strip:
+    the faces on a grid at the home size, and the card size under them.
+    `eye_spaces` is each character's eye spacing on the watch at the home size.
+    """
+    tiles, (half, up), space = cut_faces()
+    rows = len(FACES) // FACE_COLS
+    out = {}
+    for (name, _sheet, _cols, _rows, _height, _cells), eyes in zip(PETS, eye_spaces):
+        grids = []
+        numbers = {}
+        for small in (False, True):
+            k = eyes * (SMALL / 100.0 if small else 1.0) / space
+            faces = [shrink(to_image(tile), k) for tile in tiles]
+            w, h = faces[0].size
+            grid = Image.new("RGBA", (FACE_COLS * w, rows * h), (0, 0, 0, 0))
+            for index, face in enumerate(faces):
+                grid.paste(face, ((index % FACE_COLS) * w, (index // FACE_COLS) * h))
+            numbers[small] = [w, h, int(round(half * k)), int(round(up * k)),
+                              sum(g.height for g in grids)]
+            grids.append(grid)
+        strip = Image.new("RGBA", (grids[0].width, grids[0].height + grids[1].height),
+                          (0, 0, 0, 0))
+        strip.paste(grids[0], (0, 0))
+        strip.paste(grids[1], (0, grids[0].height))
+        out[name] = (strip, numbers)
+    return out
 
 
 # ----------------------------------------------------------------- sprites
 
 class Sprite:
-    def __init__(self, img, foot_x, belly):
+    def __init__(self, img, foot_x, belly, face):
         self.img = img          # RGBA, cropped to its ink
         self.foot_x = foot_x    # column of the cell the feet are centered on
         self.belly = belly      # (x, y) inside the cell, or None
+        self.face = face        # (x, y) of the point between the eyes, or None
 
 
 def bake_pet(name, sheet, cols, rows, height, slot_cells):
-    """{(palette, small): (strip image, table numbers)} for one character."""
+    """({(palette, small): (strip image, table numbers)}, the card-size height
+    and the home-size eye spacing) for one character."""
     # A light median takes the painted grain off the flat areas (it would
     # come back as blotches once the colors are flattened) and keeps the edges.
     src = np.asarray(Image.open(os.path.join(SHEETS, sheet)).convert("RGB")
@@ -316,6 +530,8 @@ def bake_pet(name, sheet, cols, rows, height, slot_cells):
              for left, top, right, bottom in split_grid(ink, cols, rows, 24)]
     tone = body_tone(cells)
     bellies = [belly_of(cell, tone) for cell in cells]
+    faces = [find_face(cell) for cell in cells]
+    cells = [wipe_face(cell, face) if face else cell for cell, face in zip(cells, faces)]
 
     idle = np.nonzero(cells[0][..., 3] > 0.5)[0]
     scale = height / float(idle.max() + 1 - idle.min())
@@ -338,10 +554,15 @@ def bake_pet(name, sheet, cols, rows, height, slot_cells):
                 if (found is not None and found[2] * k >= emblem * 0.9
                         and found[3] * k >= emblem * 0.8):
                     belly = (int(round(found[0] * k)) - left, int(round(found[1] * k)) - top)
+                face = None
+                if faces[index] is not None:
+                    face = (int(round(faces[index].x * k)) - left,
+                            int(round(faces[index].y * k)) - top)
                 sprites.append(Sprite(img.crop((left, top, right, bottom)),
-                                      int(round(foot)) - left, belly))
+                                      int(round(foot)) - left, belly, face))
             out[(pal, small)] = pack(sprites, cols, slot_cells)
-    return out, int(round(height * SMALL / 100.0))
+    eyes = float(np.median([face.space for face in faces if face is not None])) * scale
+    return out, int(round(height * SMALL / 100.0)), eyes
 
 
 def pack(sprites, cols, slot_cells):
@@ -363,8 +584,10 @@ def pack(sprites, cols, slot_cells):
         belly = sprite.belly
         if slot in (SLOT_BACK, SLOT_ASLEEP):
             belly = None
+        face = sprite.face
         numbers += [place[cell][0], place[cell][1], sprite.img.width, sprite.img.height,
-                    sprite.foot_x, belly[0] if belly else -1, belly[1] if belly else -1]
+                    sprite.foot_x, belly[0] if belly else -1, belly[1] if belly else -1,
+                    face[0] if face else -1, face[1] if face else -1]
     return strip, numbers
 
 
@@ -455,8 +678,10 @@ def build():
     loaders = {False: [], True: []}
     tables = {False: [], True: []}
     units = {False: [], True: []}
+    eye_spaces = []
     for pet, (name, sheet, cols, rows, height, slot_cells) in enumerate(PETS):
-        baked, small_height = bake_pet(name, sheet, cols, rows, height, slot_cells)
+        baked, small_height, eyes = bake_pet(name, sheet, cols, rows, height, slot_cells)
+        eye_spaces.append(eyes)
         units[False].append(height)
         units[True].append(small_height)
         for small in (False, True):
@@ -473,6 +698,18 @@ def build():
                     tables[small].append(
                         "        if (pet == %d) { return [%s] as Lang.Array<Lang.Number>; }"
                         % (pet, ", ".join(str(n) for n in numbers)))
+    face_loaders = []
+    face_tiles = {False: [], True: []}
+    for pet, (name, (strip, numbers)) in enumerate(bake_faces(eye_spaces).items()):
+        ident = camel("face", name)
+        filename = "face_%s.png" % name
+        files[os.path.join(DRAWABLES, filename)] = png_bytes(strip)
+        xml.append('    <bitmap id="%s" filename="%s" %s />' % (ident, filename, flags))
+        face_loaders.append(
+            "    if (pet == %d) { return WatchUi.loadResource(Rez.Drawables.%s) "
+            "as Graphics.BitmapType; }" % (pet, ident))
+        for small in (False, True):
+            face_tiles[small].append(", ".join(str(n) for n in numbers[small]))
     emblem_loaders = []
     for index, (name, strip) in enumerate(bake_emblems().items()):
         ident = camel("emblem", name)
@@ -499,9 +736,18 @@ using Toybox.WatchUi;
 const FRIEND_PETS = %(pet_count)d;
 const FRIEND_SLOTS = %(slot_count)d;
 // Numbers per slot: x, y, width, height of the pose in the strip, the column
-// its feet are centered on, and the middle of its belly patch (-1: no patch
-// to put an emblem on). The last three are measured from the pose's corner.
-const FRIEND_SLOT_FIELDS = 7;
+// its feet are centered on, the middle of its belly patch (-1: no patch to
+// put an emblem on) and the point between its eyes (-1: no face, the back
+// view). The last five are measured from the pose's corner.
+const FRIEND_SLOT_FIELDS = 9;
+// A face strip is one character's faces, the same for every colorway, on a
+// grid FRIEND_FACE_COLS wide at the home size, with the card size under it.
+// Faces in order: %(faces)s.
+const FRIEND_FACES = %(face_count)d;
+const FRIEND_FACE_COLS = %(face_cols)d;
+// Numbers per character: width and height of one face, the point of it that
+// goes between the eyes, and the row of the strip its grid starts on.
+const FRIEND_FACE_FIELDS = 5;
 const FRIEND_EMBLEMS = %(emblem_count)d;
 // An emblem strip is six colorway columns by three brightness rows (dull,
 // steady, glowing) at the home size, with the card size under it.
@@ -543,6 +789,20 @@ function loadFriendStrip(pet as Lang.Number, pal as Lang.Number,
     return null;
 }
 
+// The face table of every character at one size.
+function friendFaceTiles(small as Lang.Boolean) as Lang.Array<Lang.Number> {
+    if (small) {
+        return [%(face_tiles_small)s] as Lang.Array<Lang.Number>;
+    }
+    return [%(face_tiles)s] as Lang.Array<Lang.Number>;
+}
+
+// The face strip of one character; the caller catches a refusal.
+function loadFriendFace(pet as Lang.Number) as Graphics.BitmapType? {
+%(face_loaders)s
+    return null;
+}
+
 // Emblem 1 to %(emblem_count)d (0 is a bare belly); the caller catches a refusal.
 function loadFriendEmblem(emblem as Lang.Number) as Graphics.BitmapType? {
 %(emblem_loaders)s
@@ -561,6 +821,10 @@ function loadFriendEmblem(emblem as Lang.Number) as Graphics.BitmapType? {
         "palette_count": len(PALETTES),
         "loaders": "\n".join(loaders[False]), "loaders_small": "\n".join(loaders[True]),
         "emblem_loaders": "\n".join(emblem_loaders),
+        "faces": ", ".join(FACES), "face_count": len(FACES), "face_cols": FACE_COLS,
+        "face_tiles": ", ".join(face_tiles[False]),
+        "face_tiles_small": ", ".join(face_tiles[True]),
+        "face_loaders": "\n".join(face_loaders),
     }
     files[TABLE] = mc.encode("utf-8")
     return files
@@ -578,8 +842,18 @@ def same(path, data):
 
 
 def contact(files, out):
-    """Review sheets: every strip of one colorway, and every emblem, on black and gray."""
+    """Review sheets: every strip of one colorway, every face strip and every
+    emblem, on black and gray."""
     os.makedirs(out, exist_ok=True)
+    faces = [Image.open(io.BytesIO(data)).convert("RGBA") for path, data in sorted(files.items())
+             if os.path.basename(path).startswith("face_")]
+    sheet = Image.new("RGB", (max(f.width for f in faces) + 20,
+                              sum(f.height + 10 for f in faces) + 10), (110, 193, 255))
+    y = 10
+    for strip in faces:
+        sheet.paste(strip, (10, y), strip)
+        y += strip.height + 10
+    sheet.save(os.path.join(out, "faces.png"))
     for pal_name in [p[0] for p in PALETTES]:
         strips = [Image.open(io.BytesIO(data)).convert("RGBA") for path, data in sorted(files.items())
                   if path.endswith("_%s.png" % pal_name) or path.endswith("_%s_s.png" % pal_name)]
@@ -614,7 +888,7 @@ def main():
         stale = [os.path.relpath(p, REPO) for p, data in sorted(files.items())
                  if not same(p, data)]
         extra = [n for n in sorted(os.listdir(DRAWABLES))
-                 if (n.startswith("pet_") or n.startswith("emblem_"))
+                 if n.startswith(("pet_", "face_", "emblem_"))
                  and os.path.join(DRAWABLES, n) not in files]
         for name in stale:
             print("[fail] stale:", name)
@@ -632,7 +906,7 @@ def main():
             with open(path, "wb") as f:
                 f.write(data)
     pngs = [p for p in files if p.endswith(".png")]
-    print("[wrote] %d strips and emblems, %d KB of PNG; %s; %s" % (
+    print("[wrote] %d strips, faces and emblems, %d KB of PNG; %s; %s" % (
         len(pngs), total // 1024, os.path.relpath(XML, REPO), os.path.relpath(TABLE, REPO)))
     return 0
 

@@ -189,6 +189,7 @@ class FriendArt {
         }
         var slot = sprites.slotFor(mFace, mPose, frame);
         sprites.draw(dc, x, footY - jump, slot);
+        sprites.drawFace(dc, x, footY - jump, slot, sprites.lookFor(mFace, mPose, frame));
         // The emblem pulses to a glow while the friend is working.
         var level = mEmblemLevel;
         if (mFace == FriendLook.FACE_EFFORT && (frame % 4) < 2) { level = 2; }

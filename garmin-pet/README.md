@@ -53,6 +53,8 @@ Its drawn creature is a deliberate placeholder for hand-made art.
 Version 0.9.0 (also not yet compiled) is the first with that art: five characters from the
 generator sheets in [art/sheets/](art/sheets/), baked by `scripts/bake_friend_sprites.py` into
 sprite strips in six colorways, and a belly emblem that brightens with warmth.
+Version 0.10.0 (not yet compiled either) gives it faces: the poses are baked blank and one sheet
+of twelve faces is laid over them, so the mood shows, it blinks, and it sleeps with its eyes shut.
 Anonymized exports from the real watch are in [field-logs/](field-logs/).
 
 **Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer

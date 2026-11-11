@@ -60,6 +60,11 @@
     <bitmap id="PetScampLilacS" filename="pet_scamp_lilac_s.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PetScampSunS" filename="pet_scamp_sun_s.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="PetScampRoseS" filename="pet_scamp_rose_s.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FaceNub" filename="face_nub.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FaceSprig" filename="face_sprig.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FaceDash" filename="face_dash.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FaceChonk" filename="face_chonk.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
+    <bitmap id="FaceScamp" filename="face_scamp.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="EmblemHeart" filename="emblem_heart.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="EmblemStar" filename="emblem_star.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />
     <bitmap id="EmblemLeaf" filename="emblem_leaf.png" dithering="none" automaticPalette="false" packingFormat="png" compress="false" />

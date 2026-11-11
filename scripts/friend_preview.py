@@ -211,6 +211,8 @@ def _bitmap(ident):
 FRIEND_PETS = _const("FRIEND_PETS")
 FRIEND_SLOTS = _const("FRIEND_SLOTS")
 FRIEND_SLOT_FIELDS = _const("FRIEND_SLOT_FIELDS")
+FRIEND_FACE_COLS = _const("FRIEND_FACE_COLS")
+FRIEND_FACE_FIELDS = _const("FRIEND_FACE_FIELDS")
 FRIEND_EMBLEMS = _const("FRIEND_EMBLEMS")
 FRIEND_EMBLEM_LEVELS = _const("FRIEND_EMBLEM_LEVELS")
 FRIEND_EMBLEM_TILE = _const("FRIEND_EMBLEM_TILE")
@@ -219,6 +221,8 @@ PALETTE_COUNT = 6
 _heights = _arrays("friendHeights")             # the card size comes first in the source
 _cells = _arrays("friendCells")                 # home size, then card size
 _strips = re.findall(r"Rez\.Drawables\.(\w+)", _body("loadFriendStrip"))
+_face_tiles = _arrays("friendFaceTiles")        # card size first
+_faces = re.findall(r"Rez\.Drawables\.(\w+)", _body("loadFriendFace"))
 _emblems = re.findall(r"Rez\.Drawables\.(\w+)", _body("loadFriendEmblem"))
 
 
@@ -239,6 +243,14 @@ def loadFriendStrip(pet, pal, small):
     return _bitmap(_strips[k + (FRIEND_PETS * PALETTE_COUNT if small else 0)])
 
 
+def friendFaceTiles(small):
+    return _face_tiles[0] if small else _face_tiles[1]
+
+
+def loadFriendFace(pet):
+    return _bitmap(_faces[pet])
+
+
 def loadFriendEmblem(emblem):
     return _bitmap(_emblems[emblem - 1])
 
@@ -246,6 +258,8 @@ def loadFriendEmblem(emblem):
 SLOT_IDLE, SLOT_BREATHE, SLOT_DROOP, SLOT_BACK = range(4)
 SLOT_CROUCH, SLOT_HOP, SLOT_CHEER, SLOT_FLEX = range(4, 8)
 SLOT_RUN_A, SLOT_RUN_B, SLOT_EFFORT, SLOT_ASLEEP = range(8, 12)
+LOOK_FAIR, LOOK_BLINK, LOOK_SUNNY, LOOK_RADIANT, LOOK_MISTY = range(5)
+LOOK_EFFORT, LOOK_SHOUT, LOOK_PROUD, LOOK_ASLEEP = range(5, 9)
 
 
 # Mirrors FriendSprites.mc. Keep names, order and numbers identical.
@@ -256,6 +270,9 @@ class FriendSprites:
         self.mStripKey = -1
         self.mPet = -1
         self.mCells = []
+        self.mFaces = None
+        self.mFaceKey = -1
+        self.mFaceTiles = friendFaceTiles(small)
         self.mEmblem = None
         self.mEmblemKey = -1
 
@@ -286,6 +303,25 @@ class FriendSprites:
             return SLOT_DROOP
         return SLOT_IDLE if (frame % 12) < 6 else SLOT_BREATHE
 
+    def lookFor(self, face, pose, frame):
+        if pose == POSE_SLEEP or face == FACE_SLEEP:
+            return LOOK_ASLEEP
+        if pose == POSE_FLAMES or face == FACE_EFFORT:
+            return LOOK_EFFORT
+        if pose == POSE_FLEX:
+            return LOOK_PROUD
+        if face == FACE_JOY:
+            return LOOK_SHOUT if pose == POSE_HOP else LOOK_RADIANT
+        if face == FACE_MISTY:
+            return LOOK_MISTY
+        if face == FACE_RADIANT:
+            return LOOK_RADIANT
+        if (frame % 23) == 22:
+            return LOOK_BLINK
+        if face == FACE_SUNNY:
+            return LOOK_SUNNY
+        return LOOK_FAIR
+
     def ready(self, pet, pal):
         if pet < 0 or pet >= FRIEND_PETS:
             return False
@@ -299,7 +335,15 @@ class FriendSprites:
             self.mStripKey = key
             self.mPet = pet
             self.mCells = friendCells(pet, self.mSmall)
-        return self.mStrip is not None and len(self.mCells) >= FRIEND_SLOTS * FRIEND_SLOT_FIELDS
+        if pet != self.mFaceKey:
+            try:
+                faces = loadFriendFace(pet)
+            except OSError:
+                faces = None
+            self.mFaces = faces
+            self.mFaceKey = pet
+        return (self.mStrip is not None and self.mFaces is not None and
+                len(self.mCells) >= FRIEND_SLOTS * FRIEND_SLOT_FIELDS)
 
     def unit(self):
         if self.mPet < 0:
@@ -317,6 +361,23 @@ class FriendSprites:
         top = footY - h
         dc.setClip(left, top, w, h)
         dc.drawBitmap(left - self.mCells[i], top - self.mCells[i + 1], strip)
+        dc.clearClip()
+
+    def drawFace(self, dc, footX, footY, slot, look):
+        faces = self.mFaces
+        if faces is None:
+            return
+        i = slot * FRIEND_SLOT_FIELDS
+        if self.mCells[i + 7] < 0:
+            return
+        t = self.mPet * FRIEND_FACE_FIELDS
+        w = self.mFaceTiles[t]
+        h = self.mFaceTiles[t + 1]
+        left = footX - self.mCells[i + 4] + self.mCells[i + 7] - self.mFaceTiles[t + 2]
+        top = footY - self.mCells[i + 3] + self.mCells[i + 8] - self.mFaceTiles[t + 3]
+        dc.setClip(left, top, w, h)
+        dc.drawBitmap(left - (look % FRIEND_FACE_COLS) * w,
+                      top - self.mFaceTiles[t + 4] - div(look, FRIEND_FACE_COLS) * h, faces)
         dc.clearClip()
 
     def drawEmblem(self, dc, footX, footY, slot, pal, emblem, level):
@@ -465,6 +526,8 @@ class FriendArt:
             self.drawFlames(dc, x, footY - unit, unit, frame)
         slot = sprites.slotFor(self.mFace, self.mPose, frame)
         sprites.draw(dc, x, footY - jump, slot)
+        sprites.drawFace(dc, x, footY - jump, slot,
+                         sprites.lookFor(self.mFace, self.mPose, frame))
         level = self.mEmblemLevel
         if self.mFace == FACE_EFFORT and (frame % 4) < 2:
             level = 2
@@ -1150,7 +1213,7 @@ class WalkStub:
 
 
 class FriendView:
-    APP_VERSION = "0.9.0"
+    APP_VERSION = "0.10.0"
 
     def __init__(self, **kw):
         self.mArt = FriendArt()
@@ -2062,6 +2125,26 @@ def write_sheets(out):
             mScreen=SCREEN_EMBLEM, mRepick=True, mBand=3, mPickPal=pal, mPickEmblem=emblem,
             mPet=PetStub(xp_=band_xp(3), evos_=1, form_=form, pal=pal))))
     sheet(cells, 4, os.path.join(out, "9-emblems.png"))
+
+    # 10. The faces: one face sheet serves every character and colorway.
+    cells = []
+    for title, band, form, pal, face, pose, frame, line in [
+            ("fair", 0, FORM_ROUND, 0, FACE_FAIR, POSE_IDLE, 0, "Oh. It's you."),
+            ("a blink", 0, FORM_ROUND, 0, FACE_FAIR, POSE_IDLE, 22, "Oh. It's you."),
+            ("misty", 1, FORM_ROUND, 1, FACE_MISTY, POSE_IDLE, 0, "Still here."),
+            ("sunny", 1, FORM_ROUND, 1, FACE_SUNNY, POSE_IDLE, 0, "Hey. Welcome."),
+            ("radiant", 3, FORM_SLEEK, 2, FACE_RADIANT, POSE_IDLE, 0, "Hi hi hi!"),
+            ("working", 3, FORM_SLEEK, 2, FACE_EFFORT, POSE_IDLE, 2, "Heart says work."),
+            ("proud (the flex)", 3, FORM_ROUND, 5, FACE_JOY, POSE_FLEX, 3, "Hehe!! Again!"),
+            ("asleep", 3, FORM_ROUND, 5, FACE_SLEEP, POSE_SLEEP, 5, "zzz"),
+            ("a shout (the hop)", 3, FORM_WILD, 4, FACE_JOY, POSE_HOP, 3, "+37 XP"),
+            ("glad (a tap, a memory)", 3, FORM_WILD, 4, FACE_JOY, POSE_IDLE, 0, "Hehe!!")]:
+        cells.append((title, render(
+            mBand=band, face=face, pose=pose, mFrame=frame, line=line,
+            mMood=42 if face == FACE_MISTY else 78, hour=23 if face == FACE_SLEEP else 14,
+            mPet=PetStub(xp_=band_xp(band), evos_=1 if band >= 3 else 0, form_=form,
+                         pal=pal))))
+    sheet(cells, 5, os.path.join(out, "10-faces.png"))
 
 
 # ----------------------------------------------------------------- checks

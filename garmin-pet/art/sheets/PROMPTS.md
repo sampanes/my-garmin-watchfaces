@@ -1,8 +1,8 @@
 # Friend art: the cast and the sheet prompts
 
-Status 2026-11-10: the lineup, the first five body sheets and the belly emblems are back,
-filed beside this file, and baked into Friend 0.9.0 (unbuilt); see "Round 1" to "Round 3" at
-the end. Still to paint: Gale to Wildwood (2.6 to 2.11), the faces (3), the egg (4), the gear
+Status 2026-11-11: the lineup, the first five body sheets, the belly emblems and the faces are
+back, filed beside this file, and baked into Friend 0.10.0 (unbuilt); see "Round 1" to
+"Round 4" at the end. Still to paint: Gale to Wildwood (2.6 to 2.11), the egg (4), the gear
 (5). This is the cast that replaces the creature drawn from shapes in
 `probes/wrist-diary/source/FriendArt.mc`, and the prompts for an image generator to paint it,
 the way the ink face got its art (`watch-faces/japanese-ink-heartrate/art/sheets/PROMPTS.md`).
@@ -76,6 +76,7 @@ The four voices (drill sergeant, cheerleader, deadpan, zen) are words only and n
   family (prompt 3) and are laid over at the anchor. So any mood goes on any pose, the pet
   can blink and glance, and twelve characters share one set of eyes. Tried on the ChatGPT
   lineup 11-10: the faces erase cleanly and one character's face sits naturally on another.
+  Built 11-11 ("Round 4").
   The wild lane's snaggle tooth and fangs are part of the face and go with it; a wild-lane
   face sheet can follow if they are missed.
 - Each character sheet's cells against what `setPose` asks for: idle is cells 1 and 2 (a
@@ -483,3 +484,33 @@ are filed here as `2026-11-10_body-<name>-b.png`, with its lineup as `2026-11-10
 - **Not done, waiting on sheets:** the face layer (each pose keeps the plain face it was
   painted with, so there is no blink, no mood face and no closed eyes asleep), the gear, the
   egg, and the six later grown forms (each lane shows its first grown form at every tier).
+
+## Round 4 (2026-11-11): the faces
+
+- **Faces (prompt 3): ChatGPT's sheet, from the lineup chat**, filed as
+  `2026-11-11_faces-b.png`. All twelve came back in order, each on a plain blue disc with the
+  two cheeks, which is what makes them easy to cut: whatever is not the disc's blue is the
+  face. The two glances barely move the eyes; they are baked and nothing uses them.
+- **The body sheets did what prompt 2 asked.** Across the 51 poses that show a face it is the
+  same drawing, level, and the same size on a character (eye spacing within 7%), so one face
+  size per character is enough and no pose needs a tilted face.
+- **What the bake does** (`scripts/bake_friend_sprites.py`):
+  - On a body pose: the two biggest dark patches are the eyes. They, the mouth between and
+    below them, and a wild one's tooth are painted over from the blue around them; the point
+    between the eyes is recorded as the pose's face anchor. The back view has no eyes and gets
+    no anchor.
+  - The cheeks stay on the body, because the colorway bake already knows how to keep them
+    readable on rose and peach. An eye covered a corner of its cheek, so the cheek is filled
+    out to the ellipse it was.
+  - On the face sheet: a face pixel is one that is far from the disc's blue (or, on a cheek,
+    far from any blend of the blue and the blush, so a cheek's soft edge is not mistaken for
+    face). The disc's color is taken back out of the soft rim, so a face has no blue fringe on
+    an orange body. The cheeks are dropped. Every face is placed by its cheeks, so all twelve
+    share one anchor.
+  - A face is shrunk until its eyes are as far apart as the character's own, at the home size
+    and the card size: five strips, 39 KB in all, the same for every colorway.
+- **What the watch does with it** (`FriendSprites.mc`, Friend 0.10.0, never compiled): one
+  more `setClip` + `drawBitmap` per frame, after the pose and before the emblem.
+- **Lost on the way:** Scamp's tooth. It was part of the painted face and no shared face has
+  one. A wild-lane face sheet would bring it back.
+- **Still waiting on sheets:** the gear, the egg, and the six later grown forms.

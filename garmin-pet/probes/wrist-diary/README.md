@@ -1,27 +1,29 @@
 # Friend (formerly Wrist Diary)
 
-> **For the home PC: 0.9.0 has never been compiled, and neither was 0.8.0 under it.** Both were
-> written on a machine with no SDK. Run `scripts/home-verify.ps1` (or `scripts/build-friend.ps1`)
+> **For the home PC: 0.10.0 has never been compiled, and neither were 0.9.0 and 0.8.0 under it.**
+> All three were written on a machine with no SDK. Run `scripts/home-verify.ps1` (or `scripts/build-friend.ps1`)
 > and expect compiler errors in the pet files (`FriendPet.mc`, `FriendArt.mc`, `FriendVoice.mc`,
 > and 0.9.0's `FriendSprites.mc` and generated `FriendSpriteTable.mc`) and the pet section at the
 > end of `WristDiaryView.mc`; the sensing code above it is unchanged from 0.7.1. Then compare the
-> simulator with the nine sheets in [preview/](preview/) (`python scripts/friend_preview.py`
+> simulator with the ten sheets in [preview/](preview/) (`python scripts/friend_preview.py`
 > redraws them; `--check` holds the mock to the Monkey C). Unproven on a compiler: the
 > `FriendLook` module constants, the three-deep `mLines` array cast, `Math.pow(...).toFloat()`,
 > `onTap` in the behavior delegate, and whether a tap on the FR265 would otherwise arrive as
 > START. Add what the compiler says to `common/language/COMPILER_FACTS.md`.
 >
-> **0.9.0 puts the real art on the watch, and three things about it are unproven:**
+> **0.9.0 put the real art on the watch and 0.10.0 gave it faces. Three things about that are
+> unproven:**
 > 1. *A bitmap bigger than the screen.* The friend is drawn from sprite strips (one per
 >    character, colorway and size), and the home-size strips run up to 659 x 520 px, about
 >    1.3 MB in the graphics pool. The ink face has only ever loaded 416 x 416. If the watch
 >    refuses a strip, Friend does not crash: that character shows as the old drawn shapes.
 >    So the first look at the home screen answers it. If it is the shapes, the fix is in
 >    `scripts/bake_friend_sprites.py` (`pack`: smaller strips), not in the watch code.
-> 2. *76 more resources* (60 strips, 16 emblem strips, 1.5 MB of PNG). The bitmap-budget probe
+> 2. *81 more resources* (60 pose strips, 5 face strips, 16 emblem strips, 1.4 MB of PNG). The bitmap-budget probe
 >    built and loaded 400, so this should be routine; the PRG size is the number to note.
 > 3. *`setClip` + `drawBitmap` at five frames a second* on a strip that size. Both calls are
->    the ink face's, but it never animated with them. Watch the home screen for stutter.
+>    the ink face's, but it never animated with them. A frame is three copies: the pose, its
+>    face, the emblem. Watch the home screen for stutter.
 >
 > Everything else about the art is done before the build: `python scripts/bake_friend_sprites.py
 > --check` passes when the committed strips match the sheets.
@@ -31,7 +33,7 @@ installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.9.0`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.10.0`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
 dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
 build that never reached git, and `0.4.0` was built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
@@ -64,6 +66,12 @@ and changes nothing stored. The DEBUG DATA card still works for an export mid-se
 closed can show whether the close followed a hide that never got its show back. The 2026-10-31
 [field log](../../field-logs/2026-10-31_friend-export.md) counted 3 hides in each such session and
 could say no more. No stored data or export format change.
+
+**0.10.0 -- Faces (unbuilt):** the friend's face is its own layer. The plain face each pose was
+painted with is taken off in the bake, and one sheet of twelve faces is fitted to every
+character. So the mood shows on the face (misty, fair, sunny, radiant), it blinks, it grits its
+teeth while working, and it sleeps with its eyes closed. See "Art slots" below. No change to the
+pet's rules or its save.
 
 **0.9.0 -- The real art, first pass (unbuilt):** the hatchling, the sprout and the three first
 grown forms are drawn from the generator sheets instead of shapes, in all six colorways, and the
@@ -134,12 +142,23 @@ pose's feet and belly patch are, and writes `resources/drawables/sprites.xml` an
 and draws a pose with `setClip` + `drawBitmap`: no scaling, tinting or blending, one copy per
 frame, and no load when the pose changes.
 
-| | What ships in 0.9.0 |
+**The face is a second layer (0.10.0).** Every pose was painted with the same plain face. The
+bake finds its two eyes, paints the eyes and the mouth over with the body color around them, and
+records the point between the eyes; the cheeks stay on the body. The faces come from one sheet
+(`2026-11-11_faces-b.png`, twelve faces on blue discs): each is cut off its disc, its cheeks are
+dropped, and it is shrunk until its eyes are as far apart as that character's own. A character
+gets one small face strip that serves all six colorways, and the watch copies one face over the
+pose each frame. Which face shows: the mood picks misty, fair, sunny or radiant; working picks
+the gritted one; the flex is proud; a hop shouts; a tap or a kept memory is glad (the radiant
+face); asleep has its eyes closed; and the fair and sunny faces blink once every 23 frames.
+
+| | What ships in 0.10.0 |
 |---|---|
 | Characters with a sheet | hatchling (Nub), sprout (Sprig), and the first grown form of each lane (Dash, Chonk, Scamp) |
 | Poses per character | idle, breathe, droop, back view, crouch, hop, cheer, flex, run A, run B, effort, asleep (the hatchling has eight and shares the rest) |
-| Storage | 60 strips, 1.4 MB of PNG (five characters x six colorways x two sizes); 16 emblem strips, 82 KB |
-| Loaded at once | one home strip (at most 659 x 520 px) or one card strip, and one emblem strip |
+| Faces per character | fair, blink, sunny, radiant, misty, effort, shout, proud, asleep; two glances and a surprised face are baked and not used yet |
+| Storage | 60 pose strips, 1.3 MB of PNG (five characters x six colorways x two sizes); 5 face strips, 39 KB; 16 emblem strips, 82 KB |
+| Loaded at once | one home strip (at most 659 x 520 px) or one card strip, one face strip (at most 328 x 255 px) and one emblem strip |
 | Belly emblems | 16, each baked in every colorway at three brightness levels: dull below warmth 70, steady from 70, glowing from 90, and a pulse while the friend is working |
 
 Which pose shows: the mood face picks droop (misty) or the idle and breathe pair; effort picks
@@ -149,9 +168,10 @@ Code moves the whole sprite for a hop or a run's bounce and nothing more.
 What is still the drawn stand-in, because its sheet has not been made: the egg, the sky, the
 flames and the aura behind the friend, the sleeping z's, and the small icons. Not shown on a
 sprite at all until their sheets exist: the headband and the cape (the unlock lines still name
-them), mood faces other than the one each pose was drawn with (so the sleeping pose has open
-eyes), and the second and third grown forms of each lane, which show the first. A character
-whose strip the watch refuses falls back to the drawn stand-in.
+them), and the second and third grown forms of each lane, which show the first. The wild form
+was painted with a small tooth; it came off with the painted face, and the shared faces have
+none. A character whose pose strip or face strip the watch refuses falls back to the drawn
+stand-in.
 
 Every emblem can be picked for now (DEBUG DATA, MENU, then START through color and voice); the
 plan to start with four and earn the rest is in PROMPTS.md and is not built. The pick is stored
