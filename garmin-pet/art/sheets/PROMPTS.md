@@ -84,7 +84,11 @@ The four voices (drill sergeant, cheerleader, deadpan, zen) are words only and n
   bounce); it never squashes or stretches a bitmap.
 - **Six colors from one sheet.** The sheets ask for the SKY color only and reserve blue for
   the body, so the bake can turn the blue into mint, peach, lilac, sun and rose without
-  touching leaves, stones or eyes. Do not ask a generator for the other five.
+  touching leaves, stones or eyes. Do not ask a generator for the other five. Tried 11-10 on
+  ChatGPT's Scamp sheet: a hue swap on the blue pixels alone gives all five other colors
+  cleanly, shading and belly included. A new color later (a seventh, or a different pink) is
+  one more entry in the bake's color table and a rebuild of the watch app, with no new art.
+  Still to tune: the pink blush nearly vanishes on the rose body.
 - **On black, on purpose.** Friend's screen is black, so a sheet painted on black needs no
   clean edge: whatever fringe the cut leaves is black on black. (The ink face's sheets were
   on white because its paper is light; its snow and moon went on black for the same reason
