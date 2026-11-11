@@ -1,7 +1,8 @@
 # Friend art: the cast and the sheet prompts
 
-Status 2026-11-10: the lineup (prompt 1) has been run on both painters; see "Round 1" at the
-end. The creature the watch draws today
+Status 2026-11-10: the lineup and the first five body sheets are back; see "Round 1" and
+"Round 2" at the end. Sent to neither painter yet: Gale to Wildwood (2.6 to 2.11), the
+faces (3), the egg (4), the gear (5), the belly emblems (6). The creature the watch draws today
 (`probes/wrist-diary/source/FriendArt.mc`) is a placeholder; this is the cast that replaces
 it and the prompts for an image generator to paint it, the way the ink face got its art
 (`watch-faces/japanese-ink-heartrate/art/sheets/PROMPTS.md`). The names are working names.
@@ -58,6 +59,7 @@ Earned things that are layered on any of them, not painted into them:
 | Power-up flames (an emote) | band 4, 1120 XP | gear 5, 6 |
 | Cape | band 5, 1700 XP | gear 2, 3 |
 | Aura | evolution 2, 2400 XP | gear 4 |
+| Belly emblem | one picked at the start, more earned (proposed, see below) | emblems |
 
 The four voices (drill sergeant, cheerleader, deadpan, zen) are words only and need no art.
 
@@ -87,6 +89,30 @@ The four voices (drill sergeant, cheerleader, deadpan, zen) are words only and n
   clean edge: whatever fringe the cut leaves is black on black. (The ink face's sheets were
   on white because its paper is light; its snow and moon went on black for the same reason
   as here.) The rule that goes with it: nothing dark on a subject's outer edge.
+- **The belly emblem is a third layer (John's idea, 11-10; proposed, nothing in code).**
+  The wearer picks an emblem that shows on the pet's belly patch, and it brightens and dulls.
+  - *How it is drawn:* like the face. The belly patch is a flat pale oval that faces the
+    viewer, so the cut records its center and size in each cell, and the watch lays the
+    emblem over it. No emblem in the back view or asleep (arms cover the belly); a flattened
+    copy for the crouch. One emblem sheet (prompt 6) serves all twelve characters.
+  - *What the brightness means:* warmth, the momentum number the pet already keeps (20 to
+    100, up with active days, easing down after missed ones; `12-pet-state-and-economy.md`
+    §5). Today it shows only as a word on a card. Three baked levels: dull below 70, steady
+    from 70, glowing from 90 (the card's "warmed up" and "in the zone" lines). Dull reads as
+    resting, never as a penalty. During an effort chapter the emblem pulses between two
+    levels, faster with more flames.
+  - *How emblems are had:* four to choose from at the start (heart, star, leaf, swirl),
+    changed freely like the colorway; the rest earned and kept. Proposed: the five trail
+    goals give paw (first km), apple (5 km picnic), mountain (10 km ridge), wing (half
+    marathon), crown (marathon); bands 7 and up, which today unlock only "bragging rights",
+    give bolt, flame, dumbbell, sun, moon, flower, gem in that order.
+  - *Why white on black:* each emblem is asked as one solid white shape, so the cut is a
+    plain brightness cut and the three brightness levels and every colorway are made at the
+    bake from one drawing. Tinting a bitmap on the watch is unproven, so nothing depends on it.
+  - *What it costs:* one new stored number for the equipped emblem and a bitset of the earned
+    ones. The pet's 32-slot save is full, so that is a save-version step. Gale and Comet have
+    a swirl painted on the belly in the lineup: the swirl becomes an emblem and is erased
+    from their bodies, like the face.
 - No cutter for these exists yet. `scripts/cut_sprite_sheet.py` reads ink on white; a
   color-on-black cut (background found from the sheet's edges, cells by grid as before) gets
   written when the first sheet is back, against a real image.
@@ -102,8 +128,8 @@ The four voices (drill sergeant, cheerleader, deadpan, zen) are words only and n
    fight what was painted. In a fresh chat, attach the lineup image and they work as they
    are. Sprig, Nub and the egg are all the watch can show until the first evolution at
    660 XP; the other nine can wait for it.
-3. The faces (3) go best in the lineup chat too, so the eyes match. The egg (4) and the
-   gear (5) stand alone and can go anywhere, any time.
+3. The faces (3) go best in the lineup chat too, so the eyes match. The egg (4), the gear
+   (5) and the belly emblems (6) stand alone and can go anywhere, any time.
 
 Save what comes back beside this file as `<date>_<sheet>-a.jpg` (Gemini) or `-b.png`
 (ChatGPT), e.g. `2026-11-12_lineup-b.png`, `2026-11-13_dash-a.jpg`: the ink face's naming.
@@ -371,6 +397,26 @@ Row 1: (1) HEADBAND: a red (#E5484D) athletic headband as it looks when worn on 
 Row 2: (4) AURA: a soft glowing ring of golden light (#F2D550), big enough to stand behind a whole character: brightest in a band partway out from the center, empty and black in the center, fading smoothly to black at its outer edge. No hard outline anywhere. (5) POWER-UP FLAMES, frame A: a wreath of bold cartoon flames rising around an empty black center where a character will stand: five or six flame tongues, orange (#FF8A3D) with yellow cores, taller at the sides than in the middle. (6) POWER-UP FLAMES, frame B: the same wreath a moment later, every tongue leaning the other way and at a different height, so that A and B alternate as an animation.
 ```
 
+## 6. Belly emblems (4x4, white on black)
+
+```
+I'm making art for a virtual pet that lives on a Garmin Forerunner 265 watch: a round 416x416 pixel AMOLED screen with a pure black background. The pet grows up as its owner exercises. On the watch each character is only about 120 pixels tall.
+
+The pet is a small round sky-blue creature with a pale oval belly patch, and its owner picks an emblem that is shown on the belly, about 35 pixels wide on the watch. I need a sheet of those emblems, which I will cut apart and recolor by machine. The rules matter more than the art:
+- Output a PNG. Background pure flat black (#000000) everywhere: no gradient, no glow, no grid lines, no borders, no frames.
+- Every emblem is a solid silhouette in pure flat white (#FFFFFF), like a stencil or a rubber stamp: one shape, or a few chunky separate pieces where the emblem needs them (a paw print's toes, a sun's rays). No outline, no shading, no gradient, no grey, no color, no glow, no texture. The only detail allowed inside a shape is a few wide black gaps cut right through it.
+- Bold and chunky, with rounded corners, to suit a cute mascot. Each must still read when it is shrunk to 35 pixels wide: no thin lines, no small parts, and every gap at least as wide as a tenth of the emblem.
+- One emblem per cell, centered, all the same visual size: each fits inside a circle about 60% of the cell's width. Wide empty black space around it. Nothing may touch or cross into another cell or the image edge.
+- No text, letters, numbers, labels, signatures or watermarks anywhere. The names in capitals below are only labels for me: never draw them.
+- The same hand and the same weight across the whole sheet, as one matching icon set.
+
+Make one square image, 2048x2048, laid out as a grid of 4 columns by 4 rows (16 cells). Left to right, top to bottom:
+Row 1: (1) HEART: a plump heart. (2) STAR: a fat five-pointed star with rounded points. (3) LEAF: one simple leaf with a short stem and a single gap for its center vein. (4) SWIRL: a thick spiral of about one and a half turns.
+Row 2: (5) PAW: a paw print: one large pad with three round toes above it. (6) APPLE: an apple with a short stem and one small leaf. (7) MOUNTAIN: two overlapping peaks, the taller one with a zigzag gap for its snow line. (8) WING: one feathered wing spread to the right, three or four thick feathers.
+Row 3: (9) CROWN: a simple crown with three rounded points. (10) BOLT: a thick lightning bolt. (11) FLAME: a single plump flame with one gap for its inner flame. (12) DUMBBELL: a dumbbell lying flat, seen from the side: a short thick bar with one big rounded weight at each end.
+Row 4: (13) SUN: a round disc with eight short thick rays around it, the rays separate from the disc. (14) MOON: a fat crescent moon. (15) FLOWER: five round petals around a round gap in the middle. (16) GEM: a cut gemstone seen from the front, with three or four wide gaps for its facets.
+```
+
 ## Round 1 (2026-11-10): the lineup, both painters
 
 - **ChatGPT** (PNG, 1086x1448, on black as asked): one species, every character seen from
@@ -384,3 +430,19 @@ Row 2: (4) AURA: a soft glowing ring of golden light (#F2D550), big enough to st
 - John (11-10): the style is fine, low detail is right for the watch; no pick yet. He does
   not want the pet moved by squash and stretch ("an old Flash video"): poses are drawn
   frames, and the face is an overlay.
+
+## Round 2 (2026-11-10): body sheets 2.1 to 2.5
+
+Nub, Sprig, Dash, Chonk and Scamp, sent as follow-ups in the lineup chats. The returned
+sheets are in John's Downloads, not yet filed here.
+
+- **ChatGPT: all five usable.** Every cell is its own pose, on black, with the one plain
+  face and the same animal throughout; the lineup's design held without a crop attached.
+  Measured cell against cell (each cut to its ink, scaled to 64 px): the closest pairs are
+  idle and breathe, which are meant to be close, and nothing is a copy. The same twelve
+  poses come back for every animal, which is what one animation table needs.
+- **Gemini: dropped for body sheets.** John stopped after three: it began repeating itself,
+  and on the Chonk sheet it changed the face from cell to cell and gave three cells another
+  character's single leaf and pointed ears.
+- 2.6 (Gale) was run but is not among the saved files.
+- The Scamp sheet's clean belly ovals are where the belly emblem idea came from.
