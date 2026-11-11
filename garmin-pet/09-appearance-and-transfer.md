@@ -231,12 +231,14 @@ years, new watch, please."
       felt out in the `pet-sandbox` on real hardware. **Lock the architecture, not the catalog.**
 - [ ] **Slot set final** — is `head/face/body/hold` the right four, or do species need
       slot-specific anchors that change the set? Resolve when art starts.
-- [ ] **Belly emblem slot (proposed 2026-11-10).** A fifth `look` slot: an emblem on the belly
+- [ ] **Belly emblem slot (proposed 2026-11-10; first pass in Friend 0.9.0).** A fifth `look` slot: an emblem on the belly
       patch, picked freely from the ones owned, whose brightness shows warmth (momentum) and
       which pulses during effort. Earned by trail goals and the bands above 6. It is laid over
       the body at an anchor the art cut records, the same way the face is. Plan, emblem list and
-      the sheet prompt: `art/sheets/PROMPTS.md` ("How this meets the build", prompt 6). Not in
-      code; needs one stored number and an owned bitset.
+      the sheet prompt: `art/sheets/PROMPTS.md` ("How this meets the build", prompt 6, "Round 3").
+      In code: the emblem drawn over the baked belly anchor, its brightness from warmth, and a
+      free pick of all sixteen stored under its own key. Not in code: earning them, which
+      needs an owned bitset.
 - [ ] **Serialization format** — base-32 short-code alphabet, checksum, and how `owned` bitsets
       pack into the wire blob (keep it tiny; the 32 KB-per-Storage-value cap is miles away but
       the on-screen code wants to stay human-transcribable).

@@ -1,25 +1,37 @@
 # Friend (formerly Wrist Diary)
 
-> **For the home PC: 0.8.0 has never been compiled.** It was written on a machine with no SDK.
-> Run `scripts/home-verify.ps1` (or `scripts/build-friend.ps1`) and expect compiler errors in the
-> three new files (`FriendPet.mc`, `FriendArt.mc`, `FriendVoice.mc`) and the pet section at the
+> **For the home PC: 0.9.0 has never been compiled, and neither was 0.8.0 under it.** Both were
+> written on a machine with no SDK. Run `scripts/home-verify.ps1` (or `scripts/build-friend.ps1`)
+> and expect compiler errors in the pet files (`FriendPet.mc`, `FriendArt.mc`, `FriendVoice.mc`,
+> and 0.9.0's `FriendSprites.mc` and generated `FriendSpriteTable.mc`) and the pet section at the
 > end of `WristDiaryView.mc`; the sensing code above it is unchanged from 0.7.1. Then compare the
-> simulator with the eight sheets in [preview/](preview/) (`python scripts/friend_preview.py`
+> simulator with the nine sheets in [preview/](preview/) (`python scripts/friend_preview.py`
 > redraws them; `--check` holds the mock to the Monkey C). Unproven on a compiler: the
 > `FriendLook` module constants, the three-deep `mLines` array cast, `Math.pow(...).toFloat()`,
 > `onTap` in the behavior delegate, and whether a tap on the FR265 would otherwise arrive as
 > START. Add what the compiler says to `common/language/COMPILER_FACTS.md`.
 >
-> **The drawn friend is a placeholder, on purpose.** It is shapes in code so the game can be
-> played; no more effort goes into it. Real art is made by hand outside this repo and replaces it
-> behind one seam, `FriendArt.draw` (see "Art slots" below).
+> **0.9.0 puts the real art on the watch, and three things about it are unproven:**
+> 1. *A bitmap bigger than the screen.* The friend is drawn from sprite strips (one per
+>    character, colorway and size), and the home-size strips run up to 659 x 520 px, about
+>    1.3 MB in the graphics pool. The ink face has only ever loaded 416 x 416. If the watch
+>    refuses a strip, Friend does not crash: that character shows as the old drawn shapes.
+>    So the first look at the home screen answers it. If it is the shapes, the fix is in
+>    `scripts/bake_friend_sprites.py` (`pack`: smaller strips), not in the watch code.
+> 2. *76 more resources* (60 strips, 16 emblem strips, 1.5 MB of PNG). The bitmap-budget probe
+>    built and loaded 400, so this should be routine; the PRG size is the number to note.
+> 3. *`setClip` + `drawBitmap` at five frames a second* on a strip that size. Both calls are
+>    the ink face's, but it never animated with them. Watch the home screen for stutter.
+>
+> Everything else about the art is done before the build: `python scripts/bake_friend_sprites.py
+> --check` passes when the committed strips match the sheets.
 
 A deliberately plain, local-only first friend. It reuses Wrist Diary's application UUID so
 installing it replaces that prototype instead of adding another app slot.
 
 ## Versions
 
-Friend uses `major.minor.patch` versions. The current version is `0.8.0`, shown beside `FRIEND`
+Friend uses `major.minor.patch` versions. The current version is `0.9.0`, shown beside `FRIEND`
 at the top of the watch screen and included in every export marker. The earlier unlabelled first
 dogfood build is treated as `0.1.0`. A `0.3.1` export may appear in old logs: it was a local
 build that never reached git, and `0.4.0` was built on `0.3.0` instead. Increase the patch number for fixes, minor for compatible
@@ -52,6 +64,11 @@ and changes nothing stored. The DEBUG DATA card still works for an export mid-se
 closed can show whether the close followed a hide that never got its show back. The 2026-10-31
 [field log](../../field-logs/2026-10-31_friend-export.md) counted 3 hides in each such session and
 could say no more. No stored data or export format change.
+
+**0.9.0 -- The real art, first pass (unbuilt):** the hatchling, the sprout and the three first
+grown forms are drawn from the generator sheets instead of shapes, in all six colorways, and the
+belly carries a pickable emblem that brightens with warmth. See "Art slots" below. No change to
+the pet's rules or its save; the emblem is one new Storage key.
 
 **0.8.0 -- The friend becomes a pet (unbuilt):** designed against the
 [2026-11-10 field log](../../field-logs/2026-11-10_friend-export.md). The effort chapters Friend
@@ -90,7 +107,7 @@ already senses now feed a pet that grows, following
   held against `pet-model.ps1`. `scripts/test-friend-pet.ps1` holds the watch's integer math and
   every tuning constant to the model.
 - On the DEBUG DATA card, MENU reopens the colorway and voice choice (a dogfood escape hatch;
-  nothing else resets).
+  nothing else resets). From band 1 on it ends with the belly mark (0.9.0).
 
 Where 0.8.0 departs from doc 12 as written: flames at +15 / +30 bpm instead of +10 / +20 (the
 field log shows why); the displayed band waits below an evolution instead of showing it early;
@@ -99,18 +116,46 @@ naming moves or counting reps exists yet.
 
 ## Art slots
 
-Everything the pet shows is drawn by `FriendArt` from five numbers the game sets
-(`setLook`, `setPose`): **stage** (egg, baby, child, adult), **band** (accessories: shell 0,
-leaf 1-2, headband 2+, cape 5+), **form** (sleek, round, wild; adult only), **colorway** (6) and
-**face/pose** (faces: misty, fair, sunny, radiant, effort, joy, sleep; poses: idle, run, hop,
-flex, spin, flames, sleep), plus a frame counter at 5 frames a second. Hand-made art replaces
-the body of `FriendArt.draw` and `drawEgg`; nothing else in the game knows how the pet is drawn.
-The sky, the flame, heart, shield and sparkle icons are separate small functions in the same
-class. The app uses 31 KB of its 768 KB at its peak, so there is room for bitmaps.
+Everything the pet shows comes from five numbers the game sets on `FriendArt` (`setLook`,
+`setPose`): **stage** (egg, baby, child, adult), **band**, **form** (sleek, round, wild; adult
+only), **colorway** (6) and **face/pose** (faces: misty, fair, sunny, radiant, effort, joy,
+sleep; poses: idle, run, hop, flex, spin, flames, sleep), plus a frame counter at 5 frames a
+second, and since 0.9.0 the belly emblem (`setEmblem`). Nothing else in the game knows how the
+pet is drawn.
 
-The cast that replaces the placeholder (egg, hatchling, sprout, then three lanes of three
-grown forms) and the image-generator prompts for its sheets are in
-[`garmin-pet/art/sheets/PROMPTS.md`](../../art/sheets/PROMPTS.md).
+**The art is baked on the PC; the watch only copies pixels (0.9.0).** The source is the
+generator sheets in [`garmin-pet/art/sheets/`](../../art/sheets/) (the cast and the prompts are
+in [PROMPTS.md](../../art/sheets/PROMPTS.md)). `python scripts/bake_friend_sprites.py` cuts every
+pose out of its sheet, makes the six colorways by swapping the hue of the blue body, shrinks
+each pose to the two sizes it is drawn at (home, and 52% for the cards), and packs the twelve
+poses of one character in one colorway at one size into one strip. It also measures where each
+pose's feet and belly patch are, and writes `resources/drawables/sprites.xml` and
+`source/FriendSpriteTable.mc`. On the watch `FriendSprites` loads the one strip it is showing
+and draws a pose with `setClip` + `drawBitmap`: no scaling, tinting or blending, one copy per
+frame, and no load when the pose changes.
+
+| | What ships in 0.9.0 |
+|---|---|
+| Characters with a sheet | hatchling (Nub), sprout (Sprig), and the first grown form of each lane (Dash, Chonk, Scamp) |
+| Poses per character | idle, breathe, droop, back view, crouch, hop, cheer, flex, run A, run B, effort, asleep (the hatchling has eight and shares the rest) |
+| Storage | 60 strips, 1.4 MB of PNG (five characters x six colorways x two sizes); 16 emblem strips, 82 KB |
+| Loaded at once | one home strip (at most 659 x 520 px) or one card strip, and one emblem strip |
+| Belly emblems | 16, each baked in every colorway at three brightness levels: dull below warmth 70, steady from 70, glowing from 90, and a pulse while the friend is working |
+
+Which pose shows: the mood face picks droop (misty) or the idle and breathe pair; effort picks
+the effort pose; the emotes use crouch and hop, cheer and flex, front and back; a chapter runs.
+Code moves the whole sprite for a hop or a run's bounce and nothing more.
+
+What is still the drawn stand-in, because its sheet has not been made: the egg, the sky, the
+flames and the aura behind the friend, the sleeping z's, and the small icons. Not shown on a
+sprite at all until their sheets exist: the headband and the cape (the unlock lines still name
+them), mood faces other than the one each pose was drawn with (so the sleeping pose has open
+eyes), and the second and third grown forms of each lane, which show the first. A character
+whose strip the watch refuses falls back to the drawn stand-in.
+
+Every emblem can be picked for now (DEBUG DATA, MENU, then START through color and voice); the
+plan to start with four and earn the rest is in PROMPTS.md and is not built. The pick is stored
+under its own Storage key, `emblem`, because the 32-number save is full.
 
 ## What it does
 

@@ -82,10 +82,12 @@ class FriendPet {
     var mS as Lang.Array<Lang.Number>;
     var mAlive as Lang.Boolean = false;
     var mLocked as Lang.Boolean = false;
+    var mEmblem as Lang.Number = 1;
 
     function initialize() {
         mS = blank();
         load();
+        mEmblem = readNumber("emblem", 1);
     }
 
     function blank() as Lang.Array<Lang.Number> {
@@ -475,6 +477,19 @@ class FriendPet {
         System.println("FRIEND_EVOLVE," + mS[P_EVOS] + "," + picked + "," + band());
         save();
         return true;
+    }
+
+    // The belly emblem (0 bare, 1 on in sheet order) lives in its own key:
+    // the save array above is full, and a look is not worth a schema step.
+    function emblem() as Lang.Number { return mEmblem; }
+
+    function setEmblem(index as Lang.Number) as Void {
+        mEmblem = index;
+        try {
+            Application.Storage.setValue("emblem", index);
+        } catch (e) {
+            System.println("FRIEND_PET_SAVE_ERROR," + e.getErrorMessage());
+        }
     }
 
     // Dogfood escape hatch: the colorway and voice can be picked again.

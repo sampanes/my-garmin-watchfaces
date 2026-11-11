@@ -13,7 +13,7 @@ using Toybox.WatchUi;
 // The first dogfood build deliberately keeps the old Wrist Diary application UUID.
 // Installing it updates that app slot instead of leaving a third prototype on the watch.
 class WristDiaryView extends WatchUi.View {
-    const APP_VERSION = "0.8.0";
+    const APP_VERSION = "0.9.0";
     const SCHEMA = 3;           // On-watch storage layout.
     const EXPORT_FORMAT = 6;    // Log export layout; friend-export.ps1 holds the columns.
     const LIVE_INTERVAL_SECONDS = 20;
@@ -55,6 +55,7 @@ class WristDiaryView extends WatchUi.View {
     const SCREEN_GREW = 12;
     const SCREEN_EVOLVE = 13;
     const SCREEN_EVOLVE_CONFIRM = 14;
+    const SCREEN_EMBLEM = 15;
 
     const ANIM_MS = 200;            // Five frames a second while the screen shows.
     const REWARD_LINGER_MS = 20000; // The exit reward card closes itself after this.
@@ -176,6 +177,8 @@ class WristDiaryView extends WatchUi.View {
     var mPickPal as Lang.Number = 0;
     var mPickVoice as Lang.Number = 0;
     var mPickForm as Lang.Number = 1;
+    var mPickEmblem as Lang.Number = 0;
+    var mEmblemLevel as Lang.Number = 1;    // How bright the belly emblem is, from warmth.
     var mRepick as Lang.Boolean = false;
     var mHatchFrame as Lang.Number = 0;
     var mRewardExit as Lang.Boolean = false;    // The reward card is the last stop before leaving.
@@ -255,6 +258,8 @@ class WristDiaryView extends WatchUi.View {
             drawEggScreen(dc);
         } else if (mScreen == SCREEN_VOICE) {
             drawVoiceScreen(dc);
+        } else if (mScreen == SCREEN_EMBLEM) {
+            drawEmblemScreen(dc);
         } else if (mScreen == SCREEN_REWARD) {
             drawReward(dc);
         } else if (mScreen == SCREEN_GREW) {
@@ -306,7 +311,7 @@ class WristDiaryView extends WatchUi.View {
 
         drawCenteredLine(dc, centerX, height * 10 / 100, "FRIEND WALK", C_ACCENT,
                          [Graphics.FONT_XTINY]);
-        drawPet(dc, centerX, height * 33 / 100, 45,
+        drawPet(dc, centerX, height * 35 / 100, 45,
                 recording ? FriendLook.FACE_EFFORT : FriendLook.FACE_SUNNY,
                 recording ? FriendLook.POSE_RUN : FriendLook.POSE_IDLE);
         drawCenteredLine(dc, centerX, height * 43 / 100,
@@ -556,6 +561,12 @@ class WristDiaryView extends WatchUi.View {
         } else if (mScreen == SCREEN_HATCHING) {
             mScreen = SCREEN_VOICE;
         } else if (mScreen == SCREEN_VOICE) {
+            if (mRepick && mBand >= 1) {
+                mScreen = SCREEN_EMBLEM;
+            } else {
+                commitHatch();
+            }
+        } else if (mScreen == SCREEN_EMBLEM) {
             commitHatch();
         } else if (mScreen == SCREEN_REWARD || mScreen == SCREEN_GREW) {
             leave = advanceReward();
@@ -591,6 +602,8 @@ class WristDiaryView extends WatchUi.View {
             mScreen = SCREEN_HOME;
         } else if (mScreen == SCREEN_HATCHING || mScreen == SCREEN_VOICE) {
             mScreen = SCREEN_EGG;
+        } else if (mScreen == SCREEN_EMBLEM) {
+            mScreen = SCREEN_VOICE;
         } else if (mScreen == SCREEN_EVOLVE) {
             mScreen = SCREEN_GROWTH;
         } else if (mScreen == SCREEN_EVOLVE_CONFIRM) {
@@ -621,6 +634,9 @@ class WristDiaryView extends WatchUi.View {
             mPickVoice = (mPickVoice + step + mVoice.voiceCount()) % mVoice.voiceCount();
         } else if (mScreen == SCREEN_EVOLVE) {
             mPickForm = (mPickForm + step + FriendLook.FORM_COUNT) % FriendLook.FORM_COUNT;
+        } else if (mScreen == SCREEN_EMBLEM) {
+            // 0 is a bare belly, then the emblems in sheet order.
+            mPickEmblem = (mPickEmblem + step + FRIEND_EMBLEMS + 1) % (FRIEND_EMBLEMS + 1);
         } else if (mPet.exists()) {
             var order = [SCREEN_HOME, SCREEN_TODAY, SCREEN_GROWTH, SCREEN_TRAIL,
                          SCREEN_EXPORT] as Lang.Array<Lang.Number>;
@@ -638,10 +654,11 @@ class WristDiaryView extends WatchUi.View {
         if (mScreen == SCREEN_HOME || (mScreen == SCREEN_EGG && !mRepick)) {
             mScreen = SCREEN_EXPORT;
         } else if (mScreen == SCREEN_EXPORT && mPet.exists()) {
-            // Dogfood escape hatch: pick the colorway and voice again.
+            // Dogfood escape hatch: pick the colorway, voice and belly emblem again.
             mRepick = true;
             mPickPal = mPet.palette();
             mPickVoice = mPet.persona();
+            mPickEmblem = mPet.emblem();
             mScreen = SCREEN_EGG;
         }
         WatchUi.requestUpdate();
@@ -1351,6 +1368,15 @@ class WristDiaryView extends WatchUi.View {
         mBand = mPet.band();
         mEvoReady = mPet.evoReady(now);
         mDayFull = (mPet.dayMinutes(now) >= 30);
+        mEmblemLevel = emblemLevel(mPet.warmth(now));
+    }
+
+    // The belly emblem shows the bond: dull when cool, steady when warm,
+    // glowing when close.
+    function emblemLevel(warm as Lang.Number) as Lang.Number {
+        if (warm >= 90) { return 2; }
+        if (warm >= 70) { return 1; }
+        return 0;
     }
 
     function homeScreen() as Lang.Number {
@@ -1365,6 +1391,7 @@ class WristDiaryView extends WatchUi.View {
 
     function dressPet() as Void {
         mArt.setLook(petStage(), mBand, mPet.form(), mPet.evos(), mPet.palette());
+        mArt.setEmblem(mPet.emblem(), mEmblemLevel);
     }
 
     // The friend standing on footY, at a percentage of its home-screen size.
@@ -1382,8 +1409,7 @@ class WristDiaryView extends WatchUi.View {
         }
         dressPet();
         mArt.setPose(face, pose, mFrame);
-        var size = mArt.sizeFor(petStage(), height) * percent / 100;
-        mArt.draw(dc, x, footY - size, size);
+        mArt.drawStanding(dc, x, footY, percent);
     }
 
     // The animation timer only runs while the screen shows.
@@ -1920,28 +1946,57 @@ class WristDiaryView extends WatchUi.View {
         if (mRepick) {
             stage = petStage();
             mArt.setLook(stage, mBand, mPet.form(), mPet.evos(), mPickPal);
+            mArt.setEmblem(mPet.emblem(), mEmblemLevel);
         } else {
             mArt.setLook(stage, 0, 0, 0, mPickPal);
         }
         mArt.setPose(FriendLook.FACE_SUNNY, FriendLook.POSE_IDLE, mFrame);
-        var size = mArt.sizeFor(stage, height) * 80 / 100;
         drawCenteredLine(dc, centerX, height * 10 / 100, "HOW DO I TALK?", C_GOLD,
                          [Graphics.FONT_XTINY]);
-        mArt.draw(dc, centerX, height * 40 / 100 - size, size);
+        // A grown friend at home size would reach the title; the hatchling fits.
+        mArt.drawStanding(dc, centerX, height * 40 / 100, mRepick ? 62 : 80);
         drawCenteredLine(dc, centerX, height * 51 / 100, mVoice.voiceName(mPickVoice),
                          Graphics.COLOR_WHITE, [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
         drawCenteredLine(dc, centerX, height * 62 / 100, mVoice.voiceSample(mPickVoice), C_MINT,
                          [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
         drawCenteredLine(dc, centerX, height * 75 / 100, "UP/DOWN voice",
                          Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
-        drawCenteredLine(dc, centerX, height * 85 / 100, "START keep", C_MINT,
+        drawCenteredLine(dc, centerX, height * 85 / 100,
+                         (mRepick && mBand >= 1) ? "START next" : "START keep", C_MINT,
                          [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
         drawStartHint(dc);
+    }
+
+    // The belly emblem, last stop of the new-look path once the friend has a
+    // belly patch (band 1 on). Every emblem is on offer for now: the rules for
+    // earning them (garmin-pet/art/sheets/PROMPTS.md) are not built.
+    function drawEmblemScreen(dc as Graphics.Dc) as Void {
+        var height = dc.getHeight();
+        var centerX = dc.getWidth() / 2;
+        mArt.setLook(petStage(), mBand, mPet.form(), mPet.evos(), mPickPal);
+        mArt.setEmblem(mPickEmblem, 1);
+        mArt.setPose(FriendLook.FACE_SUNNY, FriendLook.POSE_IDLE, mFrame);
+        drawCenteredLine(dc, centerX, height * 10 / 100, "BELLY MARK", C_GOLD,
+                         [Graphics.FONT_XTINY]);
+        mArt.drawStanding(dc, centerX, height * 52 / 100, 100);
+        drawCenteredLine(dc, centerX, height * 62 / 100, emblemName(mPickEmblem),
+                         Graphics.COLOR_WHITE, [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
+        drawCenteredLine(dc, centerX, height * 74 / 100, "UP/DOWN mark",
+                         Graphics.COLOR_LT_GRAY, [Graphics.FONT_XTINY]);
+        drawCenteredLine(dc, centerX, height * 84 / 100, "START keep", C_MINT,
+                         [Graphics.FONT_TINY, Graphics.FONT_XTINY]);
+        drawStartHint(dc);
+    }
+
+    function emblemName(emblem as Lang.Number) as Lang.String {
+        if (emblem < 1 || emblem > FRIEND_EMBLEMS) { return "BARE"; }
+        return friendEmblemNames()[emblem - 1];
     }
 
     function commitHatch() as Void {
         if (mRepick) {
             mPet.setLook(mPickPal, mPickVoice);
+            if (mBand >= 1) { mPet.setEmblem(mPickEmblem); }
             mRepick = false;
             refreshPet();
             mScreen = SCREEN_HOME;
@@ -1964,12 +2019,12 @@ class WristDiaryView extends WatchUi.View {
         var confirm = (mScreen == SCREEN_EVOLVE_CONFIRM);
         mArt.setLook(FriendLook.STAGE_ADULT, mBand + 1, mPickForm, mPet.evos() + 1,
                      mPet.palette());
+        mArt.setEmblem(mPet.emblem(), mEmblemLevel);
         mArt.setPose(FriendLook.FACE_SUNNY, FriendLook.POSE_IDLE, mFrame);
-        var size = mArt.sizeFor(FriendLook.STAGE_ADULT, height) * 82 / 100;
         drawCenteredLine(dc, centerX, height * 10 / 100,
                          confirm ? "KEEP FOREVER?" : "WHO WILL I BE?", C_GOLD,
                          [Graphics.FONT_XTINY]);
-        mArt.draw(dc, centerX, height * 50 / 100 - size, size);
+        mArt.drawStanding(dc, centerX, height * 53 / 100, 82);
         drawCenteredLine(dc, centerX, height * 61 / 100, formName(mPickForm),
                          Graphics.COLOR_WHITE, [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL]);
         if (confirm) {

@@ -1,11 +1,12 @@
 # Friend art: the cast and the sheet prompts
 
-Status 2026-11-10: the lineup and the first five body sheets are back; see "Round 1" and
-"Round 2" at the end. Sent to neither painter yet: Gale to Wildwood (2.6 to 2.11), the
-faces (3), the egg (4), the gear (5), the belly emblems (6). The creature the watch draws today
-(`probes/wrist-diary/source/FriendArt.mc`) is a placeholder; this is the cast that replaces
-it and the prompts for an image generator to paint it, the way the ink face got its art
-(`watch-faces/japanese-ink-heartrate/art/sheets/PROMPTS.md`). The names are working names.
+Status 2026-11-10: the lineup, the first five body sheets and the belly emblems are back,
+filed beside this file, and baked into Friend 0.9.0 (unbuilt); see "Round 1" to "Round 3" at
+the end. Still to paint: Gale to Wildwood (2.6 to 2.11), the faces (3), the egg (4), the gear
+(5). This is the cast that replaces the creature drawn from shapes in
+`probes/wrist-diary/source/FriendArt.mc`, and the prompts for an image generator to paint it,
+the way the ink face got its art (`watch-faces/japanese-ink-heartrate/art/sheets/PROMPTS.md`).
+The names are working names.
 
 ## The growth tree
 
@@ -88,12 +89,13 @@ The four voices (drill sergeant, cheerleader, deadpan, zen) are words only and n
   ChatGPT's Scamp sheet: a hue swap on the blue pixels alone gives all five other colors
   cleanly, shading and belly included. A new color later (a seventh, or a different pink) is
   one more entry in the bake's color table and a rebuild of the watch app, with no new art.
-  Still to tune: the pink blush nearly vanishes on the rose body.
+  The pink blush nearly vanished on the rose body; the bake deepens it there ("Round 3").
 - **On black, on purpose.** Friend's screen is black, so a sheet painted on black needs no
   clean edge: whatever fringe the cut leaves is black on black. (The ink face's sheets were
   on white because its paper is light; its snow and moon went on black for the same reason
   as here.) The rule that goes with it: nothing dark on a subject's outer edge.
-- **The belly emblem is a third layer (John's idea, 11-10; proposed, nothing in code).**
+- **The belly emblem is a third layer (John's idea, 11-10; a first pass is in Friend 0.9.0, see
+  "Round 3").**
   The wearer picks an emblem that shows on the pet's belly patch, and it brightens and dulls.
   - *How it is drawn:* like the face. The belly patch is a flat pale oval that faces the
     viewer, so the cut records its center and size in each cell, and the watch lays the
@@ -117,9 +119,9 @@ The four voices (drill sergeant, cheerleader, deadpan, zen) are words only and n
     ones. The pet's 32-slot save is full, so that is a save-version step. Gale and Comet have
     a swirl painted on the belly in the lineup: the swirl becomes an emblem and is erased
     from their bodies, like the face.
-- No cutter for these exists yet. `scripts/cut_sprite_sheet.py` reads ink on white; a
-  color-on-black cut (background found from the sheet's edges, cells by grid as before) gets
-  written when the first sheet is back, against a real image.
+- The cut and the bake are one script, `scripts/bake_friend_sprites.py` ("Round 3"). It
+  finds the cells from the black between them, so a sheet needs clear black gaps between
+  its poses and nothing floating beside a pose.
 
 ## Order of work
 
@@ -437,8 +439,8 @@ Row 4: (13) SUN: a round disc with eight short thick rays around it, the rays se
 
 ## Round 2 (2026-11-10): body sheets 2.1 to 2.5
 
-Nub, Sprig, Dash, Chonk and Scamp, sent as follow-ups in the lineup chats. The returned
-sheets are in John's Downloads, not yet filed here.
+Nub, Sprig, Dash, Chonk and Scamp, sent as follow-ups in the lineup chats. ChatGPT's five
+are filed here as `2026-11-10_body-<name>-b.png`, with its lineup as `2026-11-10_lineup-b.png`.
 
 - **ChatGPT: all five usable.** Every cell is its own pose, on black, with the one plain
   face and the same animal throughout; the lineup's design held without a crop attached.
@@ -450,3 +452,34 @@ sheets are in John's Downloads, not yet filed here.
   character's single leaf and pointed ears.
 - 2.6 (Gale) was run but is not among the saved files.
 - The Scamp sheet's clean belly ovals are where the belly emblem idea came from.
+
+## Round 3 (2026-11-10): the emblems, and the first bake
+
+- **Emblems (prompt 6): ChatGPT's sheet is the pick**, filed as `2026-11-10_emblems-b.png`.
+  All sixteen came back in order, chunky and solid. Gemini's sheet is as clean but thinner in
+  places (the leaf's veins, the dumbbell's plates), which would fill in at 30 px.
+- **`scripts/bake_friend_sprites.py` turns the sheets into what the watch loads.** For each
+  body sheet: find the twelve cells, cut each out of the black (the dimming along an outline
+  becomes alpha), swap the hue of the blue body for each of the six colorways, shrink to the
+  home size and the card size, and pack one strip per character, colorway and size. For each
+  pose it records where the feet are and where the middle of the belly patch is. Emblems are
+  cut by brightness and baked per colorway at three levels. 60 strips and 16 emblem strips,
+  1.5 MB of PNG in all. `--check` proves the committed files still match the sheets;
+  `--contact DIR` writes review sheets.
+- **What had to be tuned against the real sheets:**
+  - The painters put a fine texture on the flat areas. Flattening a whole strip to 64 colors
+    turned it into blotches; a 3 px median first and 128 colors keeps the body smooth.
+  - A colorway darker than the sheet's blue (mint, sun) dulled the belly with the body. The
+    belly now takes less of the darkening than the solid body does.
+  - The pink cheeks disappear on a pink or orange body, so on rose and peach they are
+    deepened. Where a cheek fades into the body the sheet is violet; those pixels are rebuilt
+    as pink over the new body color.
+  - The emblem is 30 px at home size. A pose gets one only where its belly patch can hold
+    it: not the crouch, not the hatchling (no patch), and by rule not the back view or asleep.
+- **What the watch does with it** (`FriendSprites.mc`, Friend 0.9.0, never compiled): loads
+  one strip, copies one pose per frame with `setClip` + `drawBitmap`, then the emblem the same
+  way. No tint, no scaling, no blending. The emblem's level follows warmth and pulses during
+  effort; every emblem can be picked for now, and the earning rules above are not built.
+- **Not done, waiting on sheets:** the face layer (each pose keeps the plain face it was
+  painted with, so there is no blink, no mood face and no closed eyes asleep), the gear, the
+  egg, and the six later grown forms (each lane shows its first grown form at every tier).

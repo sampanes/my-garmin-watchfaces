@@ -1,23 +1,27 @@
 """Host-side mock of Friend's drawing code (no SDK needed).
 
-FriendArt below is a line-for-line port of
-garmin-pet/probes/wrist-diary/source/FriendArt.mc, and FriendView mirrors the
-draw* functions of WristDiaryView.mc. Change both together: the mock is how a
-machine without the Connect IQ SDK sees what the watch will draw.
+FriendArt and FriendSprites below are line-for-line ports of
+garmin-pet/probes/wrist-diary/source/FriendArt.mc and FriendSprites.mc, and
+FriendView mirrors the draw* functions of WristDiaryView.mc. Change both
+together: the mock is how a machine without the Connect IQ SDK sees what the
+watch will draw. The sprites are the baked strips themselves, read through
+the generated table the watch compiles (FriendSpriteTable.mc, sprites.xml).
 
     python scripts/friend_preview.py            # writes bin/friend/preview/*.png
     python scripts/friend_preview.py --out DIR
     python scripts/friend_preview.py --check    # the mock still matches the watch code
 
 Faithful: every shape, position, color and animation frame (integer math
-only, and div() truncates like Monkey C). Stand-ins: the fonts (Arial Narrow
-for Garmin's system fonts, at guessed pixel sizes) and the anti-aliasing.
+only, and div() truncates like Monkey C), and every sprite pixel. Stand-ins:
+the fonts (Arial Narrow for Garmin's system fonts, at guessed pixel sizes)
+and the anti-aliasing.
 --check compares the integer literals of every mirrored function in the two
 languages, the art tables and palettes, and the width of every voice line.
 """
 import argparse
 import math
 import os
+import re
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -70,6 +74,25 @@ class Dc:
         self.d = ImageDraw.Draw(self.img)
         self.color = (255, 255, 255)
         self.pen = 1
+        self.clip = None
+
+    def setClip(self, x, y, w, h):
+        self.clip = (x, y, x + w, y + h)
+
+    def clearClip(self):
+        self.clip = None
+
+    def drawBitmap(self, x, y, bitmap):
+        """A bitmap 1:1, inside the clip. Pasted at 3x so finish() gives it back."""
+        left, top, right, bottom = self.clip or (0, 0, self.size, self.size)
+        left, top = max(left, x, 0), max(top, y, 0)
+        right, bottom = min(right, x + bitmap.width, self.size), min(bottom, y + bitmap.height,
+                                                                     self.size)
+        if right <= left or bottom <= top:
+            return
+        part = bitmap.crop((left - x, top - y, right - x, bottom - y))
+        part = part.resize((part.width * SS, part.height * SS), Image.NEAREST)
+        self.img.paste(part, (left * SS, top * SS), part)
 
     def getWidth(self):
         return self.size
@@ -152,6 +175,178 @@ class Dc:
         return out
 
 
+# ------------------------------------------------------------ FriendSprites
+# The generated table, read from the Monkey C the watch compiles, so the mock
+# and the watch cannot disagree about a number or a file.
+
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+APP = os.path.join(REPO, "garmin-pet", "probes", "wrist-diary")
+_table = open(os.path.join(APP, "source", "FriendSpriteTable.mc"), encoding="utf-8").read()
+_files = dict(re.findall(r'<bitmap id="(\w+)" filename="([^"]+)"',
+                         open(os.path.join(APP, "resources", "drawables", "sprites.xml"),
+                              encoding="utf-8").read()))
+_bitmaps = {}
+
+
+def _const(name):
+    return int(re.search(r"^const %s = (\d+);" % name, _table, re.M).group(1))
+
+
+def _body(function):
+    return _table.split("function " + function + "(")[1].split("\n}\n")[0]
+
+
+def _arrays(function):
+    return [[int(v) for v in m.split(",")]
+            for m in re.findall(r"return \[([-\d, ]+)\]", _body(function))]
+
+
+def _bitmap(ident):
+    if ident not in _bitmaps:
+        _bitmaps[ident] = Image.open(os.path.join(APP, "resources", "drawables",
+                                                  _files[ident])).convert("RGBA")
+    return _bitmaps[ident]
+
+
+FRIEND_PETS = _const("FRIEND_PETS")
+FRIEND_SLOTS = _const("FRIEND_SLOTS")
+FRIEND_SLOT_FIELDS = _const("FRIEND_SLOT_FIELDS")
+FRIEND_EMBLEMS = _const("FRIEND_EMBLEMS")
+FRIEND_EMBLEM_LEVELS = _const("FRIEND_EMBLEM_LEVELS")
+FRIEND_EMBLEM_TILE = _const("FRIEND_EMBLEM_TILE")
+FRIEND_EMBLEM_TILE_SMALL = _const("FRIEND_EMBLEM_TILE_SMALL")
+PALETTE_COUNT = 6
+_heights = _arrays("friendHeights")             # the card size comes first in the source
+_cells = _arrays("friendCells")                 # home size, then card size
+_strips = re.findall(r"Rez\.Drawables\.(\w+)", _body("loadFriendStrip"))
+_emblems = re.findall(r"Rez\.Drawables\.(\w+)", _body("loadFriendEmblem"))
+
+
+def friendHeights(small):
+    return _heights[0] if small else _heights[1]
+
+
+def friendEmblemNames():
+    return re.findall(r'"(\w+)"', _body("friendEmblemNames"))
+
+
+def friendCells(pet, small):
+    return _cells[pet + (FRIEND_PETS if small else 0)]
+
+
+def loadFriendStrip(pet, pal, small):
+    k = pet * PALETTE_COUNT + pal
+    return _bitmap(_strips[k + (FRIEND_PETS * PALETTE_COUNT if small else 0)])
+
+
+def loadFriendEmblem(emblem):
+    return _bitmap(_emblems[emblem - 1])
+
+
+SLOT_IDLE, SLOT_BREATHE, SLOT_DROOP, SLOT_BACK = range(4)
+SLOT_CROUCH, SLOT_HOP, SLOT_CHEER, SLOT_FLEX = range(4, 8)
+SLOT_RUN_A, SLOT_RUN_B, SLOT_EFFORT, SLOT_ASLEEP = range(8, 12)
+
+
+# Mirrors FriendSprites.mc. Keep names, order and numbers identical.
+class FriendSprites:
+    def __init__(self, small):
+        self.mSmall = small
+        self.mStrip = None
+        self.mStripKey = -1
+        self.mPet = -1
+        self.mCells = []
+        self.mEmblem = None
+        self.mEmblemKey = -1
+
+    def petFor(self, stage, form):
+        if stage == STAGE_BABY:
+            return 0
+        if stage == STAGE_CHILD:
+            return 1
+        if stage == STAGE_ADULT:
+            return 2 + form
+        return -1
+
+    def slotFor(self, face, pose, frame):
+        if pose == POSE_SLEEP:
+            return SLOT_ASLEEP
+        if pose == POSE_RUN:
+            return SLOT_RUN_A if (frame % 4) < 2 else SLOT_RUN_B
+        if pose == POSE_HOP:
+            beat = frame % 8
+            return SLOT_CROUCH if (beat == 0 or beat >= 6) else SLOT_HOP
+        if pose == POSE_FLEX:
+            return SLOT_CHEER if (frame % 4) < 2 else SLOT_FLEX
+        if pose == POSE_SPIN:
+            return SLOT_IDLE if (frame % 4) < 2 else SLOT_BACK
+        if pose == POSE_FLAMES or face == FACE_EFFORT:
+            return SLOT_EFFORT
+        if face == FACE_MISTY:
+            return SLOT_DROOP
+        return SLOT_IDLE if (frame % 12) < 6 else SLOT_BREATHE
+
+    def ready(self, pet, pal):
+        if pet < 0 or pet >= FRIEND_PETS:
+            return False
+        key = pet * PALETTE_COUNT + pal
+        if key != self.mStripKey:
+            try:
+                bmp = loadFriendStrip(pet, pal, self.mSmall)
+            except OSError:
+                bmp = None
+            self.mStrip = bmp
+            self.mStripKey = key
+            self.mPet = pet
+            self.mCells = friendCells(pet, self.mSmall)
+        return self.mStrip is not None and len(self.mCells) >= FRIEND_SLOTS * FRIEND_SLOT_FIELDS
+
+    def unit(self):
+        if self.mPet < 0:
+            return 0
+        return div(friendHeights(self.mSmall)[self.mPet], 2)
+
+    def draw(self, dc, footX, footY, slot):
+        strip = self.mStrip
+        if strip is None:
+            return
+        i = slot * FRIEND_SLOT_FIELDS
+        w = self.mCells[i + 2]
+        h = self.mCells[i + 3]
+        left = footX - self.mCells[i + 4]
+        top = footY - h
+        dc.setClip(left, top, w, h)
+        dc.drawBitmap(left - self.mCells[i], top - self.mCells[i + 1], strip)
+        dc.clearClip()
+
+    def drawEmblem(self, dc, footX, footY, slot, pal, emblem, level):
+        if emblem < 1 or emblem > FRIEND_EMBLEMS:
+            return
+        i = slot * FRIEND_SLOT_FIELDS
+        if self.mCells[i + 5] < 0:
+            return
+        if emblem != self.mEmblemKey:
+            try:
+                loaded = loadFriendEmblem(emblem)
+            except OSError:
+                loaded = None
+            self.mEmblem = loaded
+            self.mEmblemKey = emblem
+        bmp = self.mEmblem
+        if bmp is None:
+            return
+        tile = FRIEND_EMBLEM_TILE
+        row = level * tile
+        if self.mSmall:
+            tile = FRIEND_EMBLEM_TILE_SMALL
+            row = FRIEND_EMBLEM_LEVELS * FRIEND_EMBLEM_TILE + level * tile
+        left = footX - self.mCells[i + 4] + self.mCells[i + 5] - div(tile, 2)
+        top = footY - self.mCells[i + 3] + self.mCells[i + 6] - div(tile, 2)
+        dc.setClip(left, top, tile, tile)
+        dc.drawBitmap(left - pal * tile, top - row, bmp)
+        dc.clearClip()
+
+
 # ---------------------------------------------------------------- FriendArt
 # Mirrors FriendArt.mc. Keep names, order and numbers identical.
 
@@ -196,6 +391,10 @@ class FriendArt:
         self.mFace = FACE_FAIR
         self.mPose = POSE_IDLE
         self.mFrame = 0
+        self.mBig = FriendSprites(False)
+        self.mLittle = FriendSprites(True)
+        self.mEmblem = 0
+        self.mEmblemLevel = 1
 
     def setLook(self, stage, band, form, evos, pal):
         self.mStage = stage
@@ -208,6 +407,10 @@ class FriendArt:
         self.mFace = face
         self.mPose = pose
         self.mFrame = frame
+
+    def setEmblem(self, emblem, level):
+        self.mEmblem = emblem
+        self.mEmblemLevel = level
 
     def bodyColor(self):
         return PALETTES[self.mPal][0]
@@ -234,6 +437,40 @@ class FriendArt:
         if b <= 0 or dy >= b:
             return 0
         return int(a * math.sqrt(b * b - dy * dy) / b)
+
+    # The friend standing on footY, at a percentage of its home size: the
+    # baked sprite when its character has a sheet, the drawn stand-in when not.
+    def drawStanding(self, dc, x, footY, percent):
+        sprites = self.mBig if percent >= 75 else self.mLittle
+        if sprites.ready(sprites.petFor(self.mStage, self.mForm), self.mPal):
+            self.drawSprite(dc, sprites, x, footY)
+            return
+        size = div(self.sizeFor(self.mStage, dc.getHeight()) * percent, 100)
+        self.draw(dc, x, footY - size, size)
+
+    def drawSprite(self, dc, sprites, x, footY):
+        frame = self.mFrame
+        unit = sprites.unit()
+        jump = 0
+        if self.mPose == POSE_RUN:
+            jump = div(unit * RUN_JUMP[frame % 4], 100)
+        elif self.mPose == POSE_HOP:
+            jump = div(unit * HOP_JUMP[frame % 8], 150)
+            if jump < 0:
+                jump = 0
+        self.drawShadow(dc, x, footY, div(unit * 90, 100) - jump, unit)
+        if self.mEvos >= 2:
+            self.drawAura(dc, x, footY - unit, unit, frame)
+        if self.mPose == POSE_FLAMES:
+            self.drawFlames(dc, x, footY - unit, unit, frame)
+        slot = sprites.slotFor(self.mFace, self.mPose, frame)
+        sprites.draw(dc, x, footY - jump, slot)
+        level = self.mEmblemLevel
+        if self.mFace == FACE_EFFORT and (frame % 4) < 2:
+            level = 2
+        sprites.drawEmblem(dc, x, footY - jump, slot, self.mPal, self.mEmblem, level)
+        if self.mPose == POSE_SLEEP:
+            self.drawZ(dc, x + div(unit * 70, 100), footY - div(unit * 150, 100), unit, frame)
 
     # The whole friend, centered on (cx, cy) with body radius s.
     def draw(self, dc, cx, cy, s):
@@ -763,7 +1000,8 @@ C_ORANGE = 0xFFB15C
 
 (SCREEN_HOME, SCREEN_WALK, SCREEN_END_WALK, SCREEN_WALK_RESULT, SCREEN_EXPORT,
  SCREEN_TODAY, SCREEN_GROWTH, SCREEN_TRAIL, SCREEN_EGG, SCREEN_HATCHING, SCREEN_VOICE,
- SCREEN_REWARD, SCREEN_GREW, SCREEN_EVOLVE, SCREEN_EVOLVE_CONFIRM) = range(15)
+ SCREEN_REWARD, SCREEN_GREW, SCREEN_EVOLVE, SCREEN_EVOLVE_CONFIRM,
+ SCREEN_EMBLEM) = range(16)
 
 VOICE_NAMES = ["DRILL SGT", "CHEERLEADER", "DEADPAN", "ZEN"]
 VOICE_SAMPLES = ["Sup. Let's go.", "You've got this!!", "Oh. We're doing this.",
@@ -791,7 +1029,11 @@ class PetStub:
         self.owed_flames = 2
         self.owed_seconds = 1290
         self.owed_flags = 1
+        self.emblem_ = 1
         self.__dict__.update(kw)
+
+    def emblem(self):
+        return self.emblem_
 
     def exists(self):
         return self.alive
@@ -908,7 +1150,7 @@ class WalkStub:
 
 
 class FriendView:
-    APP_VERSION = "0.8.0"
+    APP_VERSION = "0.9.0"
 
     def __init__(self, **kw):
         self.mArt = FriendArt()
@@ -927,6 +1169,7 @@ class FriendView:
         self.mPickPal = 0
         self.mPickVoice = 0
         self.mPickForm = FORM_ROUND
+        self.mPickEmblem = 0
         self.mRepick = False
         self.mHatchFrame = 0
         self.mRewardExit = True
@@ -970,9 +1213,20 @@ class FriendView:
             return STAGE_CHILD
         return STAGE_BABY
 
+    def emblemLevel(self, warm):
+        if warm >= 90:
+            return 2
+        if warm >= 70:
+            return 1
+        return 0
+
     def dressPet(self):
         self.mArt.setLook(self.petStage(), self.mBand, self.mPet.form(), self.mPet.evos(),
                           self.mPet.palette())
+        self.mArt.setEmblem(self.mPet.emblem(), self.mEmblemLevel())
+
+    def mEmblemLevel(self):
+        return self.emblemLevel(self.mPet.warmth(self.now()))
 
     def walkTooShort(self):
         return self.mWalk.elapsed() < 60 and self.mWalk.distanceMeters() < 50
@@ -1131,6 +1385,8 @@ class FriendView:
             self.drawEggScreen(dc)
         elif screen == SCREEN_VOICE:
             self.drawVoiceScreen(dc)
+        elif screen == SCREEN_EMBLEM:
+            self.drawEmblemScreen(dc)
         elif screen == SCREEN_REWARD:
             self.drawReward(dc)
         elif screen == SCREEN_GREW:
@@ -1156,8 +1412,7 @@ class FriendView:
             return
         self.dressPet()
         self.mArt.setPose(face, pose, self.mFrame)
-        size = div(self.mArt.sizeFor(self.petStage(), height) * percent, 100)
-        self.mArt.draw(dc, x, footY - size, size)
+        self.mArt.drawStanding(dc, x, footY, percent)
 
     def drawHome(self, dc):
         height = dc.getHeight()
@@ -1453,22 +1708,47 @@ class FriendView:
             stage = self.petStage()
             self.mArt.setLook(stage, self.mBand, self.mPet.form(), self.mPet.evos(),
                               self.mPickPal)
+            self.mArt.setEmblem(self.mPet.emblem(), self.mEmblemLevel())
         else:
             self.mArt.setLook(stage, 0, 0, 0, self.mPickPal)
         self.mArt.setPose(FACE_SUNNY, POSE_IDLE, self.mFrame)
-        size = div(self.mArt.sizeFor(stage, height) * 80, 100)
         self.drawCenteredLine(dc, centerX, div(height * 10, 100), "HOW DO I TALK?", C_GOLD,
                               [FONT_XTINY])
-        self.mArt.draw(dc, centerX, div(height * 40, 100) - size, size)
+        self.mArt.drawStanding(dc, centerX, div(height * 40, 100), 62 if self.mRepick else 80)
         self.drawCenteredLine(dc, centerX, div(height * 51, 100), VOICE_NAMES[self.mPickVoice],
                               WHITE, [FONT_MEDIUM, FONT_SMALL])
         self.drawCenteredLine(dc, centerX, div(height * 62, 100),
                               VOICE_SAMPLES[self.mPickVoice], C_MINT, [FONT_TINY, FONT_XTINY])
         self.drawCenteredLine(dc, centerX, div(height * 75, 100), "UP/DOWN voice", LT_GRAY,
                               [FONT_XTINY])
-        self.drawCenteredLine(dc, centerX, div(height * 85, 100), "START keep", C_MINT,
+        self.drawCenteredLine(dc, centerX, div(height * 85, 100),
+                              "START next" if (self.mRepick and self.mBand >= 1)
+                              else "START keep", C_MINT, [FONT_TINY, FONT_XTINY])
+        self.drawStartHint(dc)
+
+    def drawEmblemScreen(self, dc):
+        height = dc.getHeight()
+        centerX = div(dc.getWidth(), 2)
+        self.mArt.setLook(self.petStage(), self.mBand, self.mPet.form(), self.mPet.evos(),
+                          self.mPickPal)
+        self.mArt.setEmblem(self.mPickEmblem, 1)
+        self.mArt.setPose(FACE_SUNNY, POSE_IDLE, self.mFrame)
+        self.drawCenteredLine(dc, centerX, div(height * 10, 100), "BELLY MARK", C_GOLD,
+                              [FONT_XTINY])
+        self.mArt.drawStanding(dc, centerX, div(height * 52, 100), 100)
+        self.drawCenteredLine(dc, centerX, div(height * 62, 100),
+                              self.emblemName(self.mPickEmblem), WHITE,
+                              [FONT_MEDIUM, FONT_SMALL])
+        self.drawCenteredLine(dc, centerX, div(height * 74, 100), "UP/DOWN mark", LT_GRAY,
+                              [FONT_XTINY])
+        self.drawCenteredLine(dc, centerX, div(height * 84, 100), "START keep", C_MINT,
                               [FONT_TINY, FONT_XTINY])
         self.drawStartHint(dc)
+
+    def emblemName(self, emblem):
+        if emblem < 1 or emblem > FRIEND_EMBLEMS:
+            return "BARE"
+        return friendEmblemNames()[emblem - 1]
 
     def drawEvolveScreen(self, dc):
         height = dc.getHeight()
@@ -1476,12 +1756,12 @@ class FriendView:
         confirm = (self.mScreen == SCREEN_EVOLVE_CONFIRM)
         self.mArt.setLook(STAGE_ADULT, self.mBand + 1, self.mPickForm, self.mPet.evos() + 1,
                           self.mPet.palette())
+        self.mArt.setEmblem(self.mPet.emblem(), self.mEmblemLevel())
         self.mArt.setPose(FACE_SUNNY, POSE_IDLE, self.mFrame)
-        size = div(self.mArt.sizeFor(STAGE_ADULT, height) * 82, 100)
         self.drawCenteredLine(dc, centerX, div(height * 10, 100),
                               "KEEP FOREVER?" if confirm else "WHO WILL I BE?", C_GOLD,
                               [FONT_XTINY])
-        self.mArt.draw(dc, centerX, div(height * 50, 100) - size, size)
+        self.mArt.drawStanding(dc, centerX, div(height * 53, 100), 82)
         self.drawCenteredLine(dc, centerX, div(height * 61, 100), self.formName(self.mPickForm),
                               WHITE, [FONT_MEDIUM, FONT_SMALL])
         if confirm:
@@ -1503,7 +1783,7 @@ class FriendView:
 
         self.drawCenteredLine(dc, centerX, div(height * 10, 100), "FRIEND WALK", C_ACCENT,
                               [FONT_XTINY])
-        self.drawPet(dc, centerX, div(height * 33, 100), 45,
+        self.drawPet(dc, centerX, div(height * 35, 100), 45,
                      FACE_EFFORT if recording else FACE_SUNNY,
                      POSE_RUN if recording else POSE_IDLE)
         self.drawCenteredLine(dc, centerX, div(height * 43, 100),
@@ -1637,11 +1917,11 @@ def write_sheets(out):
     for title, band, form, evos, face in [
             ("hatchling (band 0)", 0, FORM_ROUND, 0, FACE_FAIR),
             ("sprout (band 1): leaf", 1, FORM_ROUND, 0, FACE_SUNNY),
-            ("trainee (band 2): headband", 2, FORM_ROUND, 0, FACE_SUNNY),
+            ("trainee (band 2)", 2, FORM_ROUND, 0, FACE_SUNNY),
             ("athlete (band 3), sleek", 3, FORM_SLEEK, 1, FACE_SUNNY),
             ("athlete (band 3), round", 3, FORM_ROUND, 1, FACE_SUNNY),
             ("athlete (band 3), wild", 3, FORM_WILD, 1, FACE_SUNNY),
-            ("ace (band 5): cape", 5, FORM_ROUND, 1, FACE_RADIANT),
+            ("ace (band 5)", 5, FORM_ROUND, 1, FACE_RADIANT),
             ("legend (band 6): aura", 6, FORM_SLEEK, 2, FACE_RADIANT)]:
         cells.append((title, render(
             mBand=band, face=face, line="I'm here.",
@@ -1756,6 +2036,33 @@ def write_sheets(out):
     ]
     sheet(cells, 6, os.path.join(out, "8-walk.png"))
 
+    # 9. The belly emblem: how bright it is follows warmth, and the pick screen.
+    grown = dict(mBand=3, line="Hi!")
+    cells = [
+        ("bare belly", render(mBand=1, line="Hi!", mPet=PetStub(xp_=band_xp(1), pal=2,
+                                                                emblem_=0))),
+        ("warmth 50: dull", render(mBand=1, line="Hi!", mPet=PetStub(
+            xp_=band_xp(1), pal=2, emblem_=2, warm=50))),
+        ("warmth 80: steady", render(mBand=1, line="Hi!", mPet=PetStub(
+            xp_=band_xp(1), pal=2, emblem_=2, warm=80))),
+        ("warmth 100: glowing", render(mBand=1, line="Hi!", mPet=PetStub(
+            xp_=band_xp(1), pal=2, emblem_=2, warm=100))),
+        ("steady, rose", render(mPet=PetStub(xp_=band_xp(3), evos_=1, form_=FORM_SLEEK, pal=5,
+                                             emblem_=7, warm=80), **grown)),
+        ("steady, sun", render(mPet=PetStub(xp_=band_xp(3), evos_=1, form_=FORM_ROUND, pal=4,
+                                            emblem_=9, warm=80), **grown)),
+        ("dull, lilac", render(mPet=PetStub(xp_=band_xp(3), evos_=1, form_=FORM_WILD, pal=3,
+                                            emblem_=14, warm=50), **grown)),
+        ("glowing, peach", render(mPet=PetStub(xp_=band_xp(3), evos_=1, form_=FORM_WILD, pal=1,
+                                               emblem_=5, warm=100), **grown)),
+    ]
+    for title, pal, form, emblem in [("pick: star", 2, FORM_ROUND, 2), ("pick: paw", 5, FORM_WILD, 5),
+                                     ("pick: crown", 4, FORM_SLEEK, 9), ("pick: bare", 0, FORM_ROUND, 0)]:
+        cells.append((title, render(
+            mScreen=SCREEN_EMBLEM, mRepick=True, mBand=3, mPickPal=pal, mPickEmblem=emblem,
+            mPet=PetStub(xp_=band_xp(3), evos_=1, form_=form, pal=pal))))
+    sheet(cells, 4, os.path.join(out, "9-emblems.png"))
+
 
 # ----------------------------------------------------------------- checks
 
@@ -1837,6 +2144,18 @@ def check(repo):
         r"^    function (\w+)\(")
 
     failures = []
+    py_sprites = function_numbers(
+        here.split("class FriendSprites:")[1].split("class FriendArt:")[0], r"^    def (\w+)\(")
+    mc_sprites = function_numbers(
+        strip_monkeyc(open(os.path.join(source, "FriendSprites.mc"), encoding="utf-8").read()
+                      .split("class FriendSprites")[1]),
+        r"^    function (\w+)\(")
+    for name in sorted(set(py_sprites) | set(mc_sprites)):
+        if name in ("__init__", "initialize"):
+            continue
+        if py_sprites.get(name) != mc_sprites.get(name):
+            failures.append("FriendSprites.%s: mock %s, watch %s" % (
+                name, py_sprites.get(name), mc_sprites.get(name)))
     skip_art = {"__init__", "initialize", "setLook", "setPose", "bodyColor", "shadeColor",
                 "bellyColor"}
     for name in sorted(set(py_art) | set(mc_art)):
@@ -1848,7 +2167,7 @@ def check(repo):
     mirrored = [n for n in py_view if n.startswith("draw")] + [
         "bandName", "unlockWords", "nextText", "weatherName", "energyName", "snackName",
         "warmName", "formName", "goalName", "kmText", "rewardDetail", "walkTooShort",
-        "isNight", "petStage"]
+        "isNight", "petStage", "emblemLevel", "emblemName"]
     for name in mirrored:
         if py_view.get(name) != mc_view.get(name):
             failures.append("view %s: mock %s, watch %s" % (
@@ -1883,9 +2202,10 @@ def check(repo):
         for failure in failures:
             print("[fail]", failure)
         return 1
-    print("[pass] Friend mock: %d art functions and %d view functions match the watch code; "
+    print("[pass] Friend mock: %d art, %d sprite and %d view functions match the watch code; "
           "tables and palettes match; %d voice lines fit (longest %r)" % (
-              len([n for n in py_art if n not in skip_art]), len(mirrored), len(lines), widest))
+              len([n for n in py_art if n not in skip_art]), len(py_sprites) - 1, len(mirrored),
+              len(lines), widest))
     return 0
 
 

@@ -50,6 +50,9 @@ Version 0.8.0 (written without an SDK, not yet compiled) is the first build with
 the chapters feed the economy of `12-pet-state-and-economy.md`, an egg hatches into a creature
 that grows through bands and an evolution choice, and Back pays the effort out on a reward card.
 Its drawn creature is a deliberate placeholder for hand-made art.
+Version 0.9.0 (also not yet compiled) is the first with that art: five characters from the
+generator sheets in [art/sheets/](art/sheets/), baked by `scripts/bake_friend_sprites.py` into
+sprite strips in six colorways, and a belly emblem that brightens with warmth.
 Anonymized exports from the real watch are in [field-logs/](field-logs/).
 
 **Cross-cutting spine:** [05-progression.md](05-progression.md) — the three-layer

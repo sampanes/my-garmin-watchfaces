@@ -34,9 +34,11 @@ module FriendLook {
     const PALETTE_COUNT = 6;
 }
 
-// The friend, drawn from filled shapes: no bitmaps, so a colorway is a color
-// table and every stage, form and accessory costs code, not heap
-// (garmin-pet/09-appearance-and-transfer.md). Integer math only.
+// The friend. A character that has a generator sheet is drawn from its baked
+// sprite strip (FriendSprites, drawStanding); the rest of this class is the
+// stand-in drawn from filled shapes, which still shows the egg, the sky, the
+// small icons, and any character whose strip the watch refuses.
+// Integer math only.
 //
 // scripts/friend_preview.py holds a line-for-line Python port of this class and
 // renders it on a machine without the SDK. Change both together;
@@ -66,8 +68,14 @@ class FriendArt {
     var mFace as Lang.Number = 1;
     var mPose as Lang.Number = 0;
     var mFrame as Lang.Number = 0;
+    var mBig as FriendSprites;          // The home size.
+    var mLittle as FriendSprites;       // The card size.
+    var mEmblem as Lang.Number = 0;     // Belly emblem, 0 for a bare belly.
+    var mEmblemLevel as Lang.Number = 1;
 
     function initialize() {
+        mBig = new FriendSprites(false);
+        mLittle = new FriendSprites(true);
         // body, shade, belly
         mPalettes = [
             [0x6ED6A8, 0x3E9C78, 0xC8F5E0],
@@ -97,6 +105,12 @@ class FriendArt {
         mFace = face;
         mPose = pose;
         mFrame = frame;
+    }
+
+    // The belly emblem and how bright it is (0 dull, 1 steady, 2 glowing).
+    function setEmblem(emblem as Lang.Number, level as Lang.Number) as Void {
+        mEmblem = emblem;
+        mEmblemLevel = level;
     }
 
     function bodyColor() as Lang.Number {
@@ -135,6 +149,53 @@ class FriendArt {
             return 0;
         }
         return (a * Math.sqrt(b * b - dy * dy) / b).toNumber();
+    }
+
+    // The friend standing on footY, at a percentage of its home size: the
+    // baked sprite when its character has a sheet, the drawn stand-in when not.
+    function drawStanding(dc as Graphics.Dc, x as Lang.Number, footY as Lang.Number,
+                          percent as Lang.Number) as Void {
+        var sprites = (percent >= 75) ? mBig : mLittle;
+        if (sprites.ready(sprites.petFor(mStage, mForm), mPal)) {
+            drawSprite(dc, sprites, x, footY);
+            return;
+        }
+        var size = sizeFor(mStage, dc.getHeight()) * percent / 100;
+        draw(dc, x, footY - size, size);
+    }
+
+    // The sprite is the whole creature; code only moves it (a hop, a run's
+    // bounce) and adds what is not on a sheet yet: the ground shadow, the
+    // aura, the flames and the sleeping z's.
+    function drawSprite(dc as Graphics.Dc, sprites as FriendSprites, x as Lang.Number,
+                        footY as Lang.Number) as Void {
+        var frame = mFrame;
+        var unit = sprites.unit();
+        var jump = 0;
+        if (mPose == FriendLook.POSE_RUN) {
+            jump = unit * mRunJump[frame % 4] / 100;
+        } else if (mPose == FriendLook.POSE_HOP) {
+            // The hop pose is already drawn in the air, so the lift is gentler
+            // than the stand-in's.
+            jump = unit * mHopJump[frame % 8] / 150;
+            if (jump < 0) { jump = 0; }
+        }
+        drawShadow(dc, x, footY, unit * 90 / 100 - jump, unit);
+        if (mEvos >= 2) {
+            drawAura(dc, x, footY - unit, unit, frame);
+        }
+        if (mPose == FriendLook.POSE_FLAMES) {
+            drawFlames(dc, x, footY - unit, unit, frame);
+        }
+        var slot = sprites.slotFor(mFace, mPose, frame);
+        sprites.draw(dc, x, footY - jump, slot);
+        // The emblem pulses to a glow while the friend is working.
+        var level = mEmblemLevel;
+        if (mFace == FriendLook.FACE_EFFORT && (frame % 4) < 2) { level = 2; }
+        sprites.drawEmblem(dc, x, footY - jump, slot, mPal, mEmblem, level);
+        if (mPose == FriendLook.POSE_SLEEP) {
+            drawZ(dc, x + unit * 70 / 100, footY - unit * 150 / 100, unit, frame);
+        }
     }
 
     // The whole friend, centered on (cx, centerY) with body radius s.
