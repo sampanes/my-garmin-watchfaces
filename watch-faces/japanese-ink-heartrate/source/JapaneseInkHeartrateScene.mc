@@ -120,7 +120,7 @@ class JapaneseInkHeartrateScene {
 
     // The relief of the current window (the pending relief job): the horizon's crest
     // y in px (negative = none), the masses in draw order as [left, top,
-    // width, height, crestX, crestY, plane, flip, host] (M_* indices) and
+    // width, height, crestX, crestY, plane, flip, host, elev, area] (M_* indices) and
     // the near hills as [left, top, width, height, plane].
     var mHorizonY as Lang.Float = -1.0;
     var mMasses as Lang.Array<Lang.Array<Lang.Float>>?;
@@ -297,13 +297,14 @@ class JapaneseInkHeartrateScene {
     const P_X1 = 8;
     const P_SX = 9;               // its summit x, px (-1: find it in the samples)
     const P_SUB = 10;             // 1: one effort of several in its run (narrower stretch)
-    const P_HOST = 11;            // 1: the host mass (drawn last)
+    const P_HOST = 11;            // 1: the host mass (the highest crest)
     const M_CX = 4;
     const M_CY = 5;
     const M_PLANE = 6;
     const M_FLIP = 7;
     const M_HOST = 8;
     const M_ELEV = 9;
+    const M_AREA = 10;            // the face it takes, px (massArea): the draw order
 
     // The props (compose_preview's constants of the same names).
     const SYNODIC = 29.530588853;     // days from new moon to new moon
@@ -1231,10 +1232,28 @@ class JapaneseInkHeartrateScene {
         return out;
     }
 
-    // Draw order: the other masses first (the taller farther), the host last.
+    // Draw order: the bigger the farther, so the smallest is drawn last,
+    // in front (2026-11-23: the host used to be drawn last, and its paper
+    // body blanked the smaller mountains behind it).
     function massAfter(a as Lang.Array<Lang.Float>, b as Lang.Array<Lang.Float>) as Lang.Boolean {
-        if (a[M_HOST] != b[M_HOST]) { return a[M_HOST] > b[M_HOST]; }
-        return a[M_CY] > b[M_CY];
+        return a[M_AREA] < b[M_AREA];
+    }
+
+    // How much of the face a mass takes: the px of it that stand over the
+    // far bank and on the screen, summed down its profile's columns
+    // (compose_preview.mass_area).
+    function massArea(left as Lang.Float, top as Lang.Float, w as Lang.Float, h as Lang.Float,
+                      si as Lang.Number) as Lang.Float {
+        var col = w / SHAPE_K;
+        var area = 0.0;
+        for (var k = 0; k < SHAPE_K; k++) {
+            var t = mShapeTop[si * SHAPE_K + k];
+            var x = left + (k + 0.5) * col;
+            if (t < 0 || x < 0.0 || x >= mFitWidth) { continue; }
+            var py = top + t * h / mShapeH[si];
+            if (py < mFitFloorY) { area += (mFitFloorY - py) * col; }
+        }
+        return area;
     }
 
     // Build the cheap, immutable half of a fit job. No library shape is
@@ -1418,10 +1437,14 @@ class JapaneseInkHeartrateScene {
             var s = mFitScale;
             var sx = s * mFitBestStretch;
             var cy = mFitCrestY;
-            masses.add([left, cy - mShapeAy[si] * s, mShapeW[si] * sx, mShapeH[si] * s,
+            var top = cy - mShapeAy[si] * s;
+            var mw = mShapeW[si] * sx;
+            var mh = mShapeH[si] * s;
+            masses.add([left, top, mw, mh,
                         left + mShapeAx[si] * sx, cy, si.toFloat(), 0.0,
                         runs[mFitRunIndex][P_HOST],
-                        runs[mFitRunIndex][R_ELEV]] as Lang.Array<Lang.Float>);
+                        runs[mFitRunIndex][R_ELEV],
+                        massArea(left, top, mw, mh, si)] as Lang.Array<Lang.Float>);
         }
 
         mFitRunIndex++;
@@ -1894,7 +1917,7 @@ class JapaneseInkHeartrateScene {
             dc.drawScaledBitmap(-(w * 0.10), h * 0.50, w * 1.20, h * 0.17, mistLite);
         }
 
-        // 3. the masses: library shapes, the host last (none on a flat day)
+        // 3. the masses: library shapes, the smallest last (none on a flat day)
         var masses = mMasses;
         if (masses != null) {
             for (var i = 0; i < masses.size(); i++) {

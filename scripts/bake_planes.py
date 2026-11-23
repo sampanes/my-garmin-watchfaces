@@ -26,7 +26,10 @@ art/cuts/strips-b/. Five of the six are baked here, day and night:
     skirts do, and the window's cut sides dissolve over NEAR_FEATHER of the
     width (a smoothstep, the lower body sooner than the ridge, as mist takes
     a flank) so no edge shows;
-  * night: the same alpha (scaled per plane by NIGHT_SCALE) in NIGHT_INK;
+  * night: the same alpha (scaled per plane by NIGHT_SCALE) in NIGHT_INK
+    for the far range; the near hills in their own night cut's colors
+    (2026-11-23: a near strip's cut is solid, its tone in its color, so
+    one flat NIGHT_INK made each hill a pale slab, the pine a block);
   * kept as RGBA PNGs: a 256-color palette bands the soft feathers, and
     the ten planes are small.
 
@@ -159,9 +162,11 @@ def bake_mist(strip, rect, gain):
     return to_image(paper, a), to_image(np.zeros_like(paper), a)
 
 
-def window(strip, left):
-    """The NEAR_ASPECT:1 window of the strip at NEAR_SIZE, as (rgb, alpha)."""
-    im = Image.open(cut_path(strip)).convert("RGBA")
+def window(strip, left, night=False):
+    """The NEAR_ASPECT:1 window of the strip at NEAR_SIZE, as (rgb, alpha);
+    night: of the strip's night cut (the cutter writes it beside the day's)."""
+    path = cut_path(strip)
+    im = Image.open(path[:-4] + "_night.png" if night else path).convert("RGBA")
     ww = int(round(NEAR_ASPECT * im.height))
     x0 = min(int(round(left * im.width)), im.width - ww)
     im = im.crop((x0, 0, x0 + ww, im.height)).resize(NEAR_SIZE, Image.LANCZOS)
@@ -170,7 +175,8 @@ def window(strip, left):
 
 
 def cutout(rgb, a, night):
-    """A near hill as a paper cutout, its foot fading, its sides feathered."""
+    """A near hill as a paper cutout, its foot fading, its sides feathered.
+    rgb is the cut's own color, the night cut's at night."""
     h, w = a.shape
     body = np.maximum.accumulate(a > BODY_FLOOR, axis=0)
     body = Image.fromarray((body * 255).astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(1.0))
@@ -183,8 +189,7 @@ def cutout(rgb, a, night):
     alpha = np.maximum(ink, body)
     share = np.where(alpha > 0, ink / np.maximum(alpha, 1e-6), 0.0)[..., None]
     paper = np.zeros(3) if night else np.array(PAPER, dtype=float) / 255.0
-    col = rgb if not night else np.broadcast_to(np.array(NIGHT_INK, dtype=float) / 255.0, rgb.shape)
-    col = col * share + paper * (1.0 - share)
+    col = rgb * share + paper * (1.0 - share)
     # distance from the nearer cut side, in feathers (0 at the edge, 1 inside)
     x = np.arange(w, dtype=float)
     d = np.clip(np.minimum(x, w - 1 - x) / max(1.0, w * NEAR_FEATHER), 0.0, 1.0)
@@ -197,7 +202,8 @@ def cutout(rgb, a, night):
 
 def bake_near(strip, left):
     rgb, a = window(strip, left)
-    return cutout(rgb, a, False), cutout(rgb, a, True)
+    night_rgb, _ = window(strip, left, night=True)
+    return cutout(rgb, a, False), cutout(night_rgb, a, True)
 
 
 def pack(img):

@@ -7,7 +7,7 @@ Writes art/kit_preview.png (circular-masked, on dark surround like the sim).
 
 Planes, back to front (same order on the watch):
     paper -> sun/moon -> horizon -> mist_lite -> masses (library shapes, the
-    host last) -> near range -> mist -> foreground -> paper grain
+    smallest last) -> near range -> mist -> foreground -> paper grain
     -> (View) paper halo -> inscription + seal
 
 The relief (round 6, 2026-11-02): the window's floor is a level far horizon;
@@ -931,6 +931,28 @@ def trace_peaks(trace, floor, x0, x1):
     return out
 
 
+def mass_area(m, floor_y):
+    """How much of the face a mass takes: the px of it that stand over the
+    far bank and on the screen, summed down its profile's columns (the
+    shape table, as the watch knows it). The draw order goes by it: of two
+    masses that overlap, whichever is in front blanks the other's body
+    under both ridges, so the smaller, with less to spare, goes in front
+    (the Scene's massArea)."""
+    table = shape_table()
+    left, top, w, h = m["rect"]
+    sh = table["shapes"][m["shape"]]
+    col = w / float(table["k"])
+    area = 0.0
+    for k, t in enumerate(sh["top"]):
+        x = left + (k + 0.5) * col
+        if t < 0 or x < 0.0 or x >= W:
+            continue
+        py = top + t * h / sh["h"]
+        if py < floor_y:
+            area += (floor_y - py) * col
+    return area
+
+
 def mid_plane_layout(history, trace=None):
     """The relief for a window: {"floor": bpm, "horizon_y": px or None,
     "masses": [{"rect": (x, y, w, h), "crest": (x, y), "plane": name,
@@ -947,8 +969,10 @@ def mid_plane_layout(history, trace=None):
     narrower shape per effort instead, crest on each, drawn at its baked
     height and "stretch" times its baked width. "vis" is the stretch of the screen where the shape stands over
     the far bank (kept for the record; the near range's cover still counts
-    the middle 70% of each mass's bitmap, as in round 6). Draw order: the other masses first (the taller farther),
-    the host (the highest crest) last. The near range then takes any third
+    the middle 70% of each mass's bitmap, as in round 6). Draw order: the bigger the farther (mass_area), so
+    the smallest is drawn last, in front (2026-11-23; the host, the highest
+    crest, used to be drawn last, and its paper body blanked the smaller
+    mountains behind it). The near range then takes any third
     of the screen the masses leave empty (both outer thirds when all three
     are), its foot under the mist."""
     floor = floor_level(history)
@@ -1008,8 +1032,10 @@ def mid_plane_layout(history, trace=None):
                        "plane": sh["name"], "shape": i, "stretch": st, "vis": vis, "flip": False,
                        "host": r is host and top_piece[r["lo"]] is pc, "run": (r["lo"], r["hi"]),
                        "elev": peak_hr - floor})
-    # depth: the other masses first (the taller farther), the host last
-    masses.sort(key=lambda m: (m["host"], m["crest"][1]))
+    # depth: the bigger the farther; the smallest last, in front
+    for m in masses:
+        m["area"] = mass_area(m, floor_y)
+    masses.sort(key=lambda m: -m["area"])
     out["masses"] = masses
     out["trees"] = place_trees(masses, samples, floor_y)
 
@@ -1101,7 +1127,7 @@ def compose(history, minute_of_day=14 * 60 + 42, hr_now=None, night=False, trace
     # 2. light mist between far and mid planes
     base = paste_scaled(base, mist_lite, -0.10 * W, 0.50 * H, 1.20 * W, 0.17 * H)
 
-    # 3. the masses: the library shapes, the host last (none on a flat day)
+    # 3. the masses: the library shapes, the smallest last (none on a flat day)
     base = paint_masses(base, layout, night)
     base = paint_trees(base, layout, night)
 

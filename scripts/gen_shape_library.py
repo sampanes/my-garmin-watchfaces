@@ -25,8 +25,17 @@ scripts/cut_art_kit.py into art/cuts/<sheet>/, and baked here:
     behind, extended down to PLANE_H so a crest anywhere on the crest scale
     leaves the plane's foot under the mist, and fading out over the bottom
     BASE_FADE of the plane; over bare paper nothing changes;
+  * soft-sided (2026-11-23): the paper body dissolves toward the plane's
+    left and right edges (SIDE_FADE of the width, little at the summit's
+    level, more toward the foot, as scripts/bake_planes.py feathers the near
+    hills). The ink is left alone. Without it the body under a mountain was
+    a paper slab with straight sides: over the far range or another
+    mountain it showed as a white box that cut them off (John: "cut and
+    paste with white space underneath");
   * packed as a 256-color palette PNG (the ink is one color over one
-    paper: lossless to the eye, about a third of the bytes).
+    paper: lossless to the eye, about a third of the bytes), the colors
+    laid out on ink and paper amounts and the fades dithered so they stay
+    smooth (pack).
 
 Writes into watch-faces/japanese-ink-heartrate:
     resources/drawables/shape_<name>_cut.png, ..._cut_night.png
@@ -34,14 +43,17 @@ Writes into watch-faces/japanese-ink-heartrate:
     source/JapaneseInkHeartrateShapes.mc the profile table and the loader
 and scripts/shape_table.json, the same table for the mock.
 
-    python scripts/gen_shape_library.py            cut (if needed), bake, write tables
-    python scripts/gen_shape_library.py --tables   re-measure the baked PNGs only
-    python scripts/gen_shape_library.py --check    exit 1 if a table is stale (no scipy)
+    python scripts/gen_shape_library.py            cut (if needed), bake, measure, write tables
+    python scripts/gen_shape_library.py --tables   rewrite the .xml and .mc from shape_table.json
+    python scripts/gen_shape_library.py --check    exit 1 if a table or a PNG's size is stale (no scipy)
 
-The profile of a shape is the top of its OPAQUE cutout (alpha 250 or more)
-at K evenly spaced columns, in px from the bitmap's top (-1 where the
-column has none), and its apex is the topmost opaque row, at the middle of
-that row's opaque columns."""
+The profile of a shape is its ridge: the top of its OPAQUE body (alpha 250
+or more) at K evenly spaced columns, in px from the bitmap's top (-1 where
+the column has none), and its apex is the topmost opaque row, at the middle
+of that row's opaque columns. It is measured during the bake on the body
+BEFORE its sides are faded (profile), because a faded flank still carries
+its ink ridge; so shape_table.json is the record, and the baked PNGs alone
+no longer give it."""
 import glob
 import json
 import os
@@ -64,10 +76,16 @@ SCALE = 1.20          # sheet px -> face px
 TONE = 0.70           # share of the sheet's ink kept; the rest goes to paper
 PLANE_H = 300         # px: every plane at least this tall, its skirt at the bottom edge
 BASE_FADE = 0.30      # the body fades out over this bottom fraction of the plane
+SIDE_FADE = (0.05, 0.30)   # the body dissolves toward each side over this share of the
+                           # width: at the summit's level, and at the plane's foot
 BODY_FLOOR = 0.05     # ink over this is body (as cut_sprite_sheet.paper_back)
 K = 32
 OPAQUE = 250          # alpha at or over this is the cutout the fit measures
 PALETTE = 256         # colors per baked PNG (0: keep RGBA)
+LINE_STEPS = 64       # ... laid out by pack: ink levels of the solid body,
+PAPER_STEPS = 48      # ... alphas of bare paper,
+FADE_INK = 12         # ... and ink levels times
+FADE_STEPS = 12       # ... paper levels for ink over a fading body
 PAPER = (242, 238, 230)
 
 
@@ -98,9 +116,11 @@ def ensure_cuts():
         kit.one(path, os.path.join(CUTS, sheet), *kit.RECIPE[sheet.rsplit("-", 1)[0]])
 
 
-def plane_from_cut(path, night, scale=None, tone=None):
+def plane_layers(path, night, scale=None, tone=None, sides=True):
     """One cut (ink over nothing, as cut_sprite_sheet writes it) scaled,
-    toned, paper-backed and skirted: an RGBA image PLANE_H or taller."""
+    toned, paper-backed, skirted and (sides) soft-sided, as its layers at
+    the plane's size (PLANE_H or taller), all 0..1: (rgb, ink, body), the
+    cut's color, the ink's alpha and the paper body's alpha."""
     scale = SCALE if scale is None else scale
     tone = TONE if tone is None else tone
     im = Image.open(path).convert("RGBA")
@@ -113,27 +133,112 @@ def plane_from_cut(path, night, scale=None, tone=None):
     rgb[:h] = px[..., :3]
     a[:h] = px[..., 3]
     # the body: everything under the ridge line, down to the plane's foot
-    body = np.maximum.accumulate(a > BODY_FLOOR, axis=0)
-    body = Image.fromarray((body * 255).astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(1.0))
+    solid = np.maximum.accumulate(a > BODY_FLOOR, axis=0)
+    body = Image.fromarray((solid * 255).astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(1.0))
     body = np.asarray(body, dtype=float) / 255.0
     start = int(plane_h * (1.0 - BASE_FADE))
     ramp = np.ones(plane_h)
     ramp[start:] = np.linspace(1.0, 0.0, plane_h - start)
     body *= ramp[:, None]
-    ink = a * tone
+    if sides and SIDE_FADE[1] > 0.0:
+        # the body's sides: a smoothstep from its outermost columns inward,
+        # narrow at the summit's row and widening to the foot, as mist
+        # takes a flank; the ink keeps its own alpha
+        cols = np.nonzero(solid.any(axis=0))[0]
+        top = int(np.nonzero(solid.any(axis=1))[0][0])
+        depth = np.clip((np.arange(plane_h) - top) / float(max(1, plane_h - 1 - top)), 0.0, 1.0)
+        reach = np.maximum(1.0, (SIDE_FADE[0] + (SIDE_FADE[1] - SIDE_FADE[0]) * depth) * w)[:, None]
+        x = np.arange(w, dtype=float)[None, :]
+        t = np.clip(np.minimum(x - cols[0], cols[-1] - x) / reach, 0.0, 1.0)
+        body *= t * t * (3.0 - 2.0 * t)
+    return rgb, a * tone, body
+
+
+def paper_color(night):
+    return np.zeros(3) if night else np.array(PAPER, dtype=float) / 255.0
+
+
+def plane_from_cut(path, night, scale=None, tone=None, sides=True):
+    """plane_layers as one RGBA image: the ink over its own paper."""
+    rgb, ink, body = plane_layers(path, night, scale, tone, sides)
     alpha = np.maximum(ink, body)
     share = np.where(alpha > 0, ink / np.maximum(alpha, 1e-6), 0.0)[..., None]
-    paper = np.zeros(3) if night else np.array(PAPER, dtype=float) / 255.0
-    col = rgb * share + paper * (1.0 - share)
+    col = rgb * share + paper_color(night) * (1.0 - share)
     out = np.dstack([col, alpha]) * 255.0
     return Image.fromarray(np.round(np.clip(out, 0, 255)).astype(np.uint8), "RGBA")
 
 
-def pack(img):
-    """The image as it is saved: a palette PNG, or RGBA when PALETTE is 0."""
-    if not PALETTE:
-        return img
+def pack_octree(img):
+    """The pack until 2026-11-23: FASTOCTREE's own 256 colors. It gives the
+    bare paper about eight alpha steps, which band a fade; kept because the
+    profile is measured on it (profile)."""
     return img.quantize(colors=PALETTE, method=Image.Quantize.FASTOCTREE)
+
+
+def pack(layers, night=False):
+    """plane_layers as it is saved: a palette PNG with alpha (the RGBA
+    image when PALETTE is 0).
+
+    A cut's ink is ONE color, so a pixel is two amounts: ink, and paper
+    showing under it (the body's alpha less the ink's). The colors are
+    laid out on those two instead of left to an octree:
+      * LINE_STEPS for the solid body (paper = all that the ink leaves),
+        even steps of ink up to the plane's darkest;
+      * PAPER_STEPS for bare paper at even alphas, the fades at the foot
+        and the sides where nothing is painted;
+      * FADE_INK ink levels (closer together toward none) times FADE_STEPS
+        paper levels for ink over a fading body, the misty feet.
+    A pixel takes the nearest ink level. Under ink in a fading body the
+    paper level is rounded by chance in proportion (a fixed-seed dither:
+    twelve levels alone would step), which shows only where something
+    darker stands behind. The octree's eight paper alphas, and
+    nearest-color rounding after it, drew terraces at every foot once the
+    sides faded too."""
+    if not PALETTE:
+        return plane_from_layers(layers, night)
+    rgb, ink, body = layers
+    paper = paper_color(night)
+    color = rgb[np.unravel_index(int(np.argmax(ink)), ink.shape)]
+    top = max(float(ink.max()), 1e-3)
+    i = np.clip(ink, 0.0, top)
+    alpha = np.clip(np.maximum(i, body), 0.0, 1.0)
+    # the palette as (ink, paper) amounts: the solid line first
+    line = top * np.arange(LINE_STEPS) / float(LINE_STEPS - 1)
+    fade = np.concatenate([[0.0], top * (np.arange(1, FADE_INK + 1) / float(FADE_INK)) ** 2.0])
+    counts = np.array([PAPER_STEPS] + [FADE_STEPS] * FADE_INK)
+    starts = LINE_STEPS + np.concatenate([[0], np.cumsum(counts)[:-1]])
+    amounts = [(v, 1.0 - v) for v in line]
+    for k, n in enumerate(counts):
+        amounts += [(fade[k], (1.0 - fade[k]) * j / float(n)) for j in range(n)]
+    assert len(amounts) <= 256, len(amounts)
+    # every pixel: its nearest ink level among the fade's, then its paper
+    # level as a share of what that much ink leaves (bare paper: the
+    # nearest of its many; under ink: by chance)
+    rng = np.random.default_rng(20261123)
+    hi = np.clip(np.searchsorted(fade, i, side="right"), 1, FADE_INK)
+    lo = hi - 1
+    k = np.where(i - fade[lo] > fade[hi] - i, hi, lo)
+    share = np.clip((alpha - i) / np.maximum(1.0 - i, 1e-6), 0.0, 1.0)
+    j = np.floor(share * counts[k] + np.where(k == 0, 0.5, rng.random(i.shape))).astype(int)
+    index = starts[k] + np.minimum(j, counts[k] - 1)
+    solid = (alpha >= 1.0 - 0.5 / 255.0) | (j >= counts[k])
+    index[solid] = np.round(i[solid] / top * (LINE_STEPS - 1)).astype(int)
+    pal = np.zeros((256, 4))
+    for n, (v, q) in enumerate(amounts):
+        if v + q > 0.0:
+            pal[n, :3] = (v * color + q * paper) / (v + q)
+        pal[n, 3] = v + q
+    out = Image.fromarray(index.astype(np.uint8), "P")
+    out.putpalette(np.round(pal * 255.0).astype(np.uint8).tobytes(), "RGBA")
+    return out
+
+
+def plane_from_layers(layers, night):
+    rgb, ink, body = layers
+    alpha = np.maximum(ink, body)
+    share = np.where(alpha > 0, ink / np.maximum(alpha, 1e-6), 0.0)[..., None]
+    out = np.dstack([rgb * share + paper_color(night) * (1.0 - share), alpha]) * 255.0
+    return Image.fromarray(np.round(np.clip(out, 0, 255)).astype(np.uint8), "RGBA")
 
 
 def measure_alpha(a):
@@ -151,13 +256,21 @@ def measure_alpha(a):
     return {"w": int(w), "h": int(h), "ax": ax, "ay": ay, "top": top}
 
 
+def profile(path, scale=None, tone=None):
+    """A shape's profile table entry: its day plane with its sides still
+    solid, measured as the tables always were (on the FASTOCTREE pack, whose
+    alphas the 11-05 table was read from, so that table stands)."""
+    ref = pack_octree(plane_from_cut(path, False, scale, tone, sides=False)).convert("RGBA")
+    return measure_alpha(np.asarray(ref.getchannel("A")))
+
+
 def build(scale=None, tone=None):
     """Every shape in memory, as saved: [(name, sheet, day, night)] with
     the images already packed. The mock-only experiments use this."""
     out = []
     for name, sheet, path in shapes():
-        day = pack(plane_from_cut(path, False, scale, tone))
-        night = pack(plane_from_cut(path[:-4] + "_night.png", True, scale, tone))
+        day = pack(plane_layers(path, False, scale, tone), False)
+        night = pack(plane_layers(path[:-4] + "_night.png", True, scale, tone), True)
         out.append((name, sheet, day, night))
     return out
 
@@ -178,16 +291,29 @@ def render_all():
             total += os.path.getsize(path)
         print("baked", name, day.width, "x", day.height, flush=True)
     print("library: %d shapes, %.2f MB of PNG" % (len(names), total / 1e6))
+    return {"k": K, "scale": SCALE, "tone": TONE,
+            "shapes": [dict(profile(path), name=name, sheet=sheet)
+                       for name, sheet, path in shapes()]}
 
 
-def measure(name):
-    im = Image.open(os.path.join(DRAW, name + "_cut.png")).convert("RGBA")
-    return dict(measure_alpha(np.asarray(im.getchannel("A"))), name=name)
+def stored_table():
+    """shape_table.json: the profiles as the last bake measured them."""
+    with open(JSON) as f:
+        return json.load(f)
 
 
-def tables():
-    table = {"k": K, "scale": SCALE, "tone": TONE,
-             "shapes": [dict(measure(n), sheet=s) for n, s, _ in shapes()]}
+def stale_pngs(table):
+    """The baked PNGs that are missing or not the table's size."""
+    out = []
+    for s in table["shapes"]:
+        for suffix in ("_cut.png", "_cut_night.png"):
+            path = os.path.join(DRAW, s["name"] + suffix)
+            if not os.path.exists(path) or Image.open(path).size != (s["w"], s["h"]):
+                out.append(os.path.basename(path))
+    return out
+
+
+def tables(table):
     js = json.dumps(table, indent=1) + "\n"
 
     xml = ['<drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
@@ -239,9 +365,15 @@ def tables():
 
 def main(argv):
     if "--tables" not in argv and "--check" not in argv:
-        render_all()
-    out = tables()
+        table = render_all()
+    else:
+        table = stored_table()
+    out = tables(table)
     stale = 0
+    if "--check" in argv:
+        for name in stale_pngs(table):
+            print("stale:", name)
+            stale += 1
     for path, text in out.items():
         if "--check" in argv:
             # Universal newlines: a Windows checkout (autocrlf) is not stale.
